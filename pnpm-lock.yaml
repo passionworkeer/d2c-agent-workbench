@@ -21,6 +21,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.1)
 
+  packages/component-matcher:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/contracts:
     dependencies:
       zod:
@@ -35,6 +41,12 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
+
+  packages/ui-compiler:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 
