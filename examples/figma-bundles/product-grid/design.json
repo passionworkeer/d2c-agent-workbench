@@ -1,0 +1,153 @@
+{
+  "nodes": [
+    {
+      "id": "page",
+      "name": "Commerce / Product Grid",
+      "type": "FRAME",
+      "width": 1440,
+      "height": 900,
+      "layoutMode": "VERTICAL",
+      "layoutSizingHorizontal": "FIXED",
+      "layoutSizingVertical": "FIXED",
+      "gap": { "value": 48, "variable": "spacing/2xl" },
+      "padding": {
+        "top": { "value": 32, "variable": "spacing/xl" },
+        "right": { "value": 56, "variable": "spacing/3xl" },
+        "bottom": { "value": 48, "variable": "spacing/2xl" },
+        "left": { "value": 56, "variable": "spacing/3xl" }
+      },
+      "boundVariables": {
+        "fills": { "value": "#f3f1ea", "variable": "color/canvas" }
+      },
+      "children": [
+        {
+          "id": "header",
+          "name": "Header / Commerce",
+          "type": "INSTANCE",
+          "width": 1328,
+          "height": 72,
+          "layoutMode": "HORIZONTAL",
+          "layoutSizingHorizontal": "FILL",
+          "layoutSizingVertical": "FIXED",
+          "componentId": "component-header",
+          "componentProperties": { "theme": "light" },
+          "children": []
+        },
+        {
+          "id": "intro",
+          "name": "Section Intro",
+          "type": "FRAME",
+          "width": 1328,
+          "height": 128,
+          "layoutMode": "VERTICAL",
+          "layoutSizingHorizontal": "FILL",
+          "layoutSizingVertical": "HUG",
+          "gap": { "value": 12, "variable": "spacing/md" },
+          "children": [
+            {
+              "id": "eyebrow",
+              "name": "Eyebrow",
+              "type": "TEXT",
+              "width": 240,
+              "height": 20,
+              "layoutMode": "NONE",
+              "layoutSizingHorizontal": "HUG",
+              "layoutSizingVertical": "HUG",
+              "characters": "NEW SEASON / 26FW",
+              "boundVariables": {
+                "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                "fills": { "value": "#ef5b2a", "variable": "color/accent" }
+              },
+              "children": []
+            },
+            {
+              "id": "title",
+              "name": "Display Title",
+              "type": "TEXT",
+              "width": 760,
+              "height": 72,
+              "layoutMode": "NONE",
+              "layoutSizingHorizontal": "HUG",
+              "layoutSizingVertical": "HUG",
+              "characters": "Objects for motion.",
+              "boundVariables": {
+                "fontSize": { "value": 64, "variable": "typography/display/font-size" },
+                "fills": { "value": "#171713", "variable": "color/ink" }
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "grid",
+          "name": "Product Grid / Four Columns",
+          "type": "FRAME",
+          "width": 1328,
+          "height": 520,
+          "layoutMode": "GRID",
+          "layoutSizingHorizontal": "FILL",
+          "layoutSizingVertical": "HUG",
+          "gap": { "value": 20, "variable": "spacing/lg" },
+          "children": [
+            {
+              "id": "card-1",
+              "name": "Product Card / Default",
+              "type": "INSTANCE",
+              "width": 317,
+              "height": 500,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 16, "variable": "spacing/lg" },
+              "componentId": "component-product-card",
+              "componentProperties": { "tone": "cobalt", "badge": "New" },
+              "children": []
+            },
+            {
+              "id": "card-2",
+              "name": "Product Card / Default",
+              "type": "INSTANCE",
+              "width": 317,
+              "height": 500,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 16, "variable": "spacing/lg" },
+              "componentId": "component-product-card",
+              "componentProperties": { "tone": "coral", "badge": "Limited" },
+              "children": []
+            },
+            {
+              "id": "card-3",
+              "name": "Product Card / Default",
+              "type": "INSTANCE",
+              "width": 317,
+              "height": 500,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 16, "variable": "spacing/lg" },
+              "componentId": "component-product-card",
+              "componentProperties": { "tone": "lime", "badge": "Core" },
+              "children": []
+            },
+            {
+              "id": "card-4",
+              "name": "Product Card / Default",
+              "type": "INSTANCE",
+              "width": 317,
+              "height": 500,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 16, "variable": "spacing/lg" },
+              "componentId": "component-product-card",
+              "componentProperties": { "tone": "charcoal", "badge": "Archive" },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

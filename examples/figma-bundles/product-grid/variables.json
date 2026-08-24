@@ -1,0 +1,11 @@
+[
+  { "name": "color/canvas", "type": "COLOR", "value": "#f3f1ea" },
+  { "name": "color/ink", "type": "COLOR", "value": "#171713" },
+  { "name": "color/accent", "type": "COLOR", "value": "#ef5b2a" },
+  { "name": "spacing/md", "type": "FLOAT", "value": 12 },
+  { "name": "spacing/lg", "type": "FLOAT", "value": 20 },
+  { "name": "spacing/xl", "type": "FLOAT", "value": 32 },
+  { "name": "spacing/2xl", "type": "FLOAT", "value": 48 },
+  { "name": "spacing/3xl", "type": "FLOAT", "value": 56 },
+  { "name": "radius/card", "type": "FLOAT", "value": 28 }
+]

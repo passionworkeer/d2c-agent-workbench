@@ -1,0 +1,25 @@
+{
+  "name": "@d2c/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@d2c/component-matcher": "workspace:*",
+    "@d2c/contracts": "workspace:*",
+    "@d2c/figma-importer": "workspace:*",
+    "@d2c/orchestrator": "workspace:*",
+    "@d2c/ui-compiler": "workspace:*",
+    "@fastify/multipart": "^9.2.1",
+    "fastify": "^5.6.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  }
+}
