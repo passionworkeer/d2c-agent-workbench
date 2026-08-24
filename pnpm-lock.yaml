@@ -33,6 +33,12 @@ importers:
         specifier: ^4.1.5
         version: 4.4.3
 
+  packages/evaluator:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/figma-importer:
     dependencies:
       '@d2c/contracts':
@@ -41,6 +47,15 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
+
+  packages/orchestrator:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@d2c/evaluator':
+        specifier: workspace:*
+        version: link:../evaluator
 
   packages/ui-compiler:
     dependencies:
