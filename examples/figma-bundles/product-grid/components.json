@@ -1,0 +1,15 @@
+[
+  {
+    "id": "component-header",
+    "name": "Header / Commerce",
+    "properties": { "theme": ["light", "dark"] }
+  },
+  {
+    "id": "component-product-card",
+    "name": "Product Card / Default",
+    "properties": {
+      "tone": ["cobalt", "coral", "lime", "charcoal"],
+      "badge": ["New", "Limited", "Core", "Archive"]
+    }
+  }
+]
