@@ -5,13 +5,16 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm --parallel --filter @d2c/server --filter @d2c/web dev",
-    "test": "pnpm -r test",
+    "skill:build": "node scripts/build-skill-zip.mjs",
+    "skill:check": "node scripts/build-skill-zip.mjs --check",
+    "test": "pnpm skill:check && pnpm exec vitest run scripts/skill-assets.test.ts && pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/node": "^22.18.0",
+    "fflate": "^0.8.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

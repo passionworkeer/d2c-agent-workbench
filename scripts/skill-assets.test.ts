@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
@@ -35,5 +36,13 @@ describe("可导出的 D2C Skill", () => {
     expect(report.components.some((path) => path.endsWith("apps/web/src/App.tsx"))).toBe(true);
     expect(report.styles.some((path) => path.endsWith("apps/web/src/styles.css"))).toBe(true);
     expect(report.packageScripts.root).toMatchObject({ build: "pnpm -r build" });
+  });
+
+  it("ZIP 与 canonical Skill 的路径和内容完全一致", () => {
+    execFileSync(process.execPath, [resolve(root, "scripts/build-skill-zip.mjs"), "--check"]);
+    const archive = unzipSync(readFileSync(resolve(root, "apps/web/public/d2c-agent-workbench-skill.zip")));
+
+    expect(strFromU8(archive["d2c-agent-workbench/SKILL.md"])).toContain("name: d2c-agent-workbench");
+    expect(Object.keys(archive)).toContain("d2c-agent-workbench/scripts/scan-design-assets.mjs");
   });
 });
