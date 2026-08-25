@@ -108,6 +108,7 @@ export const componentMappingSchema = z.object({
 });
 
 export const workflowStateSchema = z.enum([
+  // D2C（设计稿 → 代码）链路状态
   "UPLOADED",
   "VALIDATED",
   "NORMALIZED",
@@ -121,6 +122,16 @@ export const workflowStateSchema = z.enum([
   "COMPLETED",
   "NEEDS_REVIEW",
   "FAILED",
+  // I2D（参考图 / Figma → 设计稿）链路状态
+  "IMAGE_RECEIVED",
+  "NODETREE_PARSED",
+  "VISION_PARSED",
+  "LAYOUT_INFERRED",
+  "COMPONENTS_DETECTED",
+  "TOKENS_BOUND",
+  "SPEC_GENERATED",
+  "CANVAS_EDITED",
+  "SPEC_EXPORTED",
 ]);
 
 export const traceEventSchema = z.object({
