@@ -10,6 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const skillDirectory = path.join(root, "skills", "d2c-agent-workbench");
 const outputFile = path.join(root, "apps", "web", "public", "d2c-agent-workbench-skill.zip");
 const archiveRoot = "d2c-agent-workbench";
+const textExtensions = new Set([".css", ".js", ".json", ".md", ".mjs", ".scss", ".ts", ".tsx", ".yaml", ".yml"]);
 
 async function collectFiles(directory, prefix = "") {
   const files = [];
@@ -28,7 +29,11 @@ async function canonicalEntries() {
   const files = await collectFiles(skillDirectory);
   const entries = {};
   for (const file of files) {
-    entries[path.posix.join(archiveRoot, file.relativePath)] = new Uint8Array(await readFile(file.absolutePath));
+    let content = new Uint8Array(await readFile(file.absolutePath));
+    if (textExtensions.has(path.extname(file.relativePath).toLowerCase())) {
+      content = new TextEncoder().encode(new TextDecoder().decode(content).replace(/\r\n?/g, "\n"));
+    }
+    entries[path.posix.join(archiveRoot, file.relativePath)] = content;
   }
   return entries;
 }
