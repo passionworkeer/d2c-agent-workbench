@@ -1,92 +1,59 @@
 import type { TraceEvent } from "@d2c/contracts";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
-const events: TraceEvent[] = [
-  {
-    id: "1",
-    runId: "run-demo",
-    timestamp: "2026-08-24T12:00:00.000Z",
-    state: "COMPONENTS_MAPPED",
-    title: "Components mapped",
-    data: {
-      mappings: [
-        {
-          nodeId: "card",
-          figmaComponent: "Product Card / Default",
-          codeComponent: "ProductCard",
-          importPath: "@/components/ProductCard",
-          props: { tone: "cobalt" },
-          confidence: 0.96,
-          status: "accepted",
-          evidence: ["Exact Figma component name matched"],
-        },
-      ],
-    },
-  },
-  {
-    id: "2",
-    runId: "run-demo",
-    timestamp: "2026-08-24T12:00:01.000Z",
-    state: "EVALUATED",
-    title: "Eval iteration 1",
-    data: { evaluation: { iteration: 1, overall: 72, metrics: {}, violations: [] } },
-  },
-  {
-    id: "3",
-    runId: "run-demo",
-    timestamp: "2026-08-24T12:00:02.000Z",
-    state: "EVALUATED",
-    title: "Eval iteration 2",
-    data: { evaluation: { iteration: 2, overall: 94, metrics: {}, violations: [] } },
-  },
-  {
-    id: "4",
-    runId: "run-demo",
-    timestamp: "2026-08-24T12:00:03.000Z",
-    state: "COMPLETED",
-    title: "Delivery ready",
-    data: { scoreDelta: 22, generatedCode: "export function ProductGridPage() {}" },
-  },
-];
-
-vi.mock("./lib/api", () => ({
-  startDemoRun: vi.fn(async () => ({ runId: "run-demo" })),
-  uploadBundle: vi.fn(async () => ({ runId: "run-demo" })),
-  getRun: vi.fn(async () => ({
-    id: "run-demo",
-    state: "UPLOADED",
-    status: "running",
-    previewUrl: "data:image/svg+xml;base64,PHN2Zy8+",
-    events: [],
-    evaluations: [],
-    mappings: [],
-    uiSpec: {
-      version: 1,
-      name: "Kinetic Product Grid",
-      viewport: { width: 1440, height: 900 },
-      root: { children: [{ id: "grid" }] },
-    },
-  })),
-  subscribeToRun: vi.fn((_id: string, onEvent: (event: TraceEvent) => void) => {
-    events.forEach(onEvent);
-    return () => undefined;
+const apiMocks = vi.hoisted(() => ({
+  startDemoRun: vi.fn(async () => {
+    throw new Error("默认演示不应请求后端");
   }),
+  uploadBundle: vi.fn(),
+  getRun: vi.fn(async () => {
+    throw new Error("服务不可用");
+  }),
+  subscribeToRun: vi.fn((_id: string, _onEvent: (event: TraceEvent) => void) => () => undefined),
 }));
 
-describe("D2C workbench", () => {
-  it("shows the full replay evidence and score improvement", async () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /run demo/i }));
+vi.mock("./lib/api", () => apiMocks);
 
-    expect(await screen.findByText("ProductCard")).toBeInTheDocument();
+describe("D2C 工作台", () => {
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it("无后端时仍能完成中文 Mock 演示", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(apiMocks.startDemoRun).not.toHaveBeenCalled();
+    expect(screen.getByText("设计输入")).toBeInTheDocument();
+    expect(screen.getByText("Agent 执行轨迹")).toBeInTheDocument();
+    expect(screen.getByText("代码交付")).toBeInTheDocument();
+    expect(screen.getAllByText("ProductCard").length).toBeGreaterThan(0);
     expect(screen.getByTestId("initial-score")).toHaveTextContent("72");
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
     expect(screen.getByTestId("score-delta")).toHaveTextContent("+22");
-    expect(screen.getAllByText("COMPLETED").length).toBeGreaterThan(0);
-    expect(screen.getByText("Design Source")).toBeInTheDocument();
-    expect(screen.getByText("Agent Trace")).toBeInTheDocument();
-    expect(screen.getByText("Delivery")).toBeInTheDocument();
+    expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
+  });
+
+  it("上传失败后可显式降级到演示数据", async () => {
+    vi.useFakeTimers();
+    apiMocks.uploadBundle.mockRejectedValueOnce(new Error("服务不可用"));
+    render(<App />);
+
+    const input = screen.getByTestId("bundle-input");
+    fireEvent.change(input, { target: { files: [new File(["bundle"], "product-grid.zip")] } });
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByText(/上传失败/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "使用演示数据继续" }));
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(screen.getByTestId("final-score")).toHaveTextContent("94");
   });
 });
