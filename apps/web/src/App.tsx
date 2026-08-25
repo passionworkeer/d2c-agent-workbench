@@ -10,6 +10,7 @@ import {
   FileCode2,
   GitCompareArrows,
   Layers3,
+  PackageOpen,
   Play,
   RotateCcw,
   ScanLine,
@@ -185,6 +186,7 @@ export default function App() {
         </div>
         <div className="header-actions">
           <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void connectUpload(file); }} />
+          <a className="button secondary skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
           <button className="button secondary" onClick={() => fileInput.current?.click()}><Upload size={15} />上传 Figma 资产包</button>
           <button className="button primary" disabled={running} onClick={startMockDemo}><Play size={15} fill="currentColor" />运行完整演示</button>
         </div>

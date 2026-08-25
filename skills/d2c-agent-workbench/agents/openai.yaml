@@ -1,0 +1,7 @@
+interface:
+  display_name: "D2C Agent 工作台"
+  short_description: "把 Figma 与设计系统资产转换为可维护前端代码"
+  brand_color: "#9BD500"
+  default_prompt: "使用 $d2c-agent-workbench 分析这个设计输入，优先复用现有组件库和 Design Token，并交付可运行代码与评测报告。"
+policy:
+  allow_implicit_invocation: true

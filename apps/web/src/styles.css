@@ -84,6 +84,7 @@ button { cursor: pointer; }
 .header-actions { justify-content: flex-end; gap: 8px; }
 .button {
   gap: 7px;
+  text-decoration: none;
   border-radius: 9px;
   padding: 9px 13px;
   border: 1px solid var(--line-strong);
