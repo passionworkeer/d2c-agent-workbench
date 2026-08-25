@@ -1,0 +1,26 @@
+{
+  "designInput": "./design/product-grid-figma-bundle.zip",
+  "targetRepository": "./web-application",
+  "framework": "react-typescript",
+  "componentRoots": [
+    "./packages/ui/src",
+    "./src/components"
+  ],
+  "tokenRoots": [
+    "./packages/tokens",
+    "./src/styles/tokens.css"
+  ],
+  "storybookRoots": [
+    "./packages/ui/src"
+  ],
+  "commands": {
+    "typecheck": "pnpm typecheck",
+    "test": "pnpm test",
+    "build": "pnpm build"
+  },
+  "qualityThreshold": {
+    "overall": 90,
+    "minimumDimension": 80,
+    "maxRepairIterations": 3
+  }
+}
