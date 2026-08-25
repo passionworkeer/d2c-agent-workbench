@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
     "@d2c/evaluator": "workspace:*"
   }

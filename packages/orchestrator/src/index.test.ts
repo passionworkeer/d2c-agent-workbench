@@ -65,4 +65,29 @@ describe("runReplayWorkflow", () => {
     expect(scores).toEqual([72, 94]);
     expect(events.at(-1)?.data?.scoreDelta).toBe(22);
   });
+
+  it("keeps trace declarations consistent with the data payloads", async () => {
+    const manyMappings = [1, 2, 3, 4, 5].map((index): ComponentMapping => ({
+      nodeId: `card-${index}`,
+      figmaComponent: "Product Card / Default",
+      codeComponent: "ProductCard",
+      importPath: "@/components/ProductCard",
+      props: { tone: "cobalt" },
+      confidence: 0.96,
+      status: "accepted",
+      evidence: ["Figma 组件名称精确匹配"],
+    }));
+    const events = [];
+    for await (const item of runReplayWorkflow({ runId: "run-2", spec, mappings: manyMappings, delayMs: 0 })) {
+      events.push(item);
+    }
+
+    const generated = events.find((item) => item.state === "GENERATED");
+    // trace 里的数量声明必须与 data 载荷中的 mappings 数量一致（不可再硬编码 4）。
+    expect(generated?.detail).toContain("5 个 Figma 实例");
+    expect(generated?.data?.diff).toContain("+ 5 处 SDS 组件复用");
+    expect(generated?.data?.mappings).toBeUndefined();
+    const mapped = events.find((item) => item.state === "COMPONENTS_MAPPED");
+    expect(mapped?.data?.mappings).toHaveLength(5);
+  });
 });
