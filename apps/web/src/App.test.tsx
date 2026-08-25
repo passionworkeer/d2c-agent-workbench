@@ -17,6 +17,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+async function advanceToEnd() {
+  for (;;) {
+    const next = screen.queryByRole("button", { name: /下一步/ }) as HTMLButtonElement | null;
+    if (!next || next.disabled) return;
+    await act(async () => {
+      fireEvent.click(next);
+    });
+  }
+}
+
 describe("D2C 工作台", () => {
   it("提供不依赖后端的 D2C Skill 下载入口", () => {
     render(<App />);
@@ -26,27 +36,70 @@ describe("D2C 工作台", () => {
     expect(link).toHaveAttribute("download", "d2c-agent-workbench-skill.zip");
   });
 
-  it("无后端时仍能完成中文 Mock 演示", async () => {
-    vi.useFakeTimers();
+  it("分步演示：点一下揭示一步，可回退，走完得到 72 → 94", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
-    await act(async () => vi.runAllTimersAsync());
+
+    // 第一步立即出现，其余不出现
+    expect(screen.getByText("资产包校验完成")).toBeInTheDocument();
+    expect(screen.queryByText("React 代码生成完成")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /下一步/ })).toBeInTheDocument();
+
+    await advanceToEnd();
 
     expect(apiMocks.uploadBundle).not.toHaveBeenCalled();
-    expect(screen.getByText("设计输入")).toBeInTheDocument();
-    expect(screen.getByText("Agent 执行轨迹")).toBeInTheDocument();
-    expect(screen.getByText("代码交付")).toBeInTheDocument();
-    expect(screen.getAllByText("ProductCard").length).toBeGreaterThan(0);
     expect(screen.getByTestId("initial-score")).toHaveTextContent("72");
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
     expect(screen.getByTestId("score-delta")).toHaveTextContent("+22");
     expect(screen.getByText("3 项问题已修复")).toBeInTheDocument();
     expect(screen.getByText("商品网格使用了硬编码间距 18px")).toBeInTheDocument();
     expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
+
+    // 上一步可回退：事件从 12 变 11，代码生成事件重新可见
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /上一步/ }));
+    });
+    expect(screen.getByText("11 个事件")).toBeInTheDocument();
+
+    // 预览必须渲染出 4 张商品卡（卡片收集是递归的，不能按层级硬取）
+    expect(document.querySelectorAll(".product-card")).toHaveLength(4);
   });
 
-  it("上传失败后可显式降级到演示数据", async () => {
+  it("分步演示支持自动播放剩余步骤", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+
+    expect(screen.getByTestId("final-score")).toHaveTextContent("94");
+  });
+
+  it("代码 Diff 页签真实可切换并展示 diff 与修复补丁", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await advanceToEnd();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "代码 Diff" }));
+    });
+    expect(screen.getByTestId("diff-view")).toBeInTheDocument();
+    expect(screen.getByText("+ ProductGridPage.tsx")).toBeInTheDocument();
+    expect(screen.getByText("18px → var(--spacing-lg)")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "页面预览" }));
+    });
+    expect(screen.getByTestId("generated-preview")).toBeInTheDocument();
+    expect(screen.queryByTestId("diff-view")).not.toBeInTheDocument();
+  });
+
+  it("上传失败后可显式降级到分步演示", async () => {
     vi.useFakeTimers();
     apiMocks.uploadBundle.mockRejectedValueOnce(new Error("服务不可用"));
     render(<App />);
@@ -57,8 +110,10 @@ describe("D2C 工作台", () => {
 
     expect(screen.getByText(/上传失败/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "使用演示数据继续" }));
-    await act(async () => vi.runAllTimersAsync());
 
+    // 降级同样进入分步模式，走完拿到 94
+    vi.useRealTimers();
+    await advanceToEnd();
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
   });
 
@@ -90,12 +145,8 @@ describe("D2C 工作台", () => {
     render(<App />);
 
     const input = screen.getByTestId("bundle-input") as HTMLInputElement;
-    const file = new File(["bundle"], "product-grid.zip");
-    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(input, { target: { files: [new File(["bundle"], "product-grid.zip")] } });
     expect(input.value).toBe("");
-
-    // 运行中再次上传同样文件：因为 input.value 已被清空 + 上传按钮 disabled，
-    // 第二次 change 不会再次触发；这里通过按钮 disabled 来守护双击。
     expect(screen.getByRole("button", { name: "上传 Figma 资产包" })).toBeDisabled();
   });
 
@@ -112,12 +163,12 @@ describe("D2C 工作台", () => {
     globalThis.Blob = CapturingBlob as unknown as typeof Blob;
     const createUrl = vi.fn(() => "blob:mock-url");
     const revokeUrl = vi.fn();
-    const click = vi.fn();
     const originalCreate = URL.createObjectURL;
     const originalRevoke = URL.revokeObjectURL;
     URL.createObjectURL = createUrl;
     URL.revokeObjectURL = revokeUrl;
     const anchor = document.createElement("a");
+    const click = vi.fn();
     anchor.click = click;
     const originalCreateElement = document.createElement.bind(document);
     document.createElement = ((tag: string) =>
@@ -126,6 +177,9 @@ describe("D2C 工作台", () => {
     try {
       render(<App />);
       fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+      });
       await act(async () => vi.runAllTimersAsync());
 
       fireEvent.click(screen.getByRole("button", { name: "下载报告" }));
@@ -144,5 +198,51 @@ describe("D2C 工作台", () => {
       document.createElement = originalCreateElement;
       globalThis.Blob = RealBlob;
     }
+  });
+});
+
+describe("I2D 设计稿生成链路", () => {
+  it("参考图 → 设计稿：分步演示可走通，产出预览 / 对话编辑 / 可下载设计稿", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+
+    // 第一步立即出现：多模态链路启动（状态徽标与轨迹里都会出现）
+    expect(screen.getAllByText("参考图已导入").length).toBeGreaterThan(0);
+    expect(screen.queryByText("结构化设计稿已生成")).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+
+    // 设计稿生成 + 对话编辑 + 导出全部到位
+    expect(screen.getByText("结构化设计稿已生成")).toBeInTheDocument();
+    expect(screen.getByTestId("generated-preview")).toBeInTheDocument();
+    expect(document.querySelectorAll(".product-card")).toHaveLength(4);
+    expect(screen.getByTestId("chat-panel")).toBeInTheDocument();
+    expect(screen.getByText(/第二张卡片的配色换成 lime/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /下载设计稿 JSON/ })).toBeEnabled();
+    expect(screen.getByText(/design-draft\.product-grid\.json/)).toBeInTheDocument();
+
+    // 全程不触发真实上传
+    expect(apiMocks.uploadBundle).not.toHaveBeenCalled();
+  });
+
+  it("Figma 输入源：跳过视觉解析，直接从节点树进入布局推断", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Figma 资产包（演示）" }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+
+    // 第一步立即出现：结构化输入，跳过视觉解析
+    expect(screen.getByText("Figma 资产包已导入")).toBeInTheDocument();
+    expect(screen.queryByText("多模态 UI 理解完成")).not.toBeInTheDocument();
+
+    await advanceToEnd();
+    expect(screen.getByText("设计稿生成流程完成")).toBeInTheDocument();
   });
 });

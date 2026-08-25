@@ -58,6 +58,44 @@ test("真实上传触发真实后端，无错误横幅且 final-score=94", async
 
   // 服务端 last event 应该推进到 COMPLETED，UI 顶部状态徽标随之变更。
   await expect(page.locator(".run-summary").getByText("已完成").first()).toBeVisible();
+
+  // 预览必须渲染出 4 张商品卡（真实结构的网格不是 root 直接子节点，按层级硬取会静默渲染空网格）。
+  await expect(page.locator(".product-card")).toHaveCount(4);
+});
+
+test("分步演示：点一下揭示一步，走完 D2C 全流程", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "运行完整演示" }).click();
+
+  // 第一步立即出现，第二步尚未揭示
+  await expect(page.getByText("资产包校验完成").first()).toBeVisible();
+  await expect(page.getByText("React 代码生成完成")).toHaveCount(0);
+
+  for (let step = 0; step < 11; step += 1) {
+    await page.getByTestId("next-step").click();
+  }
+  await expect(page.getByTestId("final-score")).toHaveText("94");
+  await expect(page.getByText("React 代码生成完成").first()).toBeVisible();
+});
+
+test("参考图 → 设计稿（I2D）演示链路可走通并可下载设计稿", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: /参考图 → 设计稿/ }).click();
+  await page.getByRole("button", { name: "运行设计稿生成演示" }).click();
+
+  // 第一步立即出现：多模态链路启动
+  await expect(page.getByText("参考图已导入").first()).toBeVisible();
+  await expect(page.getByText("结构化设计稿已生成")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /自动播放/ }).click();
+
+  // 设计稿生成 + 对话编辑 + 导出
+  await expect(page.getByText("结构化设计稿已生成").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(".product-card")).toHaveCount(4);
+  await expect(page.getByTestId("chat-panel")).toBeVisible();
+  await expect(page.getByRole("button", { name: /下载设计稿 JSON/ })).toBeEnabled();
 });
 
 test.afterAll(() => {

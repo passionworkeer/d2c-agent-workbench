@@ -47,7 +47,8 @@ const cardNodes: UISpecNode[] = cards.map((card) => ({
   children: [],
 }));
 
-const uiSpec: UISpec = {
+// I2D（参考图/Figma → 设计稿）演示链路复用同一份结构，导出给 mock-design.ts。
+export const mockUiSpec: UISpec = {
   version: 1,
   name: "动感商品网格",
   viewport: { width: 1440, height: 900 },
@@ -288,12 +289,12 @@ function event(
 
 export function createMockEvents(): TraceEvent[] {
   const tokens = new Set<string>();
-  collectTokens(uiSpec.root, tokens);
-  const nodes = countNodes(uiSpec.root);
+  collectTokens(mockUiSpec.root, tokens);
+  const nodes = countNodes(mockUiSpec.root);
   const componentInstances = mockMappings.length;
   return [
     event(1, "VALIDATED", "资产包校验完成", "4 个 JSON 文件 · 1 个预览 · 协议 v1.0"),
-    event(2, "NORMALIZED", "UISpec 编译完成", "已保留 Auto Layout、Sizing 与 Design Token", { uiSpec }),
+    event(2, "NORMALIZED", "UISpec 编译完成", "已保留 Auto Layout、Sizing 与 Design Token", { uiSpec: mockUiSpec }),
     event(
       3,
       "ASSETS_INDEXED",
@@ -337,7 +338,7 @@ export function createMockRun(): RunDetail {
     status: "running",
     state: "UPLOADED",
     previewUrl,
-    uiSpec,
+    uiSpec: mockUiSpec,
     mappings: [],
     events: [],
     evaluations: [],
