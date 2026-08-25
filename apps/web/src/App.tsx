@@ -171,6 +171,7 @@ export default function App() {
   const initial = evaluations[0]?.overall ?? 0;
   const final = evaluations.at(-1)?.overall ?? 0;
   const finalMetrics = Object.entries(evaluations.at(-1)?.metrics ?? {}) as Array<[string, number]>;
+  const firstViolations = evaluations[0]?.violations ?? [];
   const currentState = events.at(-1)?.state ?? run?.state ?? "READY";
 
   return (
@@ -262,6 +263,10 @@ export default function App() {
           <div className="metric-grid">
             {finalMetrics.map(([key, value]) => <div key={key}><span>{metricNames[key] ?? key}</span><strong>{value}</strong><i><b style={{width: `${value}%`}}/></i></div>)}
           </div>
+          {firstViolations.length > 0 && final >= 90 && <div className="repair-result">
+            <div><WandSparkles size={13}/><strong>{firstViolations.length} 项问题已修复</strong><span>定向 Repair</span></div>
+            <ul>{firstViolations.map((violation) => <li key={violation.id}><Check size={11}/><span>{violation.message}</span></li>)}</ul>
+          </div>}
           <div className="preview-tabs"><button className="active">页面预览</button><button>代码 Diff</button><span><WandSparkles size={13}/>自动修复 +{scoreDelta}</span></div>
           <ProductPreview />
           <div className="code-preview">

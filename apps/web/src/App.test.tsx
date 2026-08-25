@@ -38,6 +38,8 @@ describe("D2C 工作台", () => {
     expect(screen.getByTestId("initial-score")).toHaveTextContent("72");
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
     expect(screen.getByTestId("score-delta")).toHaveTextContent("+22");
+    expect(screen.getByText("3 项问题已修复")).toBeInTheDocument();
+    expect(screen.getByText("商品网格使用了硬编码间距 18px")).toBeInTheDocument();
     expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
   });
 

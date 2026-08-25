@@ -261,6 +261,14 @@ button { cursor: pointer; }
 .metric-grid strong { float: right; font-family: Consolas, monospace; font-size: 10px; }
 .metric-grid i { display: block; clear: both; height: 2px; background: #e4e7e1; margin-top: 8px; }
 .metric-grid b { display: block; height: 2px; background: var(--acid); }
+.repair-result { margin: 0 14px 12px; padding: 9px 10px; border: 1px solid #d9dfd2; border-radius: 9px; background: var(--surface-tint); }
+.repair-result > div { display: flex; align-items: center; gap: 6px; color: var(--acid-dark); }
+.repair-result > div strong { font-size: 9px; }
+.repair-result > div span { margin-left: auto; font-family: Consolas, monospace; font-size: 7px; color: var(--orange); }
+.repair-result ul { margin: 7px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; list-style: none; }
+.repair-result li { min-width: 0; display: flex; align-items: flex-start; gap: 4px; padding: 5px 6px; border-radius: 6px; background: #fff; color: #596057; }
+.repair-result li svg { flex: none; color: var(--acid-dark); }
+.repair-result li span { font-size: 7px; line-height: 1.35; }
 .preview-tabs { margin: 0 14px; border-bottom: 1px solid var(--line); gap: 3px; }
 .preview-tabs button { border: 0; background: none; color: #858c82; padding: 8px 9px; font-size: 9px; }
 .preview-tabs button.active { color: var(--text); border-bottom: 2px solid var(--acid); }
