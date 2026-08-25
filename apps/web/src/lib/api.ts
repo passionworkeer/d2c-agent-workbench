@@ -13,8 +13,16 @@ export interface RunDetail {
 
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = (await response.json()) as { message?: string };
-    throw new Error(error.message ?? `Request failed with ${response.status}`);
+    let error: { message?: unknown } = {};
+    try {
+      error = (await response.json()) as { message?: unknown };
+    } catch {
+      // Vite 代理和网关错误可能没有 JSON 响应体。
+    }
+    const message = typeof error.message === "string" && error.message.trim()
+      ? error.message
+      : `请求失败（HTTP ${response.status}）`;
+    throw new Error(message);
   }
   return response.json() as Promise<T>;
 }
