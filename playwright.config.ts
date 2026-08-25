@@ -9,18 +9,10 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: [
-    {
-      command: "pnpm --filter @d2c/server dev",
-      url: "http://127.0.0.1:8787/api/health",
-      reuseExistingServer: true,
-      timeout: 60_000,
-    },
-    {
-      command: "pnpm --filter @d2c/web dev --host 127.0.0.1",
-      url: "http://127.0.0.1:5173",
-      reuseExistingServer: true,
-      timeout: 60_000,
-    },
-  ],
+  webServer: {
+    command: "pnpm --filter @d2c/web dev --host 127.0.0.1",
+    url: "http://127.0.0.1:5173",
+    reuseExistingServer: true,
+    timeout: 60_000,
+  },
 });
