@@ -1,60 +1,97 @@
-import type { UISpec } from "@d2c/contracts";
+import type { UISpec, UISpecNode } from "@d2c/contracts";
 import { describe, expect, it } from "vitest";
-import { mapSdsComponents } from "./index";
+import { mapSdsComponents, SDS_REGISTRY_SIZE } from "./index";
 
-const spec: UISpec = {
-  version: 1,
-  name: "Mapping Test",
-  viewport: { width: 1440, height: 900 },
-  root: {
-    id: "page",
-    name: "Page",
-    type: "FRAME",
-    semanticRole: "page",
-    layout: { direction: "column", width: "fixed", height: "fixed" },
+function instance(id: string, name: string, props: Record<string, unknown> = {}): UISpecNode {
+  return {
+    id,
+    name,
+    type: "INSTANCE",
+    semanticRole: "component",
+    layout: { direction: "none", width: "fill", height: "hug" },
+    component: { figmaComponent: name, props },
     styles: {},
-    children: [
-      {
-        id: "header",
-        name: "Header / Commerce",
-        type: "INSTANCE",
-        semanticRole: "header",
-        layout: { direction: "row", width: "fill", height: "fixed" },
-        component: { figmaComponent: "Header / Commerce", props: { theme: "light" } },
-        styles: {},
-        children: [],
-      },
-      {
-        id: "card",
-        name: "Product Card / Default",
-        type: "INSTANCE",
-        semanticRole: "product-card",
-        layout: { direction: "column", width: "fill", height: "hug" },
-        component: { figmaComponent: "Product Card / Default", props: { tone: "cobalt" } },
-        styles: {},
-        children: [],
-      },
-    ],
-  },
-};
+    children: [],
+  };
+}
+
+function specWith(...nodes: UISpecNode[]): UISpec {
+  return {
+    version: 1,
+    name: "Mapping Test",
+    viewport: { width: 1440, height: 900 },
+    root: {
+      id: "page",
+      name: "Page",
+      type: "FRAME",
+      semanticRole: "page",
+      layout: { direction: "column", width: "fixed", height: "fixed" },
+      styles: {},
+      children: nodes,
+    },
+  };
+}
 
 describe("mapSdsComponents", () => {
-  it("maps exact Figma components with high-confidence evidence", () => {
-    const mappings = mapSdsComponents(spec);
+  it("exposes the registry size for trace declarations", () => {
+    expect(SDS_REGISTRY_SIZE).toBe(5);
+  });
 
-    expect(mappings).toHaveLength(2);
+  it("maps exact names case-insensitively with truthful evidence", () => {
+    const mappings = mapSdsComponents(
+      specWith(
+        instance("header", "Header / Commerce", { theme: "light" }),
+        instance("header-lower", "header / commerce"),
+        instance("card", "Product Card / Default", { tone: "cobalt", badge: "New" }),
+      ),
+    );
+
+    expect(mappings).toHaveLength(3);
+    for (const mapping of mappings) {
+      expect(mapping.confidence).toBe(0.96);
+      expect(mapping.status).toBe("accepted");
+      expect(mapping.evidence).toContain("Figma 组件名称精确匹配");
+    }
+    expect(mappings[0]).toMatchObject({ codeComponent: "Header", importPath: "@/components/Header" });
+    expect(mappings[1]).toMatchObject({ codeComponent: "Header" });
+    expect(mappings[2]).toMatchObject({
+      codeComponent: "ProductCard",
+      props: { tone: "cobalt", badge: "New" },
+    });
+    // 证据必须如实反映透传行为，不得声称做过兼容性校验。
+    expect(mappings[0]?.evidence).toContain("Props 1 项按原样透传，未做兼容性校验");
+    expect(mappings[2]?.evidence).toContain("Props 2 项按原样透传，未做兼容性校验");
+  });
+
+  it("maps normalized variants at medium confidence", () => {
+    const mappings = mapSdsComponents(specWith(instance("card", "Product Card  Default")));
+
+    expect(mappings[0]).toMatchObject({
+      codeComponent: "ProductCard",
+      confidence: 0.82,
+      status: "accepted",
+    });
+    expect(mappings[0]?.evidence).toContain("Figma 组件名称归一化后匹配");
+  });
+
+  it("sends prefix-only matches to review instead of accepting them", () => {
+    const mappings = mapSdsComponents(specWith(instance("dark", "Header / Commerce / Dark")));
+
     expect(mappings[0]).toMatchObject({
       codeComponent: "Header",
-      importPath: "@/components/Header",
-      confidence: 0.96,
-      status: "accepted",
+      confidence: 0.72,
+      status: "review",
     });
-    expect(mappings[1]).toMatchObject({
-      codeComponent: "ProductCard",
-      props: { tone: "cobalt" },
-      confidence: 0.96,
-      status: "accepted",
+    expect(mappings[0]?.evidence).toContain("Figma 组件名称前缀匹配，需要人工确认");
+  });
+
+  it("leaves unrelated components unmapped", () => {
+    const mappings = mapSdsComponents(specWith(instance("hero", "Hero Carousel")));
+
+    expect(mappings[0]).toMatchObject({
+      codeComponent: "UnmappedComponent",
+      confidence: 0,
+      status: "unmapped",
     });
-    expect(mappings[1]?.evidence).toContain("Exact Figma component name matched");
   });
 });

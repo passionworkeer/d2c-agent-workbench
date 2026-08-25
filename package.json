@@ -7,7 +7,7 @@
     "dev": "pnpm --parallel --filter @d2c/server --filter @d2c/web dev",
     "skill:build": "node scripts/build-skill-zip.mjs",
     "skill:check": "node scripts/build-skill-zip.mjs --check",
-    "test": "pnpm skill:check && pnpm exec vitest run scripts/skill-assets.test.ts && pnpm -r test",
+    "test": "pnpm skill:check && pnpm exec vitest run scripts/skill-assets.test.ts scripts/consistency.test.ts && pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "e2e": "playwright test"
   },

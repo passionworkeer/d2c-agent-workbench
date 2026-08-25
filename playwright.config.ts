@@ -10,7 +10,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "pnpm --filter @d2c/web dev --host 127.0.0.1",
+    // 启动 server + web 一起跑，否则 e2e 里真实上传会因后端不可用而落到 demo 路径。
+    command: "pnpm dev",
     url: "http://127.0.0.1:5173",
     reuseExistingServer: true,
     timeout: 60_000,

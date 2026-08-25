@@ -48,6 +48,21 @@ describe("designBundleSchema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("rejects negative gap values", () => {
+    const result = designBundleSchema.safeParse({
+      manifest: {
+        protocolVersion: "1.0",
+        name: "Product Grid",
+        viewport: { width: 1440, height: 900 },
+      },
+      nodes: [{ ...validNode, gap: -50 }],
+      variables: [],
+      components: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("shared artifacts", () => {

@@ -70,4 +70,13 @@ describe("compileUISpec", () => {
     expect(card?.component?.figmaComponent).toBe("Product Card / Default");
     expect(card?.component?.props).toEqual({ tone: "cobalt" });
   });
+
+  it("rejects multi-board bundles instead of silently dropping roots", () => {
+    const multiRoot = designBundleSchema.parse({
+      ...bundle,
+      nodes: [bundle.nodes[0]!, { ...bundle.nodes[0]!, id: "page-2" }],
+    });
+
+    expect(() => compileUISpec(multiRoot)).toThrow("设计包含多个根节点");
+  });
 });

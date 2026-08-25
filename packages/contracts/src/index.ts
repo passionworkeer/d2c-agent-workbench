@@ -20,13 +20,13 @@ export const designNodeSchema: z.ZodType<DesignNode> = z.lazy(() =>
     layoutMode: z.enum(["NONE", "HORIZONTAL", "VERTICAL", "GRID"]),
     layoutSizingHorizontal: z.enum(["FIXED", "HUG", "FILL"]),
     layoutSizingVertical: z.enum(["FIXED", "HUG", "FILL"]),
-    gap: z.union([z.number(), tokenBindingSchema]).optional(),
+    gap: z.union([z.number().nonnegative(), tokenBindingSchema]).optional(),
     padding: z
       .object({
-        top: z.union([z.number(), tokenBindingSchema]),
-        right: z.union([z.number(), tokenBindingSchema]),
-        bottom: z.union([z.number(), tokenBindingSchema]),
-        left: z.union([z.number(), tokenBindingSchema]),
+        top: z.union([z.number().nonnegative(), tokenBindingSchema]),
+        right: z.union([z.number().nonnegative(), tokenBindingSchema]),
+        bottom: z.union([z.number().nonnegative(), tokenBindingSchema]),
+        left: z.union([z.number().nonnegative(), tokenBindingSchema]),
       })
       .optional(),
     characters: z.string().optional(),
@@ -63,13 +63,13 @@ export const uiSpecNodeSchema: z.ZodType<UISpecNode> = z.lazy(() =>
       direction: directionSchema,
       width: sizingModeSchema,
       height: sizingModeSchema,
-      gap: z.union([z.number(), tokenBindingSchema]).optional(),
+      gap: z.union([z.number().nonnegative(), tokenBindingSchema]).optional(),
       padding: z
         .object({
-          top: z.union([z.number(), tokenBindingSchema]),
-          right: z.union([z.number(), tokenBindingSchema]),
-          bottom: z.union([z.number(), tokenBindingSchema]),
-          left: z.union([z.number(), tokenBindingSchema]),
+          top: z.union([z.number().nonnegative(), tokenBindingSchema]),
+          right: z.union([z.number().nonnegative(), tokenBindingSchema]),
+          bottom: z.union([z.number().nonnegative(), tokenBindingSchema]),
+          left: z.union([z.number().nonnegative(), tokenBindingSchema]),
         })
         .optional(),
     }),

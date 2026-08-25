@@ -34,6 +34,8 @@ const registry: RegistryEntry[] = [
   },
 ];
 
+export const SDS_REGISTRY_SIZE = registry.length;
+
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -45,13 +47,30 @@ function collectComponentNodes(node: UISpecNode): UISpecNode[] {
 
 function matchNode(node: UISpecNode): ComponentMapping {
   const figmaComponent = node.component?.figmaComponent ?? node.name;
+  const props = node.component?.props ?? {};
+
   const exact = registry.find((entry) =>
-    entry.figmaNames.some((name) => name === figmaComponent),
+    entry.figmaNames.some((name) => name.toLowerCase() === figmaComponent.toLowerCase()),
   );
-  const normalized = registry.find((entry) =>
-    entry.figmaNames.some((name) => normalize(name) === normalize(figmaComponent)),
-  );
-  const selected = exact ?? normalized;
+  const normalized = exact
+    ? undefined
+    : registry.find((entry) =>
+        entry.figmaNames.some((name) => normalize(name) === normalize(figmaComponent)),
+      );
+  const prefixed =
+    exact || normalized
+      ? undefined
+      : registry.find((entry) =>
+          entry.figmaNames.some((name) => {
+            const alias = normalize(name);
+            const query = normalize(figmaComponent);
+            const shorter = Math.min(alias.length, query.length);
+            return (
+              shorter >= 4 && (query.startsWith(alias) || alias.startsWith(query))
+            );
+          }),
+        );
+  const selected = exact ?? normalized ?? prefixed;
 
   if (!selected) {
     return {
@@ -59,28 +78,33 @@ function matchNode(node: UISpecNode): ComponentMapping {
       figmaComponent,
       codeComponent: "UnmappedComponent",
       importPath: "",
-      props: node.component?.props ?? {},
+      props,
       confidence: 0,
       status: "unmapped",
-      evidence: ["No compatible SDS component found"],
+      evidence: ["未在 SDS Registry 中找到兼容组件"],
     };
   }
 
-  const confidence = exact ? 0.96 : 0.82;
+  // 证据只陈述实际执行过的检查；置信度是演示 Registry 的固定标定值，
+  // 并不代表对 props 兼容性做过校验。
+  const matchEvidence = exact
+    ? ["Figma 组件名称精确匹配"]
+    : normalized
+      ? ["Figma 组件名称归一化后匹配"]
+      : ["Figma 组件名称前缀匹配，需要人工确认"];
+  const confidence = exact ? 0.96 : normalized ? 0.82 : 0.72;
   return {
     nodeId: node.id,
     figmaComponent,
     codeComponent: selected.codeComponent,
     importPath: selected.importPath,
-    props: node.component?.props ?? {},
+    props,
     confidence,
     status: confidence >= 0.8 ? "accepted" : "review",
     evidence: [
-      exact
-        ? "Exact Figma component name matched"
-        : "Normalized Figma component name matched",
-      "Component props are compatible with the SDS registry",
-      "Import path resolved from the target component catalog",
+      ...matchEvidence,
+      `Props ${Object.keys(props).length} 项按原样透传，未做兼容性校验`,
+      "导入路径来自固定 SDS Registry",
     ],
   };
 }

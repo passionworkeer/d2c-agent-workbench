@@ -1,14 +1,17 @@
 import { designBundleSchema, type DesignBundle } from "@d2c/contracts";
-import { strFromU8, unzipSync } from "fflate";
+import { strFromU8, unzipSync, type UnzipFileInfo } from "fflate";
 
 const MAX_FILES = 200;
 const MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024;
+const MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
 const REQUIRED_FILES = [
   "manifest.json",
   "design.json",
   "variables.json",
   "components.json",
 ] as const;
+// 白名单之外的 entry 一律不解压：既节省内存，也使压缩炸弹在解压前就被丢弃。
+const ALLOWED_FILES = new Set<string>([...REQUIRED_FILES, "preview/root.svg"]);
 
 export class BundleError extends Error {
   readonly code = "INPUT_INVALID";
@@ -18,51 +21,64 @@ function assertSafePath(path: string): void {
   const segments = path.replaceAll("\\", "/").split("/");
   if (
     path.startsWith("/") ||
+    path.startsWith("\\") ||
     /^[A-Za-z]:/.test(path) ||
     segments.includes("..")
   ) {
-    throw new BundleError(`Unsafe archive path: ${path}`);
+    throw new BundleError(`不安全的压缩包路径：${path}`);
   }
 }
 
 function parseJson(files: Record<string, Uint8Array>, name: string): unknown {
   const bytes = files[name];
   if (!bytes) {
-    throw new BundleError(`Missing required file: ${name}`);
+    throw new BundleError(`缺少必需文件：${name}`);
   }
 
   try {
     return JSON.parse(strFromU8(bytes));
   } catch {
-    throw new BundleError(`Invalid JSON file: ${name}`);
+    throw new BundleError(`JSON 文件格式错误：${name}`);
   }
 }
 
 export function parseFigmaBundle(archive: Uint8Array): DesignBundle {
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(archive);
-  } catch {
-    throw new BundleError("Invalid ZIP archive");
-  }
-
-  const entries = Object.entries(files);
-  if (entries.length > MAX_FILES) {
-    throw new BundleError(`Archive exceeds ${MAX_FILES} files`);
-  }
-
-  let totalBytes = 0;
-  for (const [path, bytes] of entries) {
-    assertSafePath(path);
-    totalBytes += bytes.byteLength;
-  }
-  if (totalBytes > MAX_UNCOMPRESSED_BYTES) {
-    throw new BundleError("Archive exceeds 20 MB after extraction");
+    // 预算在 filter（每个 entry 解压之前调用）中执行：
+    // - 诚实炸弹：声明的 originalSize 超预算，解压前即拒绝；
+    // - 声明造假偏大：同样在解压前的 new u8(su) 分配之前被拒；
+    // - 声明造假偏小：fflate 以声明尺寸预分配且不扩容，输出被截断，后续校验兜底。
+    let entryCount = 0;
+    let declaredBytes = 0;
+    const seenNames = new Set<string>();
+    files = unzipSync(archive, {
+      filter: (file: UnzipFileInfo) => {
+        entryCount += 1;
+        if (entryCount > MAX_FILES) {
+          throw new BundleError(`压缩包超过 ${MAX_FILES} 个文件上限`);
+        }
+        assertSafePath(file.name);
+        if (seenNames.has(file.name)) {
+          throw new BundleError(`压缩包存在重名文件：${file.name}`);
+        }
+        seenNames.add(file.name);
+        if (!ALLOWED_FILES.has(file.name)) return false;
+        declaredBytes += file.originalSize;
+        if (declaredBytes > MAX_UNCOMPRESSED_BYTES) {
+          throw new BundleError("压缩包解压后超过 20MB 上限");
+        }
+        return true;
+      },
+    });
+  } catch (error) {
+    if (error instanceof BundleError) throw error;
+    throw new BundleError("无效的 ZIP 压缩包");
   }
 
   for (const name of REQUIRED_FILES) {
     if (!files[name]) {
-      throw new BundleError(`Missing required file: ${name}`);
+      throw new BundleError(`缺少必需文件：${name}`);
     }
   }
 
@@ -71,22 +87,34 @@ export function parseFigmaBundle(archive: Uint8Array): DesignBundle {
   const variables = parseJson(files, "variables.json");
   const components = parseJson(files, "components.json");
   const preview = files["preview/root.svg"];
+  // 超限预览按缺失处理（previewUrl 本就是可选字段），不放大内存常驻。
+  const previewUrl =
+    preview && preview.byteLength <= MAX_PREVIEW_BYTES
+      ? `data:image/svg+xml;base64,${Buffer.from(preview).toString("base64")}`
+      : undefined;
 
   const candidate = {
     manifest,
     nodes: design.nodes,
     variables,
     components,
-    previewUrl: preview
-      ? `data:image/svg+xml;base64,${Buffer.from(preview).toString("base64")}`
-      : undefined,
+    previewUrl,
   };
 
-  const result = designBundleSchema.safeParse(candidate);
+  let result: ReturnType<typeof designBundleSchema.safeParse>;
+  try {
+    result = designBundleSchema.safeParse(candidate);
+  } catch (error) {
+    // zod 递归 schema 在深度约 1000 层时抛 RangeError（栈溢出），不经过 safeParse 的错误通道。
+    if (error instanceof RangeError) {
+      throw new BundleError("设计节点嵌套层级过深");
+    }
+    throw error;
+  }
   if (!result.success) {
     const first = result.error.issues[0];
     const path = first?.path.join(".") || "bundle";
-    throw new BundleError(`Bundle schema validation failed at ${path}`);
+    throw new BundleError(`资产包结构校验失败：${path}`);
   }
 
   return result.data;
