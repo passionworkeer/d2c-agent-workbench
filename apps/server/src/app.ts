@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { mapSdsComponents } from "@d2c/component-matcher";
+import { SDS_REGISTRY_SIZE, mapSdsComponents } from "@d2c/component-matcher";
 import {
   designBundleSchema,
   evaluationReportSchema,
@@ -13,7 +13,7 @@ import {
   type UISpec,
   type WorkflowState,
 } from "@d2c/contracts";
-import { parseFigmaBundle } from "@d2c/figma-importer";
+import { BundleError, parseFigmaBundle } from "@d2c/figma-importer";
 import { runReplayWorkflow } from "@d2c/orchestrator";
 import { compileUISpec } from "@d2c/ui-compiler";
 import multipart from "@fastify/multipart";
@@ -25,7 +25,7 @@ interface BuildAppOptions {
 
 interface RunRecord {
   id: string;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "needs_review";
   state: WorkflowState;
   createdAt: string;
   previewUrl?: string;
@@ -34,6 +34,16 @@ interface RunRecord {
   events: TraceEvent[];
   evaluations: EvaluationReport[];
 }
+
+// 单实例内存记录数。被淘汰的 run 不再可查，但活跃 SSE 订阅的事件流不受影响
+// （活跃订阅的 listener 仍持有旧 record 引用；publish 对不存在 run 直接返回）。
+const MAX_RUNS = 50;
+// SSE 流必须在终态时主动结束，否则浏览器 EventSource 会一直重连。
+const TERMINAL_STATES = new Set<WorkflowState>([
+  "COMPLETED",
+  "FAILED",
+  "NEEDS_REVIEW",
+]);
 
 type RunListener = (event: TraceEvent) => void;
 
@@ -48,17 +58,25 @@ function readJson(name: string): unknown {
 function loadDemoBundle(): DesignBundle {
   const preview = readFileSync(`${fixtureDirectory}preview/root.svg`);
   const design = readJson("design.json") as { nodes: unknown };
+  const manifest = readJson("manifest.json") as { viewport: { width: number; height: number } };
   return designBundleSchema.parse({
     manifest: readJson("manifest.json"),
     nodes: design.nodes,
     variables: readJson("variables.json"),
     components: readJson("components.json"),
+    viewport: manifest.viewport,
     previewUrl: `data:image/svg+xml;base64,${preview.toString("base64")}`,
-  });
+  }) as unknown as DesignBundle;
 }
 
 function publicRun(record: RunRecord): RunRecord {
-  return structuredClone(record);
+  // fastify 将结果 JSON.stringify 后返回，不会回写响应——structuredClone 的额外
+  // 深拷贝在每请求克隆大字符串（previewUrl）+ 12 事件载荷时十分昂贵，这里去掉。
+  return record;
+}
+
+function isTerminal(state: WorkflowState): boolean {
+  return TERMINAL_STATES.has(state);
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -80,6 +98,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (evaluation.success) record.evaluations.push(evaluation.data);
     if (event.state === "COMPLETED") record.status = "completed";
     if (event.state === "FAILED") record.status = "failed";
+    if (event.state === "NEEDS_REVIEW") record.status = "needs_review";
     for (const listener of listeners.get(runId) ?? []) listener(event);
   }
 
@@ -99,6 +118,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       evaluations: [],
     };
     runs.set(id, record);
+    // 触发上限时淘汰最老的 run（Map 按插入顺序）；活跃订阅的 listener 持有旧 record 引用仍可继续消费事件。
+    while (runs.size > MAX_RUNS) {
+      const oldest = runs.keys().next().value;
+      if (oldest === undefined) break;
+      runs.delete(oldest);
+      listeners.delete(oldest);
+    }
 
     void (async () => {
       try {
@@ -118,8 +144,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             runId: id,
             timestamp: new Date().toISOString(),
             state: "FAILED",
-            title: "Workflow failed",
-            detail: error instanceof Error ? error.message : "Unknown workflow error",
+            title: "工作流执行失败",
+            detail: error instanceof Error ? error.message : "未知错误",
           }),
         );
       }
@@ -128,27 +154,55 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     return record;
   }
 
-  app.get("/api/health", async () => ({ status: "ok" }));
+  app.get("/api/health", async () => ({ status: "ok", registry: { sdsComponents: SDS_REGISTRY_SIZE } }));
 
   app.post("/api/runs/demo", async (_request, reply) => {
-    const run = createRun(loadDemoBundle());
-    return reply.code(202).send({ runId: run.id });
+    let bundle: DesignBundle;
+    try {
+      bundle = loadDemoBundle();
+    } catch {
+      return reply
+        .code(500)
+        .send({ code: "DEMO_BUNDLE_MISSING", message: "演示资产缺失，请检查 examples 目录" });
+    }
+    return reply.code(202).send({ runId: createRun(bundle).id });
   });
 
   app.post("/api/runs/upload", async (request, reply) => {
-    const file = await request.file();
-    if (!file) {
-      return reply.code(400).send({ code: "INPUT_INVALID", message: "Bundle file is required" });
-    }
+    let file;
     try {
-      const bundle = parseFigmaBundle(new Uint8Array(await file.toBuffer()));
-      const run = createRun(bundle);
-      return reply.code(202).send({ runId: run.id });
-    } catch (error) {
+      file = await request.file();
+    } catch {
       return reply.code(400).send({
         code: "INPUT_INVALID",
-        message: error instanceof Error ? error.message : "Invalid bundle",
+        message: "请使用 multipart/form-data 上传单个 ZIP 文件",
       });
+    }
+    if (!file) {
+      return reply.code(400).send({ code: "INPUT_INVALID", message: "缺少上传的资产包文件" });
+    }
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(400).send({
+        code: "INPUT_INVALID",
+        message: "文件超过 25MB 上限或上传已中断",
+      });
+    }
+    try {
+      const run = createRun(parseFigmaBundle(new Uint8Array(buffer)));
+      return reply.code(202).send({ runId: run.id });
+    } catch (error) {
+      if (error instanceof BundleError) {
+        return reply.code(400).send({ code: "INPUT_INVALID", message: error.message });
+      }
+      // 其他错误（compileUISpec 多根拒绝等）只放行我们自己抛出的中文错误；
+      // 防止英文内部异常原文透出到前端 UI。
+      const message = error instanceof Error && /[一-龥]/.test(error.message)
+        ? error.message
+        : "资产包解析失败";
+      return reply.code(400).send({ code: "INPUT_INVALID", message });
     }
   });
 
@@ -172,19 +226,26 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     });
+    const runListeners = listeners.get(run.id) ?? new Set<RunListener>();
+    listeners.set(run.id, runListeners);
     const send: RunListener = (event) => {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-      if (event.state === "COMPLETED" || event.state === "FAILED") reply.raw.end();
+      if (isTerminal(event.state)) {
+        reply.raw.end();
+        runListeners.delete(send);
+        if (runListeners.size === 0) listeners.delete(run.id);
+      }
     };
     for (const event of run.events) send(event);
     if (run.status !== "running") {
-      reply.raw.end();
+      if (!reply.raw.writableEnded) reply.raw.end();
       return;
     }
-    const runListeners = listeners.get(run.id) ?? new Set<RunListener>();
     runListeners.add(send);
-    listeners.set(run.id, runListeners);
-    request.raw.on("close", () => runListeners.delete(send));
+    request.raw.on("close", () => {
+      runListeners.delete(send);
+      if (runListeners.size === 0) listeners.delete(run.id);
+    });
   });
 
   return app;
