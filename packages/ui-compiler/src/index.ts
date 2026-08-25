@@ -63,7 +63,11 @@ function compileNode(node: DesignNode, isRoot = false): UISpecNode {
 export function compileUISpec(bundle: DesignBundle): UISpec {
   const root = bundle.nodes[0];
   if (!root) {
-    throw new Error("A design bundle must contain a root node");
+    throw new Error("设计资产包必须包含至少一个根节点");
+  }
+  // 多画板导出会产出多个根节点；静默丢弃会造成数据丢失，这里显式拒绝。
+  if (bundle.nodes.length > 1) {
+    throw new Error("设计包含多个根节点，当前仅支持单画板资产包");
   }
 
   return uiSpecSchema.parse({
