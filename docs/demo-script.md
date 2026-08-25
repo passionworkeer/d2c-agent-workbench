@@ -4,7 +4,7 @@
 
 “这个 Demo 解决的不是截图转 HTML，而是如何把 Figma 里的设计意图编译成可维护、可评测、能进入研发流程的代码。重点有四个：结构化输入、企业资产复用、可观察的 Agent 工作流，以及独立评测驱动的修复闭环。”
 
-先打开工作台，但不要立刻点击运行。让面试官看到三栏：Design Source、Agent Trace、Delivery。
+先打开工作台，但不要立刻点击运行。让面试官看到三栏：“设计输入”“Agent 执行轨迹”“代码交付”。
 
 ## 1. 输入不是一张图：1 分钟
 
@@ -17,9 +17,9 @@
 
 一句总结：“多模态在这里不是只看像素，而是融合视觉预览与 Figma 结构。”
 
-## 2. 点击 Run demo：1 分钟
+## 2. 点击“运行完整演示”：1 分钟
 
-点击 **Run demo**，让中间 Trace 开始流动。
+点击 **运行完整演示**，让中间执行轨迹开始流动。默认演示完全在浏览器端播放，不依赖后端或网络。
 
 解释状态机：
 
@@ -29,7 +29,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 → EVALUATED → REPAIRING → EVALUATED → COMPLETED
 ```
 
-强调每一步都输出类型化 Event 和 Artifact，而不是把所有上下文塞进一次 Prompt。Server 用 SSE 把事件实时推到工作台；同一条 Trace 可以回放、定位失败和复现结果。
+强调每一步都输出类型化 Event 和 Artifact，而不是把所有上下文塞进一次 Prompt。Mock Adapter 与真实服务使用相同协议；上传真实 Bundle 时由服务端通过 SSE 推送，现场演示时由浏览器端稳定播放。同一条 Trace 可以回放、定位失败和复现结果。
 
 ## 3. UISpec 与上下文工程：1 分 30 秒
 
@@ -44,7 +44,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 
 ## 4. 企业组件与 Design Token：1 分 30 秒
 
-指向中栏 Component Evidence：
+指向中栏“组件匹配证据”：
 
 - `Product Card / Default` 被映射到 `ProductCard`，并展示 import path、置信度和证据。
 - 匹配不是让模型在仓库里盲猜，而是先由 Asset Indexer 召回候选，再由 Agent 在小范围内决策。
@@ -67,16 +67,18 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 
 ## 6. 可交付性：1 分钟
 
-指向右栏 Preview、Code 和 Download report：
+指向右栏“页面预览”、生成代码和“下载报告”：
 
 - 页面不是最终截图，而是 React / TypeScript 交付物。
 - 报告包含完整 Run、Trace、组件映射证据、两轮 Eval 与分数变化。
 - 研发可以审查生成代码和 Diff，设计师可以追溯节点、Token 与视觉问题。
-- 现场断网时 Replay Adapter 保证演示稳定；接入真实 Codex 后仍使用相同事件与 Artifact 协议。
+- 现场断网时浏览器 Mock Adapter 保证演示稳定；接入真实 Codex 后仍使用相同事件与 Artifact 协议。
+
+如果要展示真实上传，可以选择 `product-grid.zip`。服务不可用时，界面会明确提示“上传失败”，再由你点击“使用演示数据继续”；系统不会把失败的真实上传伪装成成功。
 
 ## 7. 主动说明当前边界：45 秒
 
-“为了先验证完整用户路径，这版把最不稳定的外部依赖放到了 Adapter 后面：当前使用结构化离线 Bundle、固定 SDS Registry 和确定性 Replay。它不是声称已经解决任意仓库生成；下一阶段会依次替换为真实 Asset Indexer、Codex Adapter、Figma Exporter 和 Playwright Geometry / Visual Eval。核心协议和工作台无需重写。”
+“为了先验证完整用户路径，这版把最不稳定的外部依赖放到了 Adapter 后面：默认使用浏览器全 Mock 数据，真实上传使用结构化离线 Bundle，组件目标是固定 SDS Registry。它不是声称已经解决任意仓库生成；下一阶段会依次替换为真实 Asset Indexer、Codex Adapter、Figma Exporter 和 Playwright Geometry / Visual Eval。核心协议和工作台无需重写。”
 
 这样既能体现工程判断，也不会把 Replay 包装成真实模型结果。
 
