@@ -23,6 +23,14 @@ describe("D2C 工作台", () => {
     vi.clearAllMocks();
   });
 
+  it("提供不依赖后端的 D2C Skill 下载入口", () => {
+    render(<App />);
+
+    const link = screen.getByRole("link", { name: "导出 D2C Skill" });
+    expect(link).toHaveAttribute("href", "/d2c-agent-workbench-skill.zip");
+    expect(link).toHaveAttribute("download", "d2c-agent-workbench-skill.zip");
+  });
+
   it("无后端时仍能完成中文 Mock 演示", async () => {
     vi.useFakeTimers();
     render(<App />);
