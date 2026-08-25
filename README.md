@@ -11,13 +11,14 @@
 - 读取并校验离线 `figma-bundle.zip`，包括 Node Tree、Auto Layout、变量、组件实例和 SVG 预览。
 - 将 Figma 结构递归编译为稳定、可验证的 UISpec。
 - 在固定 SDS Registry 中检索 `Header`、`ProductCard` 等组件，展示置信度与匹配证据。
-- 通过类型化状态机和 SSE 实时展示完整 Agent Trace。
+- 默认由浏览器端 Mock Adapter 播放 12 步类型化 Agent 轨迹，不依赖后端、网络或模型服务。
+- 上传真实 Figma Bundle 时，通过 Fastify 与 SSE 展示同一套工作流；上传失败可显式降级到演示数据。
 - 独立计算 Geometry、组件复用、Token 合规、视觉、语义和代码质量。
 - 演示首轮 72 分、Repair Agent 修复、复评 94 分的闭环。
 - 下载包含 Run、Trace、Mapping 和 Evaluation 的结构化报告。
-- 使用 Replay Adapter 离线运行，避免面试现场受模型、网络和 Figma 权限影响。
+- 使用全 Mock 数据展示完整输入、组件映射、代码、评测与修复，避免面试现场受模型、网络和 Figma 权限影响。
 
-> 当前竖切 Demo 的 Agent 输出是确定性 Replay，不会伪装成实时大模型调用。核心接口已经把 Replay、真实 Codex 和未来 Figma MCP 隔离开；后续只需替换 Adapter，不改 UISpec、评测和工作台协议。
+> 当前竖切 Demo 的默认 Agent 输出是浏览器端确定性 Mock，不会伪装成实时大模型调用。真实上传与 Mock 降级会在界面中明确区分。核心接口已经把 Mock、真实 Codex 和未来 Figma MCP 隔离开；后续只需替换 Adapter，不改 UISpec、评测和工作台协议。
 
 ## 立即运行
 
@@ -25,10 +26,12 @@
 
 ```bash
 pnpm install
-pnpm dev
+pnpm --filter @d2c/web dev
 ```
 
-访问 `http://127.0.0.1:5173`，点击 **Run demo**。前端默认代理到 `http://127.0.0.1:8787` 的 Fastify 服务。
+访问 `http://127.0.0.1:5173`，点击 **运行完整演示**。这条默认路径完全在浏览器内执行，只启动前端即可完成 72→94 的完整流程。
+
+需要验证真实 Bundle 上传时，运行 `pnpm dev` 同时启动前端与 `http://127.0.0.1:8787` 的 Fastify 服务。
 
 如需演示上传，直接选择仓库根目录的 `product-grid.zip`。修改示例资产后，可在 PowerShell 中重新生成：
 
@@ -36,7 +39,7 @@ pnpm dev
 Compress-Archive -Path .\examples\figma-bundles\product-grid\* -DestinationPath .\product-grid.zip -Force
 ```
 
-然后点击 **Upload bundle** 选择 `product-grid.zip`。
+然后点击 **上传 Figma 资产包** 选择 `product-grid.zip`。如果服务不可用，界面会显示 **使用演示数据继续**，由用户主动切换到 Mock 流程。
 
 ## 验证
 
@@ -51,17 +54,14 @@ pnpm e2e
 ## 架构
 
 ```text
-Figma Bundle
-    │
-    ▼
-Safe Importer ──► UISpec Compiler ──► SDS Component Matcher
-                                            │
-                                            ▼
-React Web ◄── SSE Trace ◄── Typed Orchestrator
-                                            │
-                         Build Agent ──► Eval Agent
-                              ▲                │
-                              └──── Repair ────┘
+浏览器 Mock Adapter ──────────────────────────────┐
+                                                  ▼
+Figma Bundle → Safe Importer → UISpec → SDS Matcher → React Web
+                                  │                  ▲
+                                  ▼                  │
+                       Build Agent → Eval Agent → SSE Trace
+                            ▲            │
+                            └── Repair ───┘
 ```
 
 | 模块 | 职责 |
