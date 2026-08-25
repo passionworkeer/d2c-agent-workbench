@@ -1,4 +1,4 @@
-import type { ComponentMapping, EvaluationReport, TraceEvent, WorkflowState } from "@d2c/contracts";
+import type { ComponentMapping, EvaluationReport, TraceEvent, UISpec, UISpecNode, WorkflowState } from "@d2c/contracts";
 import {
   ArrowUpRight,
   Box,
@@ -48,22 +48,58 @@ const stateNames: Record<WorkflowState | "READY", string> = {
   FAILED: "执行失败",
 };
 
-function ProductPreview() {
-  const products = [
-    { tone: "cobalt", shape: "circle", name: "弧线跑鞋 01", meta: "¥ 1,290 · 新品" },
-    { tone: "coral", shape: "capsule", name: "形态手袋 02", meta: "¥ 890 · 限量" },
-    { tone: "lime", shape: "triangle", name: "机能外套 03", meta: "¥ 1,590 · 核心款" },
-    { tone: "charcoal", shape: "orbit", name: "虚空帽 04", meta: "¥ 490 · 典藏" },
-  ];
+function formatDelta(delta: number): string {
+  if (!delta) return "—";
+  return delta > 0 ? `+${delta}` : `${delta}`;
+}
+
+function collectTokens(node: UISpecNode, into: Set<string>): void {
+  const layout = node.layout;
+  if (layout.gap && typeof layout.gap === "object") into.add(layout.gap.variable);
+  if (layout.padding) {
+    for (const edge of [layout.padding.top, layout.padding.right, layout.padding.bottom, layout.padding.left]) {
+      if (typeof edge === "object") into.add(edge.variable);
+    }
+  }
+  for (const value of Object.values(node.styles)) {
+    if (value && typeof value === "object" && "variable" in value) {
+      into.add((value as { variable: string }).variable);
+    }
+  }
+  for (const child of node.children) collectTokens(child, into);
+}
+
+function countNodes(node: UISpecNode): number {
+  return 1 + node.children.reduce((sum, child) => sum + countNodes(child), 0);
+}
+
+function collectInstanceCount(node: UISpecNode): number {
+  const own = node.type === "INSTANCE" ? 1 : 0;
+  return own + node.children.reduce((sum, child) => sum + collectInstanceCount(child), 0);
+}
+
+function ProductPreview({ uiSpec }: { uiSpec: UISpec }) {
+  const nodes = uiSpec.root.children[1]?.children ?? [];
+  const products = nodes
+    .filter((node) => node.component?.figmaComponent?.includes("Product Card"))
+    .map((node, index) => ({
+      id: node.id,
+      tone: (node.component?.props?.tone as string) ?? "cobalt",
+      badge: (node.component?.props?.badge as string) ?? "New",
+      name: ["弧线跑鞋 01", "形态手袋 02", "机能外套 03", "虚空帽 04"][index % 4],
+      meta: ["¥ 1,290 · 新品", "¥ 890 · 限量", "¥ 1,590 · 核心款", "¥ 490 · 典藏"][index % 4],
+      shape: (["circle", "capsule", "triangle", "orbit"] as const)[index % 4],
+    }));
   return (
     <div className="rendered-page" data-testid="generated-preview">
       <div className="rendered-nav"><strong>KINETIC®</strong><span>26FW 系列 · 购物车 04</span></div>
       <div className="rendered-copy"><span>全新系列 / 26FW</span><h3>为运动而生的设计。</h3></div>
       <div className="product-grid">
         {products.map((product) => (
-          <article className={`product-card ${product.tone}`} key={product.name}>
+          <article className={`product-card ${product.tone}`} key={product.id}>
             <div className={`product-shape ${product.shape}`} />
             <div><strong>{product.name}</strong><span>{product.meta}</span></div>
+            <span className="badge">{product.badge}</span>
           </article>
         ))}
       </div>
@@ -75,6 +111,32 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as CSSProperties}>
       <div><strong>{score}</strong><span>/ 100</span></div>
+    </div>
+  );
+}
+
+function NodeTree({ uiSpec }: { uiSpec: UISpec }) {
+  const children = uiSpec.root.children;
+  return (
+    <div className="node-tree">
+      <div><ChevronRight size={13}/><Box size={13}/><strong>{uiSpec.root.name}</strong><code>{uiSpec.root.type}</code></div>
+      {children.map((child) => (
+        <div className="level-1" key={child.id}><ChevronRight size={13}/><Layers3 size={13}/>{child.name}<code>{child.type}</code></div>
+      ))}
+      {children.flatMap((child) => child.children).map((grand) => (
+        <div className="level-2" key={grand.id}><ChevronRight size={13}/><Box size={13}/>{grand.name}<code>× {children[1]?.children.length ?? 1}</code></div>
+      ))}
+    </div>
+  );
+}
+
+function TokenPills({ uiSpec }: { uiSpec: UISpec }) {
+  const tokens = new Set<string>();
+  collectTokens(uiSpec.root, tokens);
+  const items = Array.from(tokens).slice(0, 9);
+  return (
+    <div className="token-pills">
+      {items.map((token) => <span key={token}>{token.startsWith("color/") ? <i className={`swatch ${token.endsWith("ink") || token.endsWith("inverse") ? "ink" : "accent"}`}/> : null}{token}</span>)}
     </div>
   );
 }
@@ -92,6 +154,9 @@ export default function App() {
   const [uploadedFile, setUploadedFile] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const cleanup = useRef<(() => void) | null>(null);
+  // 单调递增的 generation：每次启动新的 run 都 +1，旧 run 的迟到回调会发现自己过期而丢弃。
+  // 避免一个失败重试之间的脏事件被旧订阅写入新 run 的状态。
+  const generation = useRef(0);
 
   useEffect(() => () => cleanup.current?.(), []);
 
@@ -117,24 +182,33 @@ export default function App() {
     }
     if (typeof event.data?.scoreDelta === "number") setScoreDelta(event.data.scoreDelta);
     if (typeof event.data?.generatedCode === "string") setGeneratedCode(event.data.generatedCode);
-    if (event.state === "COMPLETED" || event.state === "FAILED") setRunning(false);
+    if (event.state === "COMPLETED" || event.state === "FAILED" || event.state === "NEEDS_REVIEW") {
+      setRunning(false);
+    }
   }
 
   function startMockDemo() {
+    generation.current += 1;
+    const currentGeneration = generation.current;
     resetRun();
     setError("");
     setCanFallback(false);
     setUploadedFile("");
     setRunning(true);
     setRun(createMockRun());
-    const playback = playMockWorkflow(consumeEvent);
+    const playback = playMockWorkflow((event) => {
+      if (generation.current !== currentGeneration) return;
+      consumeEvent(event);
+    });
     cleanup.current = playback.cancel;
     void playback.done.finally(() => {
-      if (cleanup.current === playback.cancel) setRunning(false);
+      if (generation.current === currentGeneration) setRunning(false);
     });
   }
 
   async function connectUpload(file: File) {
+    generation.current += 1;
+    const currentGeneration = generation.current;
     resetRun();
     setError("");
     setCanFallback(false);
@@ -142,16 +216,23 @@ export default function App() {
     setRunning(true);
     try {
       const { runId } = await uploadBundle(file);
+      if (generation.current !== currentGeneration) return;
       const detail = await getRun(runId);
+      if (generation.current !== currentGeneration) return;
       setRun(detail);
       detail.events.forEach(consumeEvent);
-      const unsubscribe = subscribeToRun(runId, consumeEvent, () => {
+      const unsubscribe = subscribeToRun(runId, (event) => {
+        if (generation.current !== currentGeneration) return;
+        consumeEvent(event);
+      }, () => {
+        if (generation.current !== currentGeneration) return;
         setRunning(false);
         setError("上传后的实时连接已中断。你可以使用演示数据继续完整流程。");
         setCanFallback(true);
       });
       cleanup.current = unsubscribe;
     } catch (caught) {
+      if (generation.current !== currentGeneration) return;
       setRunning(false);
       setCanFallback(true);
       const message = caught instanceof Error ? caught.message : "服务暂时不可用";
@@ -169,11 +250,30 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // 清空 value 才能让用户重复选择同一个文件重新上传（change 不会再次触发）。
+    event.target.value = "";
+    if (file) void connectUpload(file);
+  }
+
   const initial = evaluations[0]?.overall ?? 0;
   const final = evaluations.at(-1)?.overall ?? 0;
   const finalMetrics = Object.entries(evaluations.at(-1)?.metrics ?? {}) as Array<[string, number]>;
   const firstViolations = evaluations[0]?.violations ?? [];
   const currentState = events.at(-1)?.state ?? run?.state ?? "READY";
+
+  const derivedStats = run
+    ? {
+        nodes: countNodes(run.uiSpec.root),
+        instances: collectInstanceCount(run.uiSpec.root),
+        tokens: (() => {
+          const set = new Set<string>();
+          collectTokens(run.uiSpec.root, set);
+          return set.size;
+        })(),
+      }
+    : { nodes: 12, instances: 6, tokens: 9 };
 
   return (
     <main className="app-shell">
@@ -185,9 +285,9 @@ export default function App() {
           {run?.id && <code>{run.id}</code>}
         </div>
         <div className="header-actions">
-          <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void connectUpload(file); }} />
+          <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
           <a className="button secondary skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
-          <button className="button secondary" onClick={() => fileInput.current?.click()}><Upload size={15} />上传 Figma 资产包</button>
+          <button className="button secondary" disabled={running} onClick={() => fileInput.current?.click()}><Upload size={15} />上传 Figma 资产包</button>
           <button className="button primary" disabled={running} onClick={startMockDemo}><Play size={15} fill="currentColor" />运行完整演示</button>
         </div>
       </header>
@@ -209,23 +309,27 @@ export default function App() {
           <div className="column-heading"><div><ScanLine size={16}/><span>设计输入</span></div><span>FIGMA 资产包</span></div>
           <div className="design-canvas">
             {run?.previewUrl ? <img src={run.previewUrl} alt="Figma 商品网格预览" /> : <div className="empty-source"><Layers3 size={32}/><strong>结构化设计输入</strong><span>运行本地完整演示，或上传包含节点、变量与组件信息的 Figma 资产包。</span></div>}
-            <span className="canvas-badge">1440 × 900</span>
+            <span className="canvas-badge">{run ? `${run.uiSpec.viewport.width} × ${run.uiSpec.viewport.height}` : "1440 × 900"}</span>
           </div>
           <div className="source-stats">
-            <div><strong>12</strong><span>节点</span></div><div><strong>06</strong><span>组件实例</span></div><div><strong>09</strong><span>Design Token</span></div>
+            <div><strong>{String(derivedStats.nodes).padStart(2, "0")}</strong><span>节点</span></div><div><strong>{String(derivedStats.instances).padStart(2, "0")}</strong><span>组件实例</span></div><div><strong>{String(derivedStats.tokens).padStart(2, "0")}</strong><span>Design Token</span></div>
           </div>
           <div className="section-block">
             <div className="section-label"><span>节点树</span><span>AUTO LAYOUT</span></div>
-            <div className="node-tree">
-              <div><ChevronRight size={13}/><Box size={13}/><strong>电商 / 商品网格</strong><code>FRAME</code></div>
-              <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>电商页头<code>INSTANCE</code></div>
-              <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>四列商品网格<code>GRID</code></div>
-              <div className="level-2"><ChevronRight size={13}/><Box size={13}/>商品卡片 / 默认<code>× 4</code></div>
-            </div>
+            {run ? <NodeTree uiSpec={run.uiSpec} /> : (
+              <div className="node-tree">
+                <div><ChevronRight size={13}/><Box size={13}/><strong>电商 / 商品网格</strong><code>FRAME</code></div>
+                <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>电商页头<code>INSTANCE</code></div>
+                <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>四列商品网格<code>GRID</code></div>
+                <div className="level-2"><ChevronRight size={13}/><Box size={13}/>商品卡片 / 默认<code>× 4</code></div>
+              </div>
+            )}
           </div>
           <div className="section-block token-block">
-            <div className="section-label"><span>绑定的 Design Token</span><span>9 / 9</span></div>
-            <div className="token-pills"><span><i className="swatch ink"/>color/ink</span><span><i className="swatch accent"/>color/accent</span><span>↔ spacing/lg</span><span>⌒ radius/card</span></div>
+            <div className="section-label"><span>绑定的 Design Token</span><span>{run ? `${derivedStats.tokens} / ${derivedStats.tokens}` : "9 / 9"}</span></div>
+            {run ? <TokenPills uiSpec={run.uiSpec} /> : (
+              <div className="token-pills"><span><i className="swatch ink"/>color/ink</span><span><i className="swatch accent"/>color/accent</span><span>↔ spacing/lg</span><span>⌒ radius/card</span></div>
+            )}
           </div>
         </article>
 
@@ -260,7 +364,7 @@ export default function App() {
           <div className="column-heading"><div><FileCode2 size={16}/><span>代码交付</span></div><span>REACT / TYPESCRIPT</span></div>
           <div className="score-panel">
             <ScoreRing score={final} />
-            <div className="score-copy"><span>最终质量评分</span><strong>{final >= 90 ? "已达到评审标准" : "等待评测"}</strong><div className="score-journey"><span data-testid="initial-score">{initial || "—"}</span><GitCompareArrows size={15}/><span data-testid="final-score">{final || "—"}</span><em data-testid="score-delta">{scoreDelta ? `+${scoreDelta}` : "—"}</em></div></div>
+            <div className="score-copy"><span>最终质量评分</span><strong>{final >= 90 ? "已达到评审标准" : "等待评测"}</strong><div className="score-journey"><span data-testid="initial-score">{initial || "—"}</span><GitCompareArrows size={15}/><span data-testid="final-score">{final || "—"}</span><em data-testid="score-delta">{formatDelta(scoreDelta)}</em></div></div>
           </div>
           <div className="metric-grid">
             {finalMetrics.map(([key, value]) => <div key={key}><span>{metricNames[key] ?? key}</span><strong>{value}</strong><i><b style={{width: `${value}%`}}/></i></div>)}
@@ -269,8 +373,8 @@ export default function App() {
             <div><WandSparkles size={13}/><strong>{firstViolations.length} 项问题已修复</strong><span>定向 Repair</span></div>
             <ul>{firstViolations.map((violation) => <li key={violation.id}><Check size={11}/><span>{violation.message}</span></li>)}</ul>
           </div>}
-          <div className="preview-tabs"><button className="active">页面预览</button><button>代码 Diff</button><span><WandSparkles size={13}/>自动修复 +{scoreDelta}</span></div>
-          <ProductPreview />
+          <div className="preview-tabs"><button className="active">页面预览</button><button>代码 Diff</button><span><WandSparkles size={13}/>自动修复 {formatDelta(scoreDelta)}</span></div>
+          {run ? <ProductPreview uiSpec={run.uiSpec} /> : <ProductPreview uiSpec={{ version: 1, name: "", viewport: { width: 0, height: 0 }, root: { id: "empty", name: "", type: "FRAME", layout: { direction: "column", width: "fixed", height: "fixed" }, styles: {}, children: [] } }} />}
           <div className="code-preview">
             <div><span>ProductGridPage.tsx</span><span className="diff-stat">+24 −3</span></div>
             <pre><code>{generatedCode || "// Build Agent 运行后将在这里显示生成代码。"}</code></pre>
