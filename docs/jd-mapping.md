@@ -17,6 +17,7 @@
 |---|---|---|---|
 | Figma 结构化资产解析（Auto Layout / 变量 / 组件实例） | `packages/figma-importer` + `packages/ui-compiler` | 左栏"设计输入"显示 Figma 资产预览 + 节点树 | ZIP 安全校验（路径穿越 / zip bomb / Zod 协议校验）→ 编译为 UISpec，把横向 / 纵向 Auto Layout 翻译成 `direction: row/column/grid` |
 | 多模态 UI 理解（参考图 / 截图） | `apps/web/src/lib/mock-design.ts` `createDesignEvents("image")` + `LAYOUT_INFERRED` / `COMPONENTS_DETECTED` 事件 | 切到 I2D → 点"运行设计稿生成演示" | 多模态不是只看像素，而是融合视觉预览与 Figma 结构：参考图走视觉骨架识别，Figma 包走节点树，产出同一份 UISpec |
+| **真视觉模型**（image → UISpec） | `apps/server/src/vision.ts` `interpretReferenceImage`（Anthropic vision image content block + `emit_ui_spec` tool calling）+ `POST /api/vision/interpret` | I2D 设置 provider=llm + key → 上传参考图 PNG → 看"多模态 UI 理解完成（真实视觉模型）"与 toolCalls `vision.*` | 视觉输出不进自由文本而是 tool 参数，服务端 zod 校验后才进链路；失败自动降级演示链路并如实提示（画布下方 vision-note） |
 | 组件识别 / Design Token 绑定 | `packages/component-matcher` + `TOKENS_BOUND` 事件 | 中栏看"组件识别证据" + 绑定 token 数量 | 召回（SDS Registry）→ 决策（证据 + 置信度）→ 落库（accepted / review / unmapped 三态）；token 绑定率是评测维度之一 |
 
 ## 3. 职责 3：D2C 出码（设计稿 → 生产代码）
@@ -25,6 +26,7 @@
 |---|---|---|---|
 | 真实代码生成（非 prompt 字符串拼接） | `packages/codegen/src/index.ts` `generateReactCode({mode:"draft"\|"final"})` | 右栏"代码交付"切换"页面预览 / 代码 Diff"页签 | 草稿与终稿走同一套 DFS 元素发射 + StyleRef 落点；差异落在 `tokens.css` 与 StyleRef 元数据，不是"看上去一样" |
 | 复用企业组件库 / SDS | `packages/component-matcher` + `import { ProductCard } from "@/components/ProductCard"` | 中栏"组件匹配证据"显示 import path | 不是让模型盲扫仓库，而是用 SDS Registry 召回候选 + 置信度 + 证据；未命中走 `unmapped` 状态 |
+| **企业组件资产库接入** | `packages/asset-indexer` `scanRepo`（React + Storybook + Code Connect 扫描）+ `mapSdsComponents(spec, registry?)` 注入 + `examples/sample-design-system/` 6 个真组件样本 | `GET /api/health?scan=dynamic` 看动态 registry 大小；看 asset-indexer 测试「扫描 registry ≡ 内置静态表」 | 换公司组件库不改 workbench 代码：扫描约定（export 名 / figmaComponentNames / Storybook title+argTypes）正则可解析、人可读；扫描结果与静态表在 product-grid 上产出一致映射（测试钉死防回归） |
 | Design Token 合规（颜色 / 间距 / 字号） | `packages/codegen` `tokensLayer` + 草稿 emit `var(--spacing-lg)` / 字面量 | 右栏看评分维度 `tokenCompliance` 从 37 涨到 100 | 间距是 16 倍数且声明匹配 → `var()`；否则字面量化 + 漂移；终稿统一 token 化并补全未声明 typography |
 | 代码 Diff 可审查 | `apps/web/src/components/DiffView.tsx` + `apps/web/src/lib/diff.ts` LCS 行 diff | 右栏切到"代码 Diff"页签 | 真实 LCS 算法逐行 diff tokens.css，配合 repair patches；不是文本字面量 `===` 比较 |
 
@@ -36,6 +38,7 @@
 | 类型化编辑操作 | `EditOp` 联合类型（set-prop / set-style / set-text / set-layout） + `applyEditOps` 纯函数 | 切换 Provider 到 LLM（设置面板）后看 trace toolCalls | 扁平可辨识联合 + selector（nodeId / semanticRole / component / ordinal）+ 深克隆写入；下游不直接吃自然语言 |
 | LLM 与本地工具双轨 | `apps/web/src/lib/provider.ts` + `apps/server/src/llm.ts` + `apps/web/src/components/SettingsPopover.tsx` | 设置面板切到 LLM，填 key，发送指令 | 默认规则解析（演示零风险）；切到 LLM 走 `POST /api/canvas/interpret`，key 仅存 localStorage 走 X-LLM-Key 请求头；LLM 不可达自动降级规则解析 + toolCalls `fallback:true` + ChatPanel 提示 |
 | 实时编辑 + 导出 | `designSpec` useState + `CANVAS_EDITED` 事件实时追加 | 聊天面板发送后画布实时刷新 | spec 用 useState（SPEC_GENERATED 时一次性播种），编辑事件实时 push 进 trace feed，不打断分步演示 |
+| **设计稿回写 Figma** | `packages/figma-patcher`（EditOp → setNodeChanges，token 解字面量 / GRID 降级记录）+ `apps/server/src/figma.ts`（PUT `/v1/files/:key/nodes`，403 → 评论降级）+ `apps/web/src/components/FigmaPatchPanel.tsx` | I2D 编辑两轮 → 回写面板填 PAT + FileKey → 预览变更（dryRun）→ 应用到 Figma | 回写范围 = 对话编辑累计的 EditOp；selector 语义复用 canvas-ops 保证「画布怎么改、Figma 就改哪」；PAT 走 X-Figma-Token 头经代理，与 LLM key 同安全模式 |
 
 ## 5. 职责 5：规范校验 / 质量评测
 
@@ -65,7 +68,7 @@
 | 评测指标设计 | `packages/evaluator` 六维公式文档化 + 校准测试钉 72 / 94 / 52.1 / 91.9 | 看评分从 72→94、52.1→91.9 | 校准常数（80px 漂移预算、/32 二次项、2/10/4 罚项）由测试钉死，回归时精确报错 |
 | 真实场景落地 | `product-grid.zip` + `form-page` 双 fixture + 真实上传链路 + 浏览器内真实执行（与 server SSE 等价） | 上传真实 zip / 切 fixture / 自动播放 | 浏览器内本地真实执行 + 上传到 server 走同一确定性管线，`scripts/consistency.test.ts` 守护两路逐字段一致 |
 | 文档 / 沟通 | `README.md` + `docs/demo-script.md` + `docs/jd-mapping.md` + 各包内中文注释 | 看仓库文档 + demo 脚本 | 注释用中文，commit message 用中文（commit 习惯）；讲稿与代码一一对应 |
-| 工程能力（CI / 测试 / 部署） | `pnpm test` / `pnpm typecheck` / `playwright.config.ts` / `pnpm e2e` | `pnpm test` 116 个用例 + `pnpm e2e` 浏览器 e2e | 没有 mock 偷懒：figma-importer 拒绝伪造输入、evaluator violation 钉 id、consistency 钉 web ≡ server 逐字段 |
+| 工程能力（CI / 测试 / 部署） | `pnpm test` / `pnpm typecheck` / `playwright.config.ts` / `pnpm e2e` | `pnpm test` 175 个用例 + `pnpm e2e` 浏览器 e2e | 没有 mock 偷懒：figma-importer 拒绝伪造输入、evaluator violation 钉 id、consistency 钉 web ≡ server 逐字段、asset-indexer 钉扫描 ≡ 静态表 |
 
 ## 附录：每个 commit 回挂的 JD 条目
 
@@ -78,6 +81,10 @@
 | Commit 5（canvas-ops + 交互式 ChatPanel） | canvas-ops + ChatPanel | 职责 4 |
 | Commit 6（LLM Provider） | llm.ts + provider.ts + SettingsPopover | 职责 4 / 要求 1 |
 | Commit 7（docs） | jd-mapping + demo-script | 要求 7 |
+| Commit 9（真视觉模型） | vision.ts + /api/vision/interpret + VisionOverride | 职责 2 / 要求 1 |
+| Commit 10（企业组件资产库） | asset-indexer + sample-design-system + matcher 注入 | 职责 3 / 要求 2 |
+| Commit 11（Figma 回写 Patch） | figma-patcher + /api/figma/patch + FigmaPatchPanel | 职责 4 / 要求 2 |
+| Commit 12（docs 收尾） | README / jd-mapping / demo-script 更新 | 要求 7 |
 
 ## 现场可验证（截图留证）
 
@@ -85,3 +92,5 @@
 2. 改 `design.json` 把 grid `gap` 从 20 改为 12 → 重新演示 → geometry 漂移可见
 3. 切到 form-page → 重新演示 → 看到表单未映射 Checkbox 触发 `unmapped` 状态 + 草稿分数 52.1
 4. 设置面板切到 LLM 但 key 留空 → 发送指令 → 降级规则解析 + ChatPanel 提示 LLM 不可达
+5. I2D 上传参考图（provider=llm + key）→ vision-note 显示真实视觉模型；拔掉网络再传 → vision-note 显示降级原因
+6. I2D 编辑两轮 → 回写面板预览（dryRun 零写入）→ 应用 → trace 出现 SPEC_EXPORTED（target=figma）；用只读 PAT 重试 → transport=comment 评论降级

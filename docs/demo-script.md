@@ -9,7 +9,7 @@
 
 ### 开场 20 秒
 
-“这个 Demo 解决的不是截图转 HTML，而是**如何把 Figma 的设计意图编译成可维护、可评测、可进入研发流程的代码**。我会演示四个亮点：真实评测闭环、可观察 Agent 工具调用、对话式画布编辑、以及基于真实 LLM 的可降级 Provider。”
+“这个 Demo 解决的不是截图转 HTML，而是**如何把 Figma 的设计意图编译成可维护、可评测、可进入研发流程的代码**。我会演示六个亮点：真实评测闭环、可观察 Agent 工具调用、对话式画布编辑、真视觉模型、企业组件资产库接入、以及设计稿回写 Figma。”
 
 让面试官先看到三栏：「设计输入」「Agent 执行轨迹」「代码交付」。
 
@@ -39,9 +39,15 @@
 - 切到「设置面板」改成 LLM → 看 toolCalls 变 `llm.interpretIntent` + 实际请求 X-LLM-Key 头
 - 拔掉 key 重发 → 自动降级规则解析 + ChatPanel 提示「LLM 不可达，已自动降级」
 
-### 亮点 4：双 fixture + 一致性守护 20 秒
+### 亮点 4：真视觉模型 + Figma 回写 30 秒
 
-- 顶栏切 fixture 不需要重启；同一渲染器吃不同结构（`SpecRenderer` 按 semanticRole 派发）
+- I2D 上传一张参考图 PNG（provider=llm + key）→ vision-note 显示「已使用真实视觉模型识别」，SPEC_GENERATED 事件的 uiSpec / mappings / tokens 全部来自模型输出（toolCalls `vision.*`）
+- 断网再传一张 → 如实显示「视觉模型不可达，已降级演示链路」
+- 编辑两轮后展开「回写 Figma」面板：**预览变更**（dryRun 零写入）→ **应用到 Figma** → trace 追加 `SPEC_EXPORTED`（target=figma）；PAT 只存 localStorage，走 X-Figma-Token 头经代理
+
+### 亮点 5：企业组件资产库 + 一致性守护 20 秒
+
+- 「怎么接你们公司设计系统？」——`packages/asset-indexer` 扫描设计系统仓库（React + Storybook + Code Connect）注入 matcher，不改 workbench 代码；`examples/sample-design-system/` 是 6 个真组件的样本，扫描结果与内置静态表在 product-grid 上逐字节一致（测试钉死）
 - 浏览器内本地真实执行 vs server SSE 路径，`scripts/consistency.test.ts` 钉两路逐字段一致
 
 ### 收尾 20 秒
@@ -102,6 +108,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 - 匹配不是让模型在仓库里盲猜，而是先由 SDS Registry 召回候选，再由 Agent 在小范围内决策。
 - 高置信度自动采用，中置信度标记 Review，低置信度请求人工确认。
 - 颜色、间距、圆角优先生成 Token 引用，不写任意魔法数字。
+- **Registry 可注入**：`packages/asset-indexer` 把设计系统仓库扫描成 registry（组件 export 名、`.figma.tsx` 的 Figma 名对照、Storybook title/argTypes）；`examples/sample-design-system/` 是 6 个真组件样本，扫描结果与内置静态表在 product-grid 上产出逐字节一致的映射（测试钉死）。“接你们公司设计系统” = 扫描一遍仓库，不改 workbench 代码。
 
 ### 5. Build / Eval 双 Agent + 真实评测闭环：2 分钟
 
@@ -129,7 +136,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 - form-page 故意含未映射组件（Checkbox）+ 漂移 gap；eval 报告里的 violation id 也与 product-grid 完全不同
 - 证明泛化：同一渲染器吃不同结构 + 同一管线跑不同产物
 
-### 7. 对话式画布编辑 + LLM Provider：1 分 30 秒
+### 7. 视觉模型 + 对话式画布编辑 + Figma 回写：2 分 30 秒
 
 切到 I2D → 自动播放 → ChatPanel 输入「把第二张卡片换成 lime」→ 发送：
 
@@ -139,6 +146,20 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 - 切到「设置面板」改成 LLM（MiniMax / Anthropic 兼容端点）→ 填 key → 再次发送
 - 看 toolCalls 变 `llm.interpretIntent` + 真实 POST /api/canvas/interpret（key 走 X-LLM-Key 请求头）
 - **拔掉 key / 断网重发**：自动降级规则解析 + ChatPanel 提示「LLM 不可达」+ toolCalls `fallback:true`
+
+**真视觉模型**（provider=llm + key 时自动启用）：
+
+- 上传一张参考图 PNG → 服务端 `POST /api/vision/interpret` 用 Anthropic vision 格式（base64 image content block）+ `emit_ui_spec` tool calling
+- 模型输出不进自由文本：tool 参数经 zod 校验后才进链路（UISpec / mappings / tokens）
+- SPEC_GENERATED / COMPONENTS_DETECTED 载荷全部换成真实识别结果，toolCalls 标 `provider=llm`
+- 失败（模型不可达 / 输出不符 schema）自动降级演示链路，画布下方 vision-note 如实标注原因
+
+**Figma 回写**（编辑产生价值闭环）：
+
+- 对话编辑累计的 EditOp 就是回写范围；「回写 Figma」面板填 PAT（写权限）+ File Key，两者只存 localStorage
+- **预览变更**：dryRun 请求只返回 nodeChanges（`packages/figma-patcher` 转换：token 引用解析字面量、GRID 布局降级记录），不落 Figma
+- **应用到 Figma**：PAT 走 X-Figma-Token 头经代理 PUT 到 Figma REST 写端点；成功后 trace 追加 `SPEC_EXPORTED`（target=figma）
+- 写权限不足的 PAT：自动降级为把变更 JSON 以评论发布到目标文件，面板如实标注 transport=comment
 
 ### 8. 可交付性：1 分钟
 
@@ -153,7 +174,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 
 ### 9. 主动说明当前边界：45 秒
 
-“这版把最不稳定的外部依赖放到了 Adapter 后面：默认使用浏览器内确定性管线，真实上传使用结构化离线 Bundle，LLM 默认规则解析（key 不进仓库、不进日志、不进下载报告）。它不是声称已经解决任意仓库生成；下一阶段会依次替换为真实 Asset Indexer、Codex Adapter、Figma Exporter 和 Playwright Geometry / Visual Eval。核心协议和工作台无需重写。”
+“这版把最不稳定的外部依赖放到了 Adapter 后面：默认使用浏览器内确定性管线，真实上传使用结构化离线 Bundle，LLM / 视觉模型默认演示链路（key 不进仓库、不进日志、不进下载报告），Figma 回写可选接真实 PAT。Asset Indexer 与 Figma 回写 Patch 已经落地（commit 10 / 11）；下一阶段会依次替换 Codex Adapter 和 Playwright Geometry / Visual Eval。核心协议和工作台无需重写。”
 
 ### 10. 收尾 + JD 映射：45 秒
 
@@ -173,7 +194,7 @@ MCP 是 Transport，不是核心业务能力。离线 Bundle 更容易控制权�
 
 ### 如何接企业代码仓库？
 
-扫描 export、Props、Storybook、Code Connect、Token 和历史用法，生成可增量更新的结构化索引。检索阶段只提供最相关候选和证据，再让 Agent 决策。当前 6 个 SDS 组件已经在 `packages/component-matcher/src/registry.ts` 内显式列出，便于替换 / 扩展。
+`packages/asset-indexer` 已经能扫描设计系统仓库（组件 export、Props（Storybook argTypes）、Code Connect、Figma 名对照）生成 registry，`mapSdsComponents(spec, registry?)` 直接注入；`examples/sample-design-system/` 是样本。扫描约定刻意从简（正则可解析、人可读）；真实仓库如有 AST 需求，替换 `scanRepo` 单个函数即可，链路不动。检索阶段只提供最相关候选和证据，再让 Agent 决策。
 
 ### 如何防止评测刷分？
 
@@ -181,8 +202,12 @@ Build 和 Eval 隔离上下文；关键门槛由 TypeScript、Build、页面加�
 
 ### LLM 真的接进来了吗？key 怎么保管？
 
-接了（`apps/server/src/llm.ts`）。key 只存浏览器 localStorage（设置面板），走 X-LLM-Key 请求头到本地 Fastify 代理，代理再转发到 MiniMax。仓库任何文件不含 key，下载报告不含 key，trace 不含 key。LLM 不可达自动降级规则解析（演示零风险默认）。
+接了（`apps/server/src/llm.ts` + `apps/server/src/vision.ts`，文本与视觉两条链路）。key 只存浏览器 localStorage（设置面板），走 X-LLM-Key 请求头到本地 Fastify 代理，代理再转发到 MiniMax。仓库任何文件不含 key，下载报告不含 key，trace 不含 key。LLM 不可达自动降级规则解析（演示零风险默认）；视觉模型失败自动降级演示链路并如实提示。
+
+### Figma 回写是怎么做的？PAT 安全吗？
+
+对话编辑累计的 EditOp 经 `packages/figma-patcher` 转成 Figma setNodeChanges（selector 语义复用 canvas-ops，保证「画布怎么改、Figma 就改哪」），PAT 走 X-Figma-Token 请求头经本地代理 PUT 到 Figma REST 写端点。PAT 只存 localStorage，不进仓库 / 日志 / 下载报告 / 响应体（测试钉死）。写权限不足的 PAT 自动降级为评论发布变更 JSON——失败也诚实可见，不假装成功。
 
 ### 下一步最优先做什么？
 
-先接真实目标仓库的 Asset Indexer 和 Codex Adapter，因为它最能验证「组件复用和可维护代码」；之后再补 Figma Plugin 与回写 Patch。
+接 Codex Adapter（真实仓库代码生成）和 Playwright Geometry / Visual Eval（渲染级几何校验）。资产索引（asset-indexer）与 Figma 回写 Patch 已经落地。
