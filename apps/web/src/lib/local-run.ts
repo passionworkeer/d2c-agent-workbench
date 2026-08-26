@@ -17,7 +17,13 @@ import productGridVariables from "../../../../examples/figma-bundles/product-gri
 import productGridComponents from "../../../../examples/figma-bundles/product-grid/components.json?raw";
 import productGridPreview from "../../../../examples/figma-bundles/product-grid/preview/root.svg?raw";
 
-export type LocalFixtureId = "product-grid";
+import formPageManifest from "../../../../examples/figma-bundles/form-page/manifest.json?raw";
+import formPageDesign from "../../../../examples/figma-bundles/form-page/design.json?raw";
+import formPageVariables from "../../../../examples/figma-bundles/form-page/variables.json?raw";
+import formPageComponents from "../../../../examples/figma-bundles/form-page/components.json?raw";
+import formPagePreview from "../../../../examples/figma-bundles/form-page/preview/root.svg?raw";
+
+export type LocalFixtureId = "product-grid" | "form-page";
 
 interface LocalFixture {
   id: LocalFixtureId;
@@ -35,6 +41,17 @@ const fixtures: Record<LocalFixtureId, LocalFixture> = {
       "variables.json": productGridVariables,
       "components.json": productGridComponents,
       "preview/root.svg": productGridPreview,
+    },
+  },
+  "form-page": {
+    id: "form-page",
+    runId: "local-form-demo",
+    files: {
+      "manifest.json": formPageManifest,
+      "design.json": formPageDesign,
+      "variables.json": formPageVariables,
+      "components.json": formPageComponents,
+      "preview/root.svg": formPagePreview,
     },
   },
 };

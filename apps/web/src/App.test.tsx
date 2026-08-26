@@ -56,7 +56,7 @@ describe("D2C 工作台", () => {
     expect(screen.getByTestId("score-delta")).toHaveTextContent("+22");
     expect(screen.getByText("3 项问题已修复")).toBeInTheDocument();
     // 真实管线从产物推导的 violation 文本（intro gap=12 被量化为 16）
-    expect(screen.getByText("商品网格使用了硬编码间距 16px")).toBeInTheDocument();
+    expect(screen.getByText("节点 intro 仍使用硬编码间距 16px，未引用 Design Token")).toBeInTheDocument();
     expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
 
     // 上一步可回退：事件从 12 变 11

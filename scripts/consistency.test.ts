@@ -147,4 +147,59 @@ describe("examples/product-grid 与真实管线的跨包一致性", () => {
     expect(webEvents.at(-1)?.data?.scoreDelta).toBe(serverEvents.at(-1)?.data?.scoreDelta);
     expect(webEvents.at(-1)?.data?.generatedCode).toBe(serverEvents.at(-1)?.data?.generatedCode);
   });
+
+  it("form-page fixture 产出与 product-grid 不同的精确评测闭环", async () => {
+    // 表单页与商品页是不同输入，应自然产生不同分数 / 不同 violation 集合 —— 这就是 Commit 4 的泛化承诺。
+    const { createLocalRunEvents } = await import("../apps/web/src/lib/local-run");
+    const { runReplayWorkflow } = await import("@d2c/orchestrator");
+
+    const productGridEvents = await createLocalRunEvents("product-grid");
+    const formPageEvents = await createLocalRunEvents("form-page");
+
+    const gridScores = productGridEvents
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+    const formScores = formPageEvents
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+
+    // 表单页校准值：DRAFT=52.1 → FINAL=91.9
+    expect(formScores[0]).toBeCloseTo(52.1, 0);
+    expect(formScores[1]).toBeCloseTo(91.9, 0);
+    // 与商品页的分数完全不同
+    expect(formScores[0]).not.toBe(gridScores[0]);
+    expect(formScores[1]).not.toBe(gridScores[1]);
+
+    // 草稿各有 violation，终稿都归零
+    const formDraftEval = formPageEvents.find((event) => event.state === "EVALUATED" && (event.data?.evaluation as { iteration?: number })?.iteration === 1);
+    const formFinalEval = formPageEvents.filter((event) => event.state === "EVALUATED").at(-1);
+    expect((formDraftEval?.data?.evaluation as { violations: unknown[] })?.violations.length).toBeGreaterThan(0);
+    expect((formFinalEval?.data?.evaluation as { violations: unknown[] })?.violations).toHaveLength(0);
+
+    // 表单页包含未映射组件（Checkbox / Simple 不在 Registry）
+    const completedEvent = formPageEvents.find((event) => event.state === "COMPONENTS_MAPPED");
+    const mappings = (completedEvent?.data?.mappings as { status: string }[] | undefined) ?? [];
+    expect(mappings.some((m) => m.status === "unmapped")).toBe(true);
+
+    // 与 server 路径跑同一 form-page 也应当一致（防止 web/server 分叉）
+    const dir = join(root, "examples/figma-bundles/form-page") + "/";
+    const formEntries: Record<string, [Uint8Array, { level: 0 }]> = {
+      "manifest.json": [Buffer.from(readFileSync(`${dir}manifest.json`, "utf8")), { level: 0 }],
+      "design.json": [Buffer.from(readFileSync(`${dir}design.json`, "utf8")), { level: 0 }],
+      "variables.json": [Buffer.from(readFileSync(`${dir}variables.json`, "utf8")), { level: 0 }],
+      "components.json": [Buffer.from(readFileSync(`${dir}components.json`, "utf8")), { level: 0 }],
+      "preview/root.svg": [readFileSync(`${dir}preview/root.svg`), { level: 0 }],
+    };
+    const formBundle = parseFigmaBundle(zipSync(formEntries));
+    const formSpec = compileUISpec(formBundle);
+    const formMappings = mapSdsComponents(formSpec);
+    const serverFormEvents: typeof formPageEvents = [];
+    for await (const event of runReplayWorkflow({ runId: "form-shared", spec: formSpec, mappings: formMappings, delayMs: 0 })) {
+      serverFormEvents.push(event);
+    }
+    const serverFormScores = serverFormEvents
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+    expect(serverFormScores).toEqual(formScores);
+  });
 });

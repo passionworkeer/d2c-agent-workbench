@@ -35,7 +35,7 @@ function specWith(...nodes: UISpecNode[]): UISpec {
 
 describe("mapSdsComponents", () => {
   it("exposes the registry size for trace declarations", () => {
-    expect(SDS_REGISTRY_SIZE).toBe(5);
+    expect(SDS_REGISTRY_SIZE).toBe(6);
   });
 
   it("maps exact names case-insensitively with truthful evidence", () => {

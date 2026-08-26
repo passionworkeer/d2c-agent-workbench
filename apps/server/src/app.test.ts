@@ -40,7 +40,7 @@ describe("D2C server", () => {
     const response = await app.inject({ method: "GET", url: "/api/health" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok", registry: { sdsComponents: 5 } });
+    expect(response.json()).toEqual({ status: "ok", registry: { sdsComponents: 6 } });
     await app.close();
   });
 

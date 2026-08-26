@@ -210,7 +210,7 @@ export function violationsFromArtifact(
       severity: "P1",
       category: "token",
       nodeId: gapLiteral.nodeId,
-      message: `商品网格使用了硬编码间距 ${gapLiteral.emitted.value}px`,
+      message: `节点 ${gapLiteral.nodeId} 仍使用硬编码间距 ${gapLiteral.emitted.value}px，未引用 Design Token`,
       suggestion: `替换为 var(--${gapLiteral.property.replace(".", "-")})`,
     });
   }

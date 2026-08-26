@@ -25,6 +25,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { getRun, subscribeToRun, uploadBundle, type RunDetail } from "./lib/api";
 import { DiffView } from "./components/DiffView";
+import { SpecRenderer } from "./components/SpecRenderer";
 import { TraceEventCard } from "./components/TraceEventCard";
 import {
   applyCanvasEdit,
@@ -34,7 +35,7 @@ import {
   referenceImageUrl,
   type DesignInput,
 } from "./lib/mock-design";
-import { createLocalRunEvents, extractRunDetail, playEvents } from "./lib/local-run";
+import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
 
 type Mode = "d2c" | "i2d";
@@ -128,34 +129,6 @@ const emptySpec: UISpec = {
   root: { id: "empty", name: "", type: "FRAME", layout: { direction: "column", width: "fixed", height: "fixed" }, styles: {}, children: [] },
 };
 
-function ProductPreview({ uiSpec }: { uiSpec: UISpec }) {
-  const cards: UISpecNode[] = [];
-  collectCardNodes(uiSpec.root, cards);
-  const products = cards.map((node, index) => ({
-    id: node.id,
-    tone: (node.component?.props?.tone as string) ?? "cobalt",
-    badge: (node.component?.props?.badge as string) ?? "New",
-    name: ["弧线跑鞋 01", "形态手袋 02", "机能外套 03", "虚空帽 04"][index % 4],
-    meta: ["¥ 1,290 · 新品", "¥ 890 · 限量", "¥ 1,590 · 核心款", "¥ 490 · 典藏"][index % 4],
-    shape: (["circle", "capsule", "triangle", "orbit"] as const)[index % 4],
-  }));
-  return (
-    <div className="rendered-page" data-testid="generated-preview">
-      <div className="rendered-nav"><strong>KINETIC®</strong><span>26FW 系列 · 购物车 04</span></div>
-      <div className="rendered-copy"><span>全新系列 / 26FW</span><h3>为运动而生的设计。</h3></div>
-      <div className="product-grid">
-        {products.map((product) => (
-          <article className={`product-card ${product.tone}`} key={product.id}>
-            <div className={`product-shape ${product.shape}`} />
-            <div><strong>{product.name}</strong><span>{product.meta}</span></div>
-            <span className="badge">{product.badge}</span>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ChatPanel({ edits }: { edits: typeof canvasEdits }) {
   return (
     <div className="chat-panel" data-testid="chat-panel">
@@ -204,6 +177,7 @@ function TokenPills({ uiSpec }: { uiSpec: UISpec }) {
 export default function App() {
   const [mode, setMode] = useState<Mode>("d2c");
   const [designInput, setDesignInput] = useState<DesignInput>("image");
+  const [fixture, setFixture] = useState<LocalFixtureId>("product-grid");
   const [run, setRun] = useState<RunDetail | null>(null);
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [running, setRunning] = useState(false);
@@ -336,10 +310,10 @@ export default function App() {
   // 同步版本：runReplayWorkflow 在 delayMs=0 时内部只走 Promise.resolve() 微任务，
   // 我们直接收集全部事件再返回，不依赖定时器。
   function startStepDemo() {
-    void runLocalQueue("product-grid");
+    void runLocalQueue(fixture);
   }
 
-  async function runLocalQueue(fixtureId: "product-grid") {
+  async function runLocalQueue(fixtureId: LocalFixtureId) {
     setRun(null);
     setError("");
     try {
@@ -510,10 +484,16 @@ export default function App() {
           {mode === "i2d" && stepping && <code>design-run</code>}
         </div>
         <div className="header-actions">
-          {mode === "d2c" && (
-            <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
-          )}
-          {mode === "i2d" && (
+          {mode === "d2c" ? (
+            <>
+              <div className="fixture-toggle">
+                <span>Fixture</span>
+                <button className={fixture === "product-grid" ? "active" : ""} onClick={() => setFixture("product-grid")}>商品网格</button>
+                <button className={fixture === "form-page" ? "active" : ""} onClick={() => setFixture("form-page")}>表单页</button>
+              </div>
+              <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
+            </>
+          ) : (
             <input data-testid="image-input" ref={imageInput} type="file" accept="image/*" hidden onChange={handleImageChange} />
           )}
           <a className="button secondary skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
@@ -639,7 +619,7 @@ export default function App() {
               </div>
               {activeTab === "preview" ? (
                 <>
-                  <ProductPreview uiSpec={run?.uiSpec ?? emptySpec} />
+                  <SpecRenderer uiSpec={run?.uiSpec ?? emptySpec} />
                   <div className="code-preview">
                     <div>
                       <span>{activeStepState === "GENERATED" ? "草稿 ProductGridPage.tsx" : activeStepState === "COMPLETED" ? "终稿 ProductGridPage.tsx" : "ProductGridPage.tsx"}</span>
@@ -732,7 +712,7 @@ export default function App() {
                 <div><span>DESIGN DRAFT v1</span><strong>{designReady ? "动感商品网格 · 已结构化" : "等待 UI 理解完成"}</strong></div>
                 <MessageSquareText size={18}/>
               </div>
-              {designReady ? <ProductPreview uiSpec={designSpec} /> : (
+              {designReady ? <SpecRenderer uiSpec={designSpec} /> : (
                 <div className="placeholder-panel"><WandSparkles size={26}/><p>组件识别与 Token 绑定完成后，这里会展示生成的结构化设计稿，并支持对话式编辑。</p></div>
               )}
               {designReady && (

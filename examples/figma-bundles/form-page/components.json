@@ -1,0 +1,17 @@
+[
+  {
+    "id": "component-input",
+    "name": "Input / Text",
+    "properties": { "state": ["default", "error"] }
+  },
+  {
+    "id": "component-checkbox",
+    "name": "Checkbox / Simple",
+    "properties": { "checked": ["true", "false"] }
+  },
+  {
+    "id": "component-button-primary",
+    "name": "Button / Primary",
+    "properties": { "label": ["Sign Up", "Continue"] }
+  }
+]

@@ -23,6 +23,11 @@ const registry: RegistryEntry[] = [
     figmaNames: ["Button / Primary", "Button / Secondary", "Button"],
   },
   {
+    codeComponent: "Input",
+    importPath: "@/components/Input",
+    figmaNames: ["Input / Text", "Input"],
+  },
+  {
     codeComponent: "Badge",
     importPath: "@/components/Badge",
     figmaNames: ["Badge / Default", "Badge"],

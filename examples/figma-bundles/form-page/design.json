@@ -1,0 +1,300 @@
+{
+  "nodes": [
+    {
+      "id": "page",
+      "name": "Account / Sign Up",
+      "type": "FRAME",
+      "width": 1440,
+      "height": 900,
+      "layoutMode": "VERTICAL",
+      "layoutSizingHorizontal": "FIXED",
+      "layoutSizingVertical": "FIXED",
+      "gap": { "value": 24, "variable": "spacing/lg" },
+      "padding": {
+        "top": { "value": 40, "variable": "spacing/xl" },
+        "right": { "value": 40, "variable": "spacing/xl" },
+        "bottom": { "value": 40, "variable": "spacing/xl" },
+        "left": { "value": 40, "variable": "spacing/xl" }
+      },
+      "boundVariables": {
+        "fills": { "value": "#f3f1ea", "variable": "color/canvas" }
+      },
+      "children": [
+        {
+          "id": "heading",
+          "name": "Page Title",
+          "type": "TEXT",
+          "width": 480,
+          "height": 32,
+          "layoutMode": "NONE",
+          "layoutSizingHorizontal": "HUG",
+          "layoutSizingVertical": "HUG",
+          "characters": "Create your account.",
+          "boundVariables": {
+            "fontSize": { "value": 24, "variable": "typography/title/font-size" },
+            "fills": { "value": "#171713", "variable": "color/ink" }
+          },
+          "children": []
+        },
+        {
+          "id": "subheading",
+          "name": "Subtitle",
+          "type": "TEXT",
+          "width": 480,
+          "height": 20,
+          "layoutMode": "NONE",
+          "layoutSizingHorizontal": "HUG",
+          "layoutSizingVertical": "HUG",
+          "characters": "Already have one? Sign in.",
+          "boundVariables": {
+            "fontSize": { "value": 14, "variable": "typography/subtitle/font-size" },
+            "fills": { "value": "#171713", "variable": "color/ink" }
+          },
+          "children": []
+        },
+        {
+          "id": "form",
+          "name": "Sign Up Form",
+          "type": "FRAME",
+          "width": 480,
+          "height": 360,
+          "layoutMode": "VERTICAL",
+          "layoutSizingHorizontal": "FIXED",
+          "layoutSizingVertical": "HUG",
+          "gap": { "value": 24, "variable": "spacing/lg" },
+          "children": [
+            {
+              "id": "field-1",
+              "name": "Email Field",
+              "type": "FRAME",
+              "width": 480,
+              "height": 76,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 4, "variable": "spacing/sm" },
+              "children": [
+                {
+                  "id": "label-1",
+                  "name": "Email Label",
+                  "type": "TEXT",
+                  "width": 480,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "Email",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#171713", "variable": "color/ink" }
+                  },
+                  "children": []
+                },
+                {
+                  "id": "input-1",
+                  "name": "Input / Text",
+                  "type": "INSTANCE",
+                  "width": 480,
+                  "height": 40,
+                  "layoutMode": "HORIZONTAL",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "FIXED",
+                  "componentId": "component-input",
+                  "componentProperties": { "state": "default" },
+                  "children": []
+                },
+                {
+                  "id": "hint-1",
+                  "name": "Email Hint",
+                  "type": "TEXT",
+                  "width": 480,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "We'll never share it.",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#c53030", "variable": "color/danger" }
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "field-2",
+              "name": "Password Field",
+              "type": "FRAME",
+              "width": 480,
+              "height": 76,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 4, "variable": "spacing/sm" },
+              "children": [
+                {
+                  "id": "label-2",
+                  "name": "Password Label",
+                  "type": "TEXT",
+                  "width": 480,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "Password",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#171713", "variable": "color/ink" }
+                  },
+                  "children": []
+                },
+                {
+                  "id": "input-2",
+                  "name": "Input / Text",
+                  "type": "INSTANCE",
+                  "width": 480,
+                  "height": 40,
+                  "layoutMode": "HORIZONTAL",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "FIXED",
+                  "componentId": "component-input",
+                  "componentProperties": { "state": "error" },
+                  "children": []
+                },
+                {
+                  "id": "hint-2",
+                  "name": "Password Hint",
+                  "type": "TEXT",
+                  "width": 480,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "Use 8+ characters.",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#c53030", "variable": "color/danger" }
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "field-3",
+              "name": "Team Field",
+              "type": "FRAME",
+              "width": 480,
+              "height": 56,
+              "layoutMode": "VERTICAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 4, "variable": "spacing/sm" },
+              "children": [
+                {
+                  "id": "label-3",
+                  "name": "Team Label",
+                  "type": "TEXT",
+                  "width": 480,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "Team name",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#171713", "variable": "color/ink" }
+                  },
+                  "children": []
+                },
+                {
+                  "id": "input-3",
+                  "name": "Input / Text",
+                  "type": "INSTANCE",
+                  "width": 480,
+                  "height": 40,
+                  "layoutMode": "HORIZONTAL",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "FIXED",
+                  "componentId": "component-input",
+                  "componentProperties": { "state": "default" },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "terms",
+              "name": "Terms Row",
+              "type": "FRAME",
+              "width": 480,
+              "height": 24,
+              "layoutMode": "HORIZONTAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "HUG",
+              "gap": { "value": 8, "variable": "spacing/sm" },
+              "children": [
+                {
+                  "id": "checkbox",
+                  "name": "Checkbox / Simple",
+                  "type": "INSTANCE",
+                  "width": 16,
+                  "height": 16,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FIXED",
+                  "layoutSizingVertical": "FIXED",
+                  "componentId": "component-checkbox",
+                  "componentProperties": { "checked": "false" },
+                  "children": []
+                },
+                {
+                  "id": "terms-text",
+                  "name": "Terms Text",
+                  "type": "TEXT",
+                  "width": 440,
+                  "height": 20,
+                  "layoutMode": "NONE",
+                  "layoutSizingHorizontal": "FILL",
+                  "layoutSizingVertical": "HUG",
+                  "characters": "I agree to the Terms.",
+                  "boundVariables": {
+                    "fontSize": { "value": 12, "variable": "typography/label/font-size" },
+                    "fills": { "value": "#171713", "variable": "color/ink" }
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "submit",
+              "name": "Button / Primary",
+              "type": "INSTANCE",
+              "width": 480,
+              "height": 48,
+              "layoutMode": "HORIZONTAL",
+              "layoutSizingHorizontal": "FILL",
+              "layoutSizingVertical": "FIXED",
+              "componentId": "component-button-primary",
+              "componentProperties": { "label": "Sign Up" },
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Legal Footer",
+          "type": "TEXT",
+          "width": 480,
+          "height": 16,
+          "layoutMode": "NONE",
+          "layoutSizingHorizontal": "FILL",
+          "layoutSizingVertical": "HUG",
+          "characters": "© Kinetic 2026",
+          "boundVariables": {
+            "fontSize": { "value": 11, "variable": "typography/caption/font-size" },
+            "fills": { "value": "#171713", "variable": "color/ink" }
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}
