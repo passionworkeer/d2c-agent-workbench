@@ -38,6 +38,7 @@ import {
 } from "./lib/mock-design";
 import { createLocalRunEvents, extractRunDetail, fixturePreviewUrl, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
+import { NodeTree } from "./components/NodeTree";
 import { FigmaPatchPanel } from "./components/FigmaPatchPanel";
 import { applyEditOps, type EditOp } from "@d2c/canvas-ops";
 import {
@@ -244,21 +245,6 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as CSSProperties}>
       <div><strong>{score}</strong><span>/ 100</span></div>
-    </div>
-  );
-}
-
-function NodeTree({ uiSpec }: { uiSpec: UISpec }) {
-  const children = uiSpec.root.children;
-  return (
-    <div className="node-tree">
-      <div><ChevronRight size={13}/><Box size={13}/><strong>{uiSpec.root.name}</strong><code>{uiSpec.root.type}</code></div>
-      {children.map((child) => (
-        <div className="level-1" key={child.id}><ChevronRight size={13}/><Layers3 size={13}/>{child.name}<code>{child.type}</code></div>
-      ))}
-      {children.flatMap((child) => child.children).map((grand) => (
-        <div className="level-2" key={grand.id}><ChevronRight size={13}/><Box size={13}/>{grand.name}<code>× {children[1]?.children.length ?? 1}</code></div>
-      ))}
     </div>
   );
 }

@@ -366,6 +366,44 @@ button { cursor: pointer; }
 .tool-badge.local { color: #596057; background: #f1f2ef; border: 1px solid var(--line); }
 .tool-badge.llm { color: var(--acid-dark); background: rgba(155, 213, 0, .16); border: 1px solid rgba(155, 213, 0, .55); }
 .tool-json { margin: 2px 0 6px 24px; max-height: 200px; overflow: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #f8f9f6; font-family: Consolas, monospace; font-size: 10px; line-height: 1.5; color: #424940; white-space: pre-wrap; }
+
+/* 事件产物预览：event.data 携带的 spec / 映射 / 评测 / 代码的可读摘要 */
+.artifact { margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; overflow: hidden; }
+.artifact-head { display: flex; align-items: center; gap: 7px; padding: 6px 9px; border-bottom: 1px solid rgba(76, 84, 74, .16); background: #f4f6f1; }
+.artifact-head svg { color: var(--acid-dark); flex: none; }
+.artifact-kind { font-family: Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: .1em; color: var(--acid-dark); }
+.artifact-meta { font-family: Consolas, monospace; font-size: 9px; color: var(--faint); }
+.artifact-toggle { margin-left: auto; border: 0; background: transparent; padding: 0; font-family: Consolas, monospace; font-size: 9px; color: #3d6f2a; cursor: pointer; }
+.artifact-toggle:hover { text-decoration: underline; }
+.artifact-toggle.block { display: block; margin: 0; padding: 6px 9px; width: 100%; text-align: center; border-top: 1px dashed var(--line); }
+.artifact .node-tree { padding: 4px 6px; }
+.artifact-json { max-height: 240px; overflow: auto; margin: 0; padding: 9px 10px; border-top: 1px dashed var(--line); font-family: Consolas, monospace; font-size: 10px; line-height: 1.5; color: #424940; white-space: pre; background: #f8f9f6; }
+.artifact-code { max-height: 260px; overflow: auto; margin: 0; padding: 9px 10px; font-family: Consolas, monospace; font-size: 10px; line-height: 1.5; color: #424940; background: #f8f9f6; }
+.artifact-row { display: flex; align-items: center; gap: 7px; padding: 5px 9px; font-size: 11px; color: var(--muted); }
+.artifact-row + .artifact-row { border-top: 1px solid rgba(76, 84, 74, .08); }
+.artifact-row svg { color: var(--faint); flex: none; }
+.artifact-row span { color: #4c544a; }
+.artifact-row strong { color: var(--text); font-size: 11px; }
+.artifact-row i { color: var(--faint); font-style: normal; font-size: 10px; }
+.artifact-row em { font-style: normal; font-family: Consolas, monospace; font-size: 9px; color: var(--faint); }
+.artifact-row code { font-family: Consolas, monospace; font-size: 10px; color: #596057; }
+.artifact-more { padding: 5px 9px; font-size: 10px; color: var(--faint); border-top: 1px solid rgba(76, 84, 74, .08); }
+.artifact-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 9px; }
+.artifact-chips code { padding: 3px 8px; border: 1px solid var(--line); border-radius: 5px; background: #fff; font-size: 10px; color: #424940; }
+.artifact-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(76, 84, 74, .14); }
+.artifact-metrics > div { display: flex; align-items: baseline; justify-content: space-between; padding: 5px 9px; background: #fff; }
+.artifact-metrics span { font-family: Consolas, monospace; font-size: 9px; color: var(--faint); }
+.artifact-metrics strong { font-family: Consolas, monospace; font-size: 11px; color: var(--text); }
+.artifact .token-pills { margin: 8px 9px; }
+.chip { flex: none; padding: 1px 6px; border-radius: 4px; font-family: Consolas, monospace; font-size: 9px; font-weight: 700; }
+.artifact-row .chip:last-child { margin-left: auto; }
+.chip.map-accepted { color: var(--acid-dark); background: rgba(155, 213, 0, .16); }
+.chip.map-review { color: #8a5a00; background: rgba(240, 160, 32, .14); }
+.chip.map-unmapped { color: #8b4040; background: rgba(240, 90, 42, .1); }
+.chip.sev-p0 { color: #fff; background: #b33b16; }
+.chip.sev-p1 { color: #8a5a00; background: rgba(240, 160, 32, .18); }
+.chip.sev-p2 { color: #596057; background: #f1f2ef; }
+
 .evidence-panel { margin: 14px; border-top: 1px solid var(--line); padding-top: 13px; }
 .mapping-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; }
 .mapping-row > div:first-child { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }

@@ -90,6 +90,36 @@ describe("D2C 工作台", () => {
     expect(document.querySelectorAll(".product-card")).toHaveLength(4);
   });
 
+  it("轨迹事件展示每步真实产物：UISpec 摘要 / 映射证据 / 评测指标 / 生成代码", async () => {
+    render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    });
+    await advanceToEnd();
+
+    // NORMALIZED：UISpec 产物（节点树摘要 + 可展开完整 JSON）
+    expect(screen.getByText("UISPEC 产物")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "查看 JSON" }));
+    });
+    expect(document.querySelector(".artifact-json")?.textContent ?? "").toContain('"viewport"');
+
+    // COMPONENTS_MAPPED：映射证据行（figma → code + 状态）
+    expect(screen.getByText("组件映射证据")).toBeInTheDocument();
+    expect(document.querySelectorAll(".artifact-row .chip.map-accepted").length).toBeGreaterThan(0);
+
+    // EVALUATED ×2（草稿 + 终稿）：评测报告 + 六维指标
+    expect(screen.getAllByText("评测报告").length).toBe(2);
+    expect(document.querySelectorAll(".artifact-metrics").length).toBe(2);
+
+    // REPAIRING：修复补丁；CODE_PLANNED：文件计划
+    expect(screen.getByText("修复补丁")).toBeInTheDocument();
+    expect(screen.getByText("代码计划")).toBeInTheDocument();
+
+    // GENERATED + COMPLETED：生成代码摘要
+    expect(document.querySelectorAll(".artifact-code").length).toBe(2);
+  });
+
   it("分步演示支持自动播放剩余步骤", async () => {
     vi.useFakeTimers();
     render(<App />);
@@ -120,7 +150,8 @@ describe("D2C 工作台", () => {
     // DiffView 现在跑真实 LCS：终稿相对草稿补全 typography 两个 token，所以 typography 行必出现
     expect(screen.getByText("--typography-label-font-size: 12px;")).toBeInTheDocument();
     expect(screen.getByText("--typography-display-font-size: 64px;")).toBeInTheDocument();
-    expect(screen.getByText("硬编码间距 → var(--spacing)")).toBeInTheDocument();
+    // 修复补丁文案会同时出现在轨迹 REPAIRING 产物与 Diff 补丁注释两处
+    expect(screen.getAllByText("硬编码间距 → var(--spacing)").length).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "页面预览" }));
@@ -397,6 +428,28 @@ describe("I2D 设计稿生成链路", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("I2D 轨迹同样展示产物：版式约束 / Token 绑定 / UISpec 摘要", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+
+    // LAYOUT_INFERRED 事件里的版式约束（与源列「识别出的版式约束」不同文本）
+    expect(screen.getAllByText("版式约束").length).toBeGreaterThan(0);
+    expect(document.querySelector(".artifact-row code")?.textContent ?? "").toContain("VERTICAL");
+
+    // TOKENS_BOUND：Token 绑定 pills
+    expect(screen.getByText("Token 绑定")).toBeInTheDocument();
+
+    // SPEC_GENERATED：UISpec 产物摘要
+    expect(screen.getByText("UISPEC 产物")).toBeInTheDocument();
   });
 
   it("识别引擎选择器：默认 mock 跑演示 → vision-note 如实标注「未启用」而非「降级」", async () => {
