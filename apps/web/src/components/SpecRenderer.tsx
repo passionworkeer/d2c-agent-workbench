@@ -19,8 +19,16 @@ function getStateClass(state: unknown): string {
   return ["default", "error"].includes(state) ? state : "default";
 }
 
-function getShape(index: number): string {
-  return (["circle", "capsule", "triangle", "orbit"] as const)[index % 4] ?? "circle";
+// 形状按 tone 而非 index 选取——和 Figma 设计稿里的视觉语义一致（cobalt=圆/coral=胶囊/
+// lime=三角/charcoal=椭圆）。同一份映射供 SpecRenderer 与 product-grid 预览 SVG 共同遵守。
+function getShapeByTone(tone: string): string {
+  switch (tone) {
+    case "cobalt": return "circle";
+    case "coral": return "capsule";
+    case "lime": return "triangle";
+    case "charcoal": return "orbit";
+    default: return "circle";
+  }
 }
 
 const productNames = ["弧线跑鞋 01", "形态手袋 02", "机能外套 03", "虚空帽 04"];
@@ -47,18 +55,9 @@ function renderNode(node: UISpecNode, index: number): ReactElement | null {
     );
   }
   if (figma.includes("Product Card")) {
-    const tone = getToneClass(props.tone);
-    const badge = typeof props.badge === "string" ? props.badge : "New";
-    return (
-      <article className={`product-card ${tone}`}>
-        <div className={`product-shape ${getShape(index)}`} />
-        <div>
-          <strong>{productNames[index % 4]}</strong>
-          <span>{productMetas[index % 4]}</span>
-        </div>
-        <span className="badge">{badge}</span>
-      </article>
-    );
+    // product-grid 容器里的卡片由 renderContainer 直接按 grid 内 sibling 索引渲染，
+    // 这里仅作兜底（卡片不应出现在 grid 之外）；不要用全局 index 取文案数组。
+    return <div className="unmapped-instance">{figma}</div>;
   }
   if (figma.includes("Input")) {
     const state = getStateClass(props.state);
@@ -85,6 +84,25 @@ function renderNode(node: UISpecNode, index: number): ReactElement | null {
   return <div className="unmapped-instance">{figma}</div>;
 }
 
+function renderProductCard(node: UISpecNode, gridIndex: number): ReactElement | null {
+  if (node.type !== "INSTANCE") return null;
+  const props = node.component?.props ?? {};
+  const tone = getToneClass(props.tone);
+  const badge = typeof props.badge === "string" ? props.badge : "New";
+  return (
+    <div key={node.id} className="node-instance">
+      <article className={`product-card ${tone}`}>
+        <div className={`product-shape ${getShapeByTone(tone)}`} />
+        <div>
+          <strong>{productNames[gridIndex % 4]}</strong>
+          <span>{productMetas[gridIndex % 4]}</span>
+        </div>
+        <span className="badge">{badge}</span>
+      </article>
+    </div>
+  );
+}
+
 function renderContainer(node: UISpecNode, childIndex: number): ReactElement {
   const children = node.children.map((child, idx) => renderNodeOrContainer(child, childIndex + idx));
   switch (node.semanticRole) {
@@ -99,7 +117,13 @@ function renderContainer(node: UISpecNode, childIndex: number): ReactElement {
     case "section-intro":
       return <div className="rendered-copy">{children}</div>;
     case "product-grid":
-      return <div className="product-grid">{children}</div>;
+      // 商品卡片在 product-grid 中按 sibling 索引 0..3 渲染：保证 cobalt=弧线跑鞋、coral=形态手袋…
+      // 与 product-grid/preview/root.svg 同序，文案数组索引才稳。
+      return (
+        <div className="product-grid">
+          {node.children.map((child, idx) => renderProductCard(child, idx))}
+        </div>
+      );
     case "form-section":
       return <form className="form-section" onSubmit={(e) => e.preventDefault()}>{children}</form>;
     default:
