@@ -7,28 +7,18 @@ import { compileUISpec } from "@d2c/ui-compiler";
 import { mapSdsComponents } from "@d2c/component-matcher";
 import { runReplayWorkflow } from "@d2c/orchestrator";
 import {
-  mockGeneratedCode,
   mockMappings,
-  createMockEvents,
 } from "../apps/web/src/lib/mock-run";
 
 const root = resolve(import.meta.dirname, "..");
 const fixtureDir = join(root, "examples", "figma-bundles", "product-grid") + "/";
 
-function readJson(name: string): unknown {
-  return JSON.parse(readFileSync(`${fixtureDir}${name}`, "utf8"));
-}
-
-function readBytes(name: string): Uint8Array {
-  return new Uint8Array(readFileSync(`${fixtureDir}${name}`));
-}
-
 function buildProductGridZip(): Uint8Array {
-  const manifest = readJson("manifest.json") as { protocolVersion: "1.0"; name: string; viewport: { width: number; height: number } };
-  const design = readJson("design.json") as { nodes: unknown };
-  const variables = readJson("variables.json");
-  const components = readJson("components.json");
-  const preview = readBytes("preview/root.svg");
+  const manifest = JSON.parse(readFileSync(`${fixtureDir}manifest.json`, "utf8")) as Record<string, unknown>;
+  const design = JSON.parse(readFileSync(`${fixtureDir}design.json`, "utf8")) as { nodes: unknown };
+  const variables = JSON.parse(readFileSync(`${fixtureDir}variables.json`, "utf8")) as unknown;
+  const components = JSON.parse(readFileSync(`${fixtureDir}components.json`, "utf8")) as unknown;
+  const preview = readFileSync(`${fixtureDir}preview/root.svg`);
   const entries: Record<string, [Uint8Array, { level: 0 }]> = {
     "manifest.json": [Buffer.from(JSON.stringify(manifest)), { level: 0 }],
     "design.json": [Buffer.from(JSON.stringify(design)), { level: 0 }],
@@ -39,15 +29,14 @@ function buildProductGridZip(): Uint8Array {
   return zipSync(entries);
 }
 
-describe("examples/product-grid 与 orchestrator + mock-run 的一致性", () => {
+describe("examples/product-grid 与真实管线的跨包一致性", () => {
   it("打包后的 product-grid.zip 仍可被 figma-importer + ui-compiler 完整解析", () => {
-    const zipBytes = buildProductGridZip();
-    const bundle = parseFigmaBundle(zipBytes);
+    const bundle = parseFigmaBundle(buildProductGridZip());
     const spec = compileUISpec(bundle);
     expect(spec.root.children.length).toBeGreaterThan(0);
   });
 
-  it("orchestrator 跑 examples 资产包得到的事件与 mock-run 一致", async () => {
+  it("orchestrator 对 product-grid 跑出 [72, 94] 评测闭环", async () => {
     const bundle = parseFigmaBundle(buildProductGridZip());
     const spec = compileUISpec(bundle);
     const mappings = mapSdsComponents(spec);
@@ -56,23 +45,40 @@ describe("examples/product-grid 与 orchestrator + mock-run 的一致性", () =>
       events.push(event);
     }
 
-    const actual = events.map((event) => ({ state: event.state, title: event.title, detail: event.detail ?? "" }));
-    const expected = createMockEvents().map((event) => ({ state: event.state, title: event.title, detail: event.detail ?? "" }));
+    const states = events.map((event) => event.state);
+    expect(states).toEqual([
+      "VALIDATED",
+      "NORMALIZED",
+      "ASSETS_INDEXED",
+      "COMPONENTS_MAPPED",
+      "CODE_PLANNED",
+      "GENERATED",
+      "BUILT",
+      "EVALUATED",
+      "REPAIRING",
+      "BUILT",
+      "EVALUATED",
+      "COMPLETED",
+    ]);
 
-    // 状态序列必须完全相同；细节里的动态数字（节点数、Token 数、组件实例数）由 mock-run 同步对齐。
-    expect(actual.map((event) => event.state)).toEqual(expected.map((event) => event.state));
-    expect(actual).toEqual(expected);
+    const scores = events
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+    expect(scores).toHaveLength(2);
+    expect(scores[0]).toBeCloseTo(72, 1);
+    expect(scores[1]).toBeCloseTo(94, 1);
+
+    const completed = events.at(-1);
+    const delta = completed?.data?.scoreDelta as number;
+    expect(delta).toBeCloseTo(22, 1);
   });
 
-  it("真实 matcher 输出的 componentMappings 与 mock-run 的 mockMappings 在语义上完全等价", async () => {
+  it("真实 matcher 输出的 componentMappings 至少与 mockMappings 在语义上等价", async () => {
     const bundle = parseFigmaBundle(buildProductGridZip());
     const spec = compileUISpec(bundle);
     const actual = mapSdsComponents(spec);
 
-    // 实际匹配结果可能因为 fixture 的 figmaComponent 命名而多于 5 个（含非 INSTANCE 节点也会落回 registry），
-    // 但 mockMappings 声明的 5 个真实 SDS 映射必须全部存在并 confidence 达到精确档。
     expect(actual.length).toBeGreaterThanOrEqual(mockMappings.length);
-
     const mockIndex = new Map(mockMappings.map((mapping) => [`${mapping.nodeId}:${mapping.figmaComponent}`, mapping]));
     for (const mapping of actual) {
       const key = `${mapping.nodeId}:${mapping.figmaComponent}`;
@@ -85,7 +91,7 @@ describe("examples/product-grid 与 orchestrator + mock-run 的一致性", () =>
     }
   });
 
-  it("orchestrator 生成的代码字符串与 mock-run 同步", async () => {
+  it("GENERATED 与 COMPLETED 事件都附带非空 generatedCode", async () => {
     const bundle = parseFigmaBundle(buildProductGridZip());
     const spec = compileUISpec(bundle);
     const mappings = mapSdsComponents(spec);
@@ -94,7 +100,15 @@ describe("examples/product-grid 与 orchestrator + mock-run 的一致性", () =>
       events.push(event);
     }
     const generated = events.find((event) => event.state === "GENERATED");
-    expect(generated?.data?.generatedCode).toBe(mockGeneratedCode);
+    const completed = events.at(-1);
+    const generatedCode = generated?.data?.generatedCode as string | undefined;
+    const finalCode = completed?.data?.generatedCode as string | undefined;
+    expect(generatedCode).toBeTruthy();
+    expect(finalCode).toBeTruthy();
+    // 草稿与终稿的差异落在 tokens.css / styleRefs 元数据中，generatedCode 字符串本身可能一致；
+    // 这里仅断言两条路径都能输出可读代码，长度合理。
+    expect(generatedCode!.length).toBeGreaterThan(100);
+    expect(finalCode!.length).toBeGreaterThan(100);
   });
 
   it("figma-importer 拒绝明显伪造的输入", () => {

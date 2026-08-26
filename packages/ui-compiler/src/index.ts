@@ -74,6 +74,8 @@ export function compileUISpec(bundle: DesignBundle): UISpec {
     version: 1,
     name: bundle.manifest.name,
     viewport: bundle.manifest.viewport,
+    // 透传 variables.json 的 Design Token 声明，供 codegen/evaluator 决策。
+    tokens: bundle.variables ?? [],
     root: compileNode(root, true),
   });
 }

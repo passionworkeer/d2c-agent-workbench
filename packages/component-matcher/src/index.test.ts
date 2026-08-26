@@ -20,6 +20,7 @@ function specWith(...nodes: UISpecNode[]): UISpec {
     version: 1,
     name: "Mapping Test",
     viewport: { width: 1440, height: 900 },
+    tokens: [],
     root: {
       id: "page",
       name: "Page",

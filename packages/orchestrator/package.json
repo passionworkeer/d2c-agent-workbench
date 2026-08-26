@@ -10,8 +10,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@d2c/codegen": "workspace:*",
     "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
     "@d2c/evaluator": "workspace:*"
+  },
+  "devDependencies": {
+    "@d2c/figma-importer": "workspace:*",
+    "@d2c/ui-compiler": "workspace:*"
   }
 }

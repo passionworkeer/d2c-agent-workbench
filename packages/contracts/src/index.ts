@@ -37,6 +37,15 @@ export const designNodeSchema: z.ZodType<DesignNode> = z.lazy(() =>
   }),
 );
 
+// Design Token 声明：来自 variables.json，ui-compiler 编译时透传到 UISpec。
+// codegen 据此判断"已声明 vs 未声明"（未声明的 token 触发 define-token 修复操作）。
+export const tokenDefinitionSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(["COLOR", "FLOAT", "STRING"]),
+  value: z.union([z.string(), z.number()]),
+});
+export type TokenDefinition = z.infer<typeof tokenDefinitionSchema>;
+
 export const designBundleSchema = z.object({
   manifest: z.object({
     protocolVersion: z.literal("1.0"),
@@ -45,8 +54,18 @@ export const designBundleSchema = z.object({
     exportedAt: z.string().datetime().optional(),
   }),
   nodes: z.array(designNodeSchema).min(1),
-  variables: z.array(z.record(z.string(), z.unknown())),
-  components: z.array(z.record(z.string(), z.unknown())),
+  // Design Token 声明表来自 variables.json。codegen 据此区分"已声明 vs 未声明"。
+  variables: z.array(tokenDefinitionSchema).default([]),
+  // SDS 组件元数据来自 components.json（id/name/properties）。
+  components: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        properties: z.record(z.string(), z.array(z.string())).default({}),
+      }),
+    )
+    .default([]),
   previewUrl: z.string().optional(),
 });
 
@@ -93,8 +112,24 @@ export const uiSpecSchema = z.object({
   version: z.number().int().positive(),
   name: z.string().min(1),
   viewport: viewportSchema,
+  // 已声明的 Design Token 表（来自 variables.json），透传给 codegen 决策是否 emit var()。
+  // 老 fixture 兼容：缺省视为空数组。
+  tokens: z.array(tokenDefinitionSchema).default([]),
   root: uiSpecNodeSchema,
 });
+
+// Agent 工具调用记录：串联 BUILD→EVAL→REPAIR 三类工具的输入/输出/来源（local tool / LLM）。
+// result 只放轻量摘要（计数、id 等），防止 SSE 载荷膨胀。
+export const toolCallSchema = z.object({
+  name: z.string().min(1),
+  provider: z.enum(["local", "llm"]).default("local"),
+  args: z.record(z.string(), z.unknown()).optional(),
+  result: z.record(z.string(), z.unknown()).optional(),
+  note: z.string().optional(),
+});
+export const toolCallListSchema = z.array(toolCallSchema);
+export type ToolCall = z.infer<typeof toolCallSchema>;
+export type ToolCallList = z.infer<typeof toolCallListSchema>;
 
 export const componentMappingSchema = z.object({
   nodeId: z.string(),

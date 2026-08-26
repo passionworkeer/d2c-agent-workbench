@@ -52,6 +52,7 @@ export const mockUiSpec: UISpec = {
   version: 1,
   name: "动感商品网格",
   viewport: { width: 1440, height: 900 },
+  tokens: [],
   root: {
     id: "page",
     name: "电商 / 商品网格",

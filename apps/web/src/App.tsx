@@ -121,6 +121,7 @@ const emptySpec: UISpec = {
   version: 1,
   name: "",
   viewport: { width: 0, height: 0 },
+  tokens: [],
   root: { id: "empty", name: "", type: "FRAME", layout: { direction: "column", width: "fixed", height: "fixed" }, styles: {}, children: [] },
 };
 

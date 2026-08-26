@@ -92,6 +92,25 @@ importers:
         specifier: ^7.1.3
         version: 7.3.6(@types/node@22.20.1)(tsx@4.23.12)
 
+  packages/codegen:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@d2c/component-matcher':
+        specifier: workspace:*
+        version: link:../component-matcher
+      '@d2c/evaluator':
+        specifier: workspace:*
+        version: link:../evaluator
+      '@d2c/figma-importer':
+        specifier: workspace:*
+        version: link:../figma-importer
+      '@d2c/ui-compiler':
+        specifier: workspace:*
+        version: link:../ui-compiler
+
   packages/component-matcher:
     dependencies:
       '@d2c/contracts':
@@ -106,6 +125,9 @@ importers:
 
   packages/evaluator:
     dependencies:
+      '@d2c/codegen':
+        specifier: workspace:*
+        version: link:../codegen
       '@d2c/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -121,6 +143,9 @@ importers:
 
   packages/orchestrator:
     dependencies:
+      '@d2c/codegen':
+        specifier: workspace:*
+        version: link:../codegen
       '@d2c/component-matcher':
         specifier: workspace:*
         version: link:../component-matcher
@@ -130,6 +155,13 @@ importers:
       '@d2c/evaluator':
         specifier: workspace:*
         version: link:../evaluator
+    devDependencies:
+      '@d2c/figma-importer':
+        specifier: workspace:*
+        version: link:../figma-importer
+      '@d2c/ui-compiler':
+        specifier: workspace:*
+        version: link:../ui-compiler
 
   packages/ui-compiler:
     dependencies:
