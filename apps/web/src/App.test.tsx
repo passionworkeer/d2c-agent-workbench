@@ -325,4 +325,56 @@ describe("I2D 设计稿生成链路", () => {
     const card1After = document.querySelectorAll(".product-card")[0];
     expect(card1After?.className).toBe(beforeTone);
   });
+
+  it("I2D 模式显示 Settings 入口；切到 LLM + 缺 key → 降级规则解析 + 错误提示", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    // Settings 入口可见（默认显示当前 provider）
+    expect(screen.getByTestId("open-settings")).toBeInTheDocument();
+
+    // 打开 Settings → 切到 LLM → 保存
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("open-settings"));
+    });
+    expect(screen.getByTestId("settings-popover")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("settings-provider"), { target: { value: "llm" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("settings-save"));
+    });
+
+    // 运行演示 → 发送指令：因服务端无 key，会从 server fetch /api/canvas/interpret 返回 400，
+    // 这里 mock 该接口为 502 → 降级规则解析 + 显示错误提示。
+    const fakeFetch = vi.fn(async () =>
+      new Response(JSON.stringify({ code: "LLM_UNAVAILABLE", message: "mock LLM 不可达" }), { status: 502 }),
+    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch as unknown as typeof fetch;
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+      });
+      await act(async () => vi.runAllTimersAsync());
+
+      const input = screen.getByTestId("chat-input");
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "把第二张卡片换成 lime" } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("chat-send"));
+      });
+
+      // 降级后规则解析仍生效：card-2 应当变 lime
+      const card2After = document.querySelectorAll(".product-card")[1];
+      expect(card2After?.classList.contains("lime")).toBe(true);
+      // ChatPanel 显示 LLM 不可达提示
+      expect(screen.getByText(/mock LLM 不可达/)).toBeInTheDocument();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

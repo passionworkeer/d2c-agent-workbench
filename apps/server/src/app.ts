@@ -18,6 +18,7 @@ import { runReplayWorkflow } from "@d2c/orchestrator";
 import { compileUISpec } from "@d2c/ui-compiler";
 import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
+import { interpretCanvasEdit } from "./llm";
 
 interface BuildAppOptions {
   replayDelayMs?: number;
@@ -245,6 +246,40 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     request.raw.on("close", () => {
       runListeners.delete(send);
       if (runListeners.size === 0) listeners.delete(run.id);
+    });
+  });
+
+  // LLM interpret 路由：浏览器 → 本地 Fastify 代理（key 走 X-LLM-Key 请求头）→ MiniMax，
+  // 规避 CORS 并保证 key 不落仓库文件。
+  app.post<{
+    Body: {
+      text?: string;
+      specSummary?: Array<{ id: string; name: string; role?: string; figmaComponent?: string }>;
+      model?: string;
+      baseUrl?: string;
+    };
+  }>("/api/canvas/interpret", async (request, reply) => {
+    const apiKey = request.headers["x-llm-key"];
+    const text = request.body?.text;
+    const specSummary = request.body?.specSummary ?? [];
+    const model = request.body?.model ?? "MiniMax-M3";
+    const baseUrl = request.body?.baseUrl ?? "https://api.minimaxi.com/anthropic";
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+      return reply.code(400).send({ code: "LLM_BAD_REQUEST", message: "缺少 X-LLM-Key 请求头" });
+    }
+    if (typeof text !== "string" || text.trim() === "") {
+      return reply.code(400).send({ code: "LLM_BAD_REQUEST", message: "缺少 text 字段" });
+    }
+    const result = await interpretCanvasEdit({ baseUrl, apiKey, model, text, specSummary });
+    if (!result.ok) {
+      const httpCode = result.code === "LLM_UNAVAILABLE" ? 502 : 400;
+      return reply.code(httpCode).send({ code: result.code, message: result.message });
+    }
+    return reply.code(200).send({
+      ops: result.ops,
+      explanation: result.explanation,
+      provider: result.provider,
+      model: result.model,
     });
   });
 

@@ -342,6 +342,27 @@ button { cursor: pointer; }
 }
 .chat-bubble.user { background: #fff; border: 1px solid var(--line); color: var(--text); }
 .chat-bubble.agent { background: var(--surface-tint); border: 1px solid #d9dfd2; color: #33401f; margin-left: auto; }
+.chat-empty { font-size: 11px; color: #858c82; padding: 7px 10px; border: 1px dashed var(--line); border-radius: 9px; margin-bottom: 8px; }
+.chat-form { display: flex; gap: 7px; margin-top: 9px; }
+.chat-form input { flex: 1; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; background: #fff; }
+.chat-form input:focus { outline: none; border-color: var(--acid); }
+.chat-form button { display: inline-flex; gap: 4px; align-items: center; }
+
+/* LLM Provider 设置面板 */
+.settings-popover { position: fixed; top: 64px; right: 16px; z-index: 50; width: 320px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px rgba(23, 26, 22, 0.12); padding: 12px 14px; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.settings-head div { display: flex; align-items: center; gap: 6px; }
+.settings-body { display: flex; flex-direction: column; gap: 9px; }
+.settings-row { display: grid; grid-template-columns: 80px 1fr; gap: 9px; align-items: center; font-size: 12px; }
+.settings-row label { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 500; }
+.settings-row input, .settings-row select { padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; background: #fff; }
+.settings-key-wrap { display: flex; gap: 4px; align-items: center; }
+.settings-key-wrap input { flex: 1; font-family: Consolas, monospace; font-size: 11px; }
+.icon-button { background: transparent; border: none; cursor: pointer; padding: 4px; color: var(--text); }
+.icon-button:hover { color: var(--acid-dark); }
+.settings-hint { font-size: 10.5px; color: #858c82; line-height: 1.5; margin-top: 4px; }
+.settings-hint code { font-family: Consolas, monospace; font-size: 10px; background: #f4f1e8; padding: 1px 4px; border-radius: 3px; }
+.settings-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
 
 .delivery-column { padding-bottom: 14px; }
 .score-panel { margin: 14px; display: flex; align-items: center; gap: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfa; }

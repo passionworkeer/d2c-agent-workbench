@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { zipSync } from "fflate";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
 
 const fixtureRoot = join(process.cwd(), "..", "..", "examples", "figma-bundles", "product-grid");
@@ -171,6 +171,86 @@ describe("D2C server", () => {
     expect(frames).toHaveLength(12);
     expect(frames[0]?.state).toBe("VALIDATED");
     expect(frames.at(-1)?.state).toBe("COMPLETED");
+    await app.close();
+  });
+});
+
+describe("canvas/interpret route", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it("缺少 X-LLM-Key 返回 400", async () => {
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/canvas/interpret",
+      payload: { text: "把第二张卡片换成 lime", specSummary: [] },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("LLM_BAD_REQUEST");
+    await app.close();
+  });
+
+  it("成功：透传规范化 ops + provider", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            content: [
+              {
+                type: "tool_use",
+                name: "apply_canvas_edits",
+                input: {
+                  ops: [{ kind: "set-prop", selector: { kind: "nodeId", nodeId: "card-2" }, prop: "tone", value: "lime" }],
+                  explanation: "由 LLM 给出",
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/canvas/interpret",
+      headers: { "x-llm-key": "secret-key-987654" },
+      payload: { text: "把第二张卡片换成 lime", specSummary: [{ id: "card-2", name: "商品卡片 2" }] },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { ops: unknown[]; explanation: string; provider: string };
+    expect(body.provider).toBe("llm");
+    expect(body.ops).toHaveLength(1);
+    expect(body.explanation).toBe("由 LLM 给出");
+    // X-LLM-Key 不应在请求日志或响应里出现
+    expect(JSON.stringify(body)).not.toContain("secret-key-987654");
+    await app.close();
+  });
+
+  it("LLM 不可达（5xx）→ 502 LLM_UNAVAILABLE", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("upstream down", { status: 503 })),
+    );
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/canvas/interpret",
+      headers: { "x-llm-key": "secret-key-987654" },
+      payload: { text: "x", specSummary: [] },
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().code).toBe("LLM_UNAVAILABLE");
+    expect(response.json().message).not.toContain("secret-key-987654");
     await app.close();
   });
 });

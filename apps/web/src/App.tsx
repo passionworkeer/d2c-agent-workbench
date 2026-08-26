@@ -19,6 +19,7 @@ import {
   RotateCcw,
   ScanLine,
   Send,
+  Settings2,
   Sparkles,
   Upload,
   WandSparkles,
@@ -36,7 +37,14 @@ import {
 } from "./lib/mock-design";
 import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
-import { applyEditOps, parseIntent } from "@d2c/canvas-ops";
+import { applyEditOps } from "@d2c/canvas-ops";
+import {
+  interpretViaProvider,
+  loadProviderSettings,
+  saveProviderSettings,
+  type ProviderSettings,
+} from "./lib/provider";
+import { SettingsPopover } from "./components/SettingsPopover";
 
 type Mode = "d2c" | "i2d";
 
@@ -300,6 +308,9 @@ export default function App() {
   // 通过 canvas-ops.applyEditOps 落地并同步 events（CANVAS_EDITED 实时追加）。
   const [designSpec, setDesignSpec] = useState<UISpec | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  // Provider 设置仅在 I2D 模式生效：默认规则解析（演示零风险），用户可在设置面板切到 LLM。
+  const [providerSettings, setProviderSettings] = useState<ProviderSettings>(() => loadProviderSettings());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     if (designSpec) return;
     const seed = events.find((event) => event.state === "SPEC_GENERATED")?.data?.uiSpec as UISpec | undefined;
@@ -316,53 +327,63 @@ export default function App() {
     };
   }, [designReady, designSpec]);
 
-  // 用户发送画布编辑指令：parseIntent → applyEditOps → 写回 designSpec 并追加 CANVAS_EDITED 事件。
-  function handleChatSend(text: string) {
+  // 用户发送画布编辑指令：provider 派发（默认规则 / LLM）→ applyEditOps → 写回 designSpec 并追加 CANVAS_EDITED 事件。
+  // LLM 路径不可达（401/超时/网络）→ 降级规则解析，toolCalls 记录 fallback:true，ChatPanel 显示提示。
+  async function handleChatSend(text: string) {
     const userMsg: ChatMsg = { role: "user", text };
     if (!designSpec) {
       setChatMessages((prev) => [...prev, userMsg, { role: "agent", text: "设计稿尚未生成，请先运行演示。" }]);
       return;
     }
-    const intent = parseIntent(text, designSpec);
+    const outcome = await interpretViaProvider(text, designSpec, providerSettings);
     let agentText: string;
     let newSpec: UISpec = designSpec;
-    let ops: ReturnType<typeof parseIntent> extends infer T ? T extends { ops: infer O } ? O : never : never = [] as never;
-    let explanation = "";
-    let confidence = 0;
-    if (intent && intent.ops.length > 0) {
-      const applied = applyEditOps(designSpec, intent.ops);
+    if (outcome.intent.ops.length > 0) {
+      const applied = applyEditOps(designSpec, outcome.intent.ops);
       newSpec = applied.spec;
-      ops = intent.ops as never;
-      explanation = intent.explanation;
-      confidence = intent.confidence;
-      agentText = intent.explanation;
+      agentText = outcome.intent.explanation;
       if (applied.missed.length > 0) agentText += `；未命中 ${applied.missed.length} 项`;
-      setDesignSpec(newSpec);
     } else {
       agentText = "暂未识别该指令——可以试试『把第二张卡片换成 lime』『标题改成 春季新品』等具体指令。";
     }
+    if (outcome.fallback && outcome.errorMessage) {
+      agentText += `（LLM 不可达：${outcome.errorMessage}；已自动降级到规则解析）`;
+    }
     setChatMessages((prev) => [...prev, userMsg, { role: "agent", text: agentText }]);
+    setDesignSpec(newSpec);
 
-    if (intent && intent.ops.length > 0) {
+    if (outcome.intent.ops.length > 0) {
       const editIndex = events.filter((event) => event.state === "CANVAS_EDITED").length + 1;
-      const toolCalls: ToolCall[] = [
-        {
-          name: "canvas.parseIntent",
-          provider: "local",
-          args: { text },
-          result: { ops: intent.ops, explanation, confidence },
-        },
-      ];
+      const toolCalls: ToolCall[] = outcome.provider === "llm"
+        ? [
+            {
+              name: "llm.interpretIntent",
+              provider: "llm",
+              args: { text, model: providerSettings.model, baseUrl: providerSettings.baseUrl },
+              result: { ops: outcome.intent.ops, explanation: outcome.intent.explanation, fallback: outcome.fallback },
+              note: outcome.fallback ? `fallback to rule parser: ${outcome.errorMessage ?? "unknown"}` : undefined,
+            },
+          ]
+        : [
+            {
+              name: "canvas.parseIntent",
+              provider: "local",
+              args: { text },
+              result: { ops: outcome.intent.ops, explanation: outcome.intent.explanation, confidence: outcome.intent.confidence },
+            },
+          ];
       const editEvent: TraceEvent = {
         id: `mock-design-run-edit-${editIndex}`,
         runId: "mock-design-run",
         timestamp: new Date(Date.UTC(2026, 7, 25, 2, 0, 8 + editIndex)).toISOString(),
         state: "CANVAS_EDITED",
-        title: "对话式画布编辑已应用",
-        detail: explanation,
+        title: outcome.provider === "llm" ? "LLM 解析画布编辑已应用" : "对话式画布编辑已应用",
+        detail: outcome.intent.explanation,
         data: {
-          ops: intent.ops,
+          ops: outcome.intent.ops,
           userText: text,
+          provider: outcome.provider,
+          fallback: outcome.fallback,
           toolCalls,
         },
       };
@@ -600,12 +621,28 @@ export default function App() {
             </>
           ) : (
             <>
+              <button
+                className="button secondary"
+                data-testid="open-settings"
+                onClick={() => setSettingsOpen(true)}
+                aria-haspopup="dialog"
+                title="LLM Provider 设置（key 仅存 localStorage）"
+              >
+                <Settings2 size={14} />
+                {providerSettings.provider === "llm" ? "LLM" : "规则"}
+              </button>
               <button className="button secondary" disabled={running} onClick={() => imageInput.current?.click()}><ImageIcon size={15} />上传参考图</button>
               <button className="button primary" disabled={running} onClick={() => startDesignDemo(designInput)}><Play size={15} fill="currentColor" />运行设计稿生成演示</button>
             </>
           )}
         </div>
       </header>
+
+      <SettingsPopover
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onChange={(next) => setProviderSettings(next)}
+      />
 
       {stepQueue && (
         <div className="step-bar">
