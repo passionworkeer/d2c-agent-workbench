@@ -39,7 +39,9 @@ describe("D2C 工作台", () => {
   it("分步演示：点一下揭示一步，可回退，走完得到 72 → 94", async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    });
 
     // 第一步立即出现，其余不出现
     expect(screen.getByText("资产包校验完成")).toBeInTheDocument();
@@ -53,10 +55,11 @@ describe("D2C 工作台", () => {
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
     expect(screen.getByTestId("score-delta")).toHaveTextContent("+22");
     expect(screen.getByText("3 项问题已修复")).toBeInTheDocument();
-    expect(screen.getByText("商品网格使用了硬编码间距 18px")).toBeInTheDocument();
+    // 真实管线从产物推导的 violation 文本（intro gap=12 被量化为 16）
+    expect(screen.getByText("商品网格使用了硬编码间距 16px")).toBeInTheDocument();
     expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
 
-    // 上一步可回退：事件从 12 变 11，代码生成事件重新可见
+    // 上一步可回退：事件从 12 变 11
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /上一步/ }));
     });
@@ -70,7 +73,9 @@ describe("D2C 工作台", () => {
     vi.useFakeTimers();
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
     });
@@ -82,7 +87,9 @@ describe("D2C 工作台", () => {
   it("代码 Diff 页签真实可切换并展示 diff 与修复补丁", async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    });
     await advanceToEnd();
 
     await act(async () => {
@@ -90,7 +97,7 @@ describe("D2C 工作台", () => {
     });
     expect(screen.getByTestId("diff-view")).toBeInTheDocument();
     expect(screen.getByText("+ ProductGridPage.tsx")).toBeInTheDocument();
-    expect(screen.getByText("18px → var(--spacing-lg)")).toBeInTheDocument();
+    expect(screen.getByText("硬编码间距 → var(--spacing)")).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "页面预览" }));
@@ -109,9 +116,11 @@ describe("D2C 工作台", () => {
     await act(async () => Promise.resolve());
 
     expect(screen.getByText(/上传失败/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "使用演示数据继续" }));
+    // 降级按钮触发本地真实管线（async），需要 await act 让 runLocalQueue 完成后再继续推进分步
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "使用演示数据继续" }));
+    });
 
-    // 降级同样进入分步模式，走完拿到 94
     vi.useRealTimers();
     await advanceToEnd();
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
@@ -176,7 +185,9 @@ describe("D2C 工作台", () => {
 
     try {
       render(<App />);
-      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+      });
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
       });
@@ -187,10 +198,10 @@ describe("D2C 工作台", () => {
       expect(createUrl).toHaveBeenCalled();
       expect(click).toHaveBeenCalled();
       const report = JSON.parse(capturedText) as { run: { id: string } | null; events: TraceEvent[]; evaluations: { overall: number }[] };
-      expect(report.run?.id).toBe("mock-product-grid");
+      expect(report.run?.id).toBe("local-demo");
       expect(report.events).toHaveLength(12);
       expect(report.evaluations.map((item) => item.overall)).toEqual([72, 94]);
-      expect((anchor as HTMLAnchorElement).download).toBe("mock-product-grid-report.json");
+      expect((anchor as HTMLAnchorElement).download).toBe("local-demo-report.json");
       expect(revokeUrl).toHaveBeenCalledWith("blob:mock-url");
     } finally {
       URL.createObjectURL = originalCreate;

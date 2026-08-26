@@ -57,9 +57,30 @@ importers:
 
   apps/web:
     dependencies:
+      '@d2c/codegen':
+        specifier: workspace:*
+        version: link:../../packages/codegen
+      '@d2c/component-matcher':
+        specifier: workspace:*
+        version: link:../../packages/component-matcher
       '@d2c/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@d2c/evaluator':
+        specifier: workspace:*
+        version: link:../../packages/evaluator
+      '@d2c/figma-importer':
+        specifier: workspace:*
+        version: link:../../packages/figma-importer
+      '@d2c/orchestrator':
+        specifier: workspace:*
+        version: link:../../packages/orchestrator
+      '@d2c/ui-compiler':
+        specifier: workspace:*
+        version: link:../../packages/ui-compiler
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.3
       lucide-react:
         specifier: ^0.542.0
         version: 0.542.0(react@19.2.8)

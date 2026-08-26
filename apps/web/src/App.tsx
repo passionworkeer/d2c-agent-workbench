@@ -32,7 +32,8 @@ import {
   referenceImageUrl,
   type DesignInput,
 } from "./lib/mock-design";
-import { createMockEvents, createMockRun, mockMappings, mockUiSpec, playMockWorkflow } from "./lib/mock-run";
+import { createLocalRunEvents, extractRunDetail, playEvents } from "./lib/local-run";
+import { mockMappings, mockUiSpec } from "./lib/mock-run";
 
 type Mode = "d2c" | "i2d";
 
@@ -338,9 +339,35 @@ export default function App() {
     setEvents(queue.slice(0, 1));
   }
 
+  // 浏览器内真实执行：直接调 runReplayWorkflow，得到 12 步事件序列后注入分步队列。
+  // 与上传路径（server SSE）共享同一条确定性管线，差异仅在 spec/mappings 来源。
+  // 同步版本：runReplayWorkflow 在 delayMs=0 时内部只走 Promise.resolve() 微任务，
+  // 我们直接收集全部事件再返回，不依赖定时器。
   function startStepDemo() {
-    setRun(createMockRun());
-    startQueueDemo(createMockEvents());
+    void runLocalQueue("product-grid");
+  }
+
+  async function runLocalQueue(fixtureId: "product-grid") {
+    setRun(null);
+    setError("");
+    try {
+      const events = await createLocalRunEvents(fixtureId);
+      const detail = extractRunDetail(events);
+      setRun({
+        id: detail.id,
+        status: detail.status,
+        state: detail.state,
+        uiSpec: detail.uiSpec ?? mockUiSpec,
+        mappings: detail.mappings,
+        events: [],
+        evaluations: [],
+      });
+      startQueueDemo(events);
+    } catch (caught: unknown) {
+      const message = caught instanceof Error ? caught.message : "本地演示运行失败";
+      setError(`本地真实管线启动失败：${message}`);
+      setCanFallback(false);
+    }
   }
 
   function startDesignDemo(input: DesignInput) {
@@ -381,7 +408,7 @@ export default function App() {
     const currentGeneration = generation.current;
     const queue = stepQueue;
     setRunning(true);
-    const playback = playMockWorkflow((event) => {
+    const playback = playEvents(queue, (event) => {
       if (generation.current !== currentGeneration) return;
       consumeEvent(event);
       setStepIndex((index) => Math.min(index + 1, queue.length));

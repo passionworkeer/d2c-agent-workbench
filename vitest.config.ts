@@ -10,8 +10,10 @@ export default defineConfig({
       "@d2c/component-matcher": resolve(__dirname, "packages/component-matcher/src/index.ts"),
       "@d2c/orchestrator": resolve(__dirname, "packages/orchestrator/src/index.ts"),
       "@d2c/evaluator": resolve(__dirname, "packages/evaluator/src/index.ts"),
+      "@d2c/codegen": resolve(__dirname, "packages/codegen/src/index.ts"),
     },
   },
   // 不显式限定 include —— 让每个 workspace 包各自的 vitest run 默认发现本目录下的 *.test.ts，
   // 同时 root scripts/*.test.ts 通过别名仍可解析 @d2c/* 源码。
 });
+

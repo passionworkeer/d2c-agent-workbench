@@ -69,6 +69,8 @@ describe("codegen 校准 product-grid fixture", () => {
     const final = generateReactCode(spec, mappings, "final");
     expect(final.styleRefs).toHaveLength(16);
     expect(final.styleRefs.every((ref) => ref.emitted.type === "var")).toBe(true);
-    expect(final.styleRefs.every((ref) => ref.emitted.declared)).toBe(true);
+    expect(
+      final.styleRefs.every((ref) => ref.emitted.type === "var" && ref.emitted.declared),
+    ).toBe(true);
   });
 });

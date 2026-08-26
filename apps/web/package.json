@@ -10,7 +10,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@d2c/codegen": "workspace:*",
+    "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
+    "@d2c/evaluator": "workspace:*",
+    "@d2c/figma-importer": "workspace:*",
+    "@d2c/orchestrator": "workspace:*",
+    "@d2c/ui-compiler": "workspace:*",
+    "fflate": "^0.8.2",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

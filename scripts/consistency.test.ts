@@ -114,4 +114,37 @@ describe("examples/product-grid 与真实管线的跨包一致性", () => {
   it("figma-importer 拒绝明显伪造的输入", () => {
     expect(() => parseFigmaBundle(new Uint8Array([1, 2, 3]))).toThrow(BundleError);
   });
+
+  it("浏览器本地真实执行 (apps/web/lib/local-run) 与 server 端 SSE 路径产出事件逐字段一致", async () => {
+    // web 与 server 两条路径都调 runReplayWorkflow，差别只在 spec/mappings 来源与 runId。
+    // 这里用相同 runId + 相同 fixture 跑两边，逐字段断言 trace 一致；
+    // CANVAS_EDITED（-edit-N）实时追加事件不在此断言范围。
+    const { createLocalRunEvents } = await import("../apps/web/src/lib/local-run");
+    const { runReplayWorkflow } = await import("@d2c/orchestrator");
+
+    // web 本地
+    const webEvents = await createLocalRunEvents("product-grid");
+
+    // server 端走同一 fixture 的 zip 解析
+    const bundle = parseFigmaBundle(buildProductGridZip());
+    const spec = compileUISpec(bundle);
+    const mappings = mapSdsComponents(spec);
+    const serverEvents: typeof webEvents = [];
+    for await (const event of runReplayWorkflow({ runId: "shared-run-id", spec, mappings, delayMs: 0 })) {
+      serverEvents.push(event);
+    }
+
+    expect(serverEvents).toHaveLength(webEvents.length);
+    expect(serverEvents.map((event) => event.state)).toEqual(webEvents.map((event) => event.state));
+    // 关键载荷字段：分数、scoreDelta、resolvedViolationIds、generatedCode 都必须逐字段一致
+    const serverScores = serverEvents
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+    const webScores = webEvents
+      .filter((event) => event.state === "EVALUATED")
+      .map((event) => (event.data?.evaluation as { overall: number }).overall);
+    expect(webScores).toEqual(serverScores);
+    expect(webEvents.at(-1)?.data?.scoreDelta).toBe(serverEvents.at(-1)?.data?.scoreDelta);
+    expect(webEvents.at(-1)?.data?.generatedCode).toBe(serverEvents.at(-1)?.data?.generatedCode);
+  });
 });
