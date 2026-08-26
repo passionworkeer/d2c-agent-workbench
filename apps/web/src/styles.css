@@ -98,6 +98,11 @@ button { cursor: pointer; }
 .button.primary { background: #b9f22e; border-color: #a8df21; color: #172000; }
 .button.export { background: #1c211b; border-color: #1c211b; color: #fff; }
 .button.fallback { background: #fff; border-color: rgba(240, 90, 42, .45); color: #b33b16; white-space: nowrap; }
+/* 语境次级动作（导出 Skill）：弱化为无边框文字按钮，主 CTA 永远最右 */
+.button.ghost { background: transparent; border-color: transparent; color: #77806f; font-weight: 600; padding: 9px 10px; }
+.button.ghost:hover:not(:disabled) { color: var(--text); transform: none; box-shadow: none; background: var(--surface-soft); }
+.header-actions .button { position: relative; }
+.warn-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 3px rgba(240, 90, 42, .15); }
 .button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(31, 43, 21, .10); }
 
 /* 分步演示控制条：吸顶在 topbar 下方，边讲边点始终可达 */
@@ -126,69 +131,66 @@ button { cursor: pointer; }
 }
 .step-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* 链路模式切换：Figma→代码 / 参考图→设计稿 */
+/* 链路模式切换：紧凑分段控件；右侧 mode-context 回显当前语境（fixture / 引擎） */
 .mode-tabs {
   display: flex;
-  gap: 10px;
-  padding: 14px 24px 0;
+  gap: 5px;
+  padding: 12px 24px 0;
+  align-items: center;
 }
 .mode-tabs button {
-  flex: 1;
-  max-width: 360px;
-  padding: 11px 16px;
-  border: 1px solid var(--line-strong);
-  border-radius: 11px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
   background: #fff;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--muted);
-  text-align: left;
   transition: .2s;
 }
 .mode-tabs button small {
-  display: block;
-  margin-top: 3px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 400;
   letter-spacing: .06em;
   color: var(--faint);
 }
-.mode-tabs button.active {
-  border-color: #a8df21;
-  background: linear-gradient(120deg, #fbfee9, #fff);
-  color: var(--text);
-  box-shadow: 0 6px 18px rgba(97, 138, 0, .12);
-}
+.mode-tabs button.active { border-color: #a8df21; background: #f2fccf; color: #2d3d0b; }
 .mode-tabs button.active small { color: var(--acid-dark); }
+.mode-context { margin-left: auto; font-family: Consolas, monospace; font-size: 9px; letter-spacing: .12em; color: var(--faint); white-space: nowrap; }
 
+/* hero 细带：标题一行 + 一句描述 + 水平 pipeline，压掉原来的大标题版式 */
 .hero-strip {
-  padding: 28px 24px 22px;
-  display: grid;
-  grid-template-columns: 400px 330px 1fr;
-  gap: 42px;
-  align-items: end;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 13px 24px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(110deg, rgba(240, 90, 42, .055), rgba(255, 255, 255, .75) 38%, rgba(155, 213, 0, .055));
 }
 .kicker { font-family: Consolas, monospace; font-size: 10px; color: var(--orange); letter-spacing: .14em; }
-.hero-strip h1 { margin: 8px 0 0; font-size: 34px; line-height: 1.04; letter-spacing: -.04em; }
+.hero-title { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.hero-strip h1 { margin: 0; font-size: 17px; line-height: 1.2; letter-spacing: -.02em; white-space: nowrap; }
 .hero-strip h1 em { font-style: normal; color: #737b70; }
-.hero-strip > p { font-size: 13px; line-height: 1.75; color: var(--muted); margin: 0 0 5px; }
-.pipeline-rail { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--line-strong); padding-top: 14px; }
-.pipeline-rail div { font-size: 10px; color: #9aa097; position: relative; }
+.hero-strip > p { flex: 1; min-width: 0; font-size: 11px; line-height: 1.45; color: var(--muted); margin: 0; }
+.pipeline-rail { display: flex; align-items: center; gap: 13px; flex: none; }
+.pipeline-rail div { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #9aa097; }
 .pipeline-rail div::before {
   content: "";
-  position: absolute;
-  top: -18px;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #e1e4de;
   border: 1px solid #c4c9c0;
+  flex: none;
 }
+.pipeline-rail span { font-family: Consolas, monospace; font-size: 8px; color: #a0a69d; }
 .pipeline-rail div.done { color: #30362e; font-weight: 700; }
-.pipeline-rail div.done::before { background: var(--acid); border-color: #83b700; box-shadow: 0 0 0 4px rgba(155, 213, 0, .10); }
-.pipeline-rail span { display: block; font-family: Consolas, monospace; font-size: 9px; color: #a0a69d; margin-bottom: 5px; }
+.pipeline-rail div.done::before { background: var(--acid); border-color: #83b700; box-shadow: 0 0 0 3px rgba(155, 213, 0, .10); }
+.pipeline-rail div.active { color: #30362e; font-weight: 700; }
+.pipeline-rail div.active::before { background: var(--orange); border-color: #d14a1f; box-shadow: 0 0 0 3px rgba(240, 90, 42, .12); }
 
 .error-banner {
   margin: 12px 24px 0;
@@ -276,7 +278,6 @@ button { cursor: pointer; }
   font-size: 11px;
   color: var(--muted);
 }
-.header-actions .fixture-toggle { margin: 0; }
 .source-toggle button, .fixture-toggle button {
   padding: 6px 11px;
   border: 1px solid var(--line-strong);
@@ -496,7 +497,9 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-thumb { background: #cfd3cb; border-radius: 10px; }
 @media (max-width: 1100px) {
-  .hero-strip { grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  .hero-strip { flex-wrap: wrap; gap: 10px; }
+  .hero-strip > p { flex-basis: 100%; }
+  .hero-strip h1 { white-space: normal; }
   .topbar { grid-template-columns: auto 1fr; }
   .header-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .run-summary { justify-content: flex-start; }
@@ -506,4 +509,5 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .mode-tabs { flex-wrap: wrap; }
   .mode-tabs button { max-width: none; }
+  .mode-context { margin-left: 0; }
 }

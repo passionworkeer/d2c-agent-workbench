@@ -93,6 +93,27 @@ const pipelineStages: Record<Mode, string[]> = {
   i2d: ["输入", "UI 理解", "布局", "组件", "设计稿", "导出"],
 };
 
+// pipeline-rail 的推进不能按事件序号近似（SSE 上传 / 上一步回退 / 聊天追加 CANVAS_EDITED
+// 都会让 index*N 错位），按 state 归类：任一映射 state 已出现即该 stage 完成。
+const stageStateMap: Record<Mode, WorkflowState[][]> = {
+  d2c: [
+    ["UPLOADED", "VALIDATED"],
+    ["NORMALIZED", "ASSETS_INDEXED"],
+    ["COMPONENTS_MAPPED"],
+    ["CODE_PLANNED", "GENERATED", "BUILT"],
+    ["EVALUATED"],
+    ["REPAIRING", "COMPLETED", "NEEDS_REVIEW", "FAILED"],
+  ],
+  i2d: [
+    ["IMAGE_RECEIVED", "UPLOADED"],
+    ["VISION_PARSED", "NODETREE_PARSED"],
+    ["LAYOUT_INFERRED"],
+    ["COMPONENTS_DETECTED", "TOKENS_BOUND"],
+    ["SPEC_GENERATED"],
+    ["CANVAS_EDITED", "SPEC_EXPORTED", "COMPLETED"],
+  ],
+};
+
 function isTerminalState(state: WorkflowState): boolean {
   return state === "COMPLETED" || state === "FAILED" || state === "NEEDS_REVIEW";
 }
@@ -630,6 +651,9 @@ export default function App() {
     : { nodes: 12, instances: 6, tokens: 9 };
 
   const stages = pipelineStages[mode];
+  const seenStates = new Set(events.map((event) => event.state));
+  const stageDone = stageStateMap[mode].map((states) => states.some((state) => seenStates.has(state)));
+  const activeStageIndex = stageDone.findIndex((done) => !done);
 
   return (
     <main className="app-shell">
@@ -643,21 +667,14 @@ export default function App() {
         </div>
         <div className="header-actions">
           {mode === "d2c" ? (
-            <>
-              <div className="fixture-toggle">
-                <span>Fixture</span>
-                <button className={fixture === "product-grid" ? "active" : ""} onClick={() => setFixture("product-grid")}>商品网格</button>
-                <button className={fixture === "form-page" ? "active" : ""} onClick={() => setFixture("form-page")}>表单页</button>
-              </div>
-              <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
-            </>
+            <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
           ) : (
             <input data-testid="image-input" ref={imageInput} type="file" accept="image/*" hidden onChange={handleImageChange} />
           )}
-          <a className="button secondary skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
           {mode === "d2c" ? (
             <>
               <button className="button secondary" disabled={running} onClick={() => fileInput.current?.click()}><Upload size={15} />上传 Figma 资产包</button>
+              <a className="button ghost skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
               <button className="button primary" disabled={running} onClick={startStepDemo}><Play size={15} fill="currentColor" />运行完整演示</button>
             </>
           ) : (
@@ -671,8 +688,12 @@ export default function App() {
               >
                 <Settings2 size={14} />
                 {providerSettings.provider === "llm" ? "LLM" : "规则"}
+                {providerSettings.provider === "llm" && providerSettings.key === "" && (
+                  <i className="warn-dot" aria-hidden="true" />
+                )}
               </button>
               <button className="button secondary" disabled={running} onClick={() => imageInput.current?.click()}><ImageIcon size={15} />上传参考图</button>
+              <a className="button ghost skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
               <button className="button primary" disabled={running} onClick={() => startDesignDemo(designInput)}><Play size={15} fill="currentColor" />运行设计稿生成演示</button>
             </>
           )}
@@ -702,16 +723,29 @@ export default function App() {
       <div className="mode-tabs">
         <button className={mode === "d2c" ? "active" : ""} onClick={() => switchMode("d2c")}>Figma → 代码<small>D2C · 设计稿转生产代码</small></button>
         <button className={mode === "i2d" ? "active" : ""} onClick={() => switchMode("i2d")}>参考图 → 设计稿<small>I2D · 多模态 UI 理解与生成</small></button>
+        <div className="mode-context">
+          {mode === "d2c"
+            ? `FIXTURE · ${fixture === "product-grid" ? "商品网格" : "表单页"}`
+            : `ENGINE · ${providerSettings.provider === "llm" ? "真实视觉模型 LLM" : "演示 Mock"}`}
+        </div>
       </div>
 
       <section className="hero-strip">
-        <div><span className="kicker">设计 → 证据 → {mode === "d2c" ? "代码" : "设计稿"}</span><h1>编译设计意图，<br/><em>而不是堆叠像素。</em></h1></div>
+        <div className="hero-title">
+          <span className="kicker">设计 → 证据 → {mode === "d2c" ? "代码" : "设计稿"}</span>
+          <h1>编译设计意图，<em>而不是堆叠像素。</em></h1>
+        </div>
         <p>{mode === "d2c"
           ? "把 Figma 结构、生产组件和独立 Eval Agent 汇入一条可追踪、可评测、可修复的 D2C 链路。"
           : "融合参考图 / Figma 节点树与 Auto Layout 约束，产出结构化、可编辑、可直接进入出码链路的设计稿。"}</p>
         <div className="pipeline-rail">
           {stages.map((label, index) => (
-            <div className={events.length > index * (mode === "d2c" ? 2 : 1.5) ? "done" : ""} key={label}><span>{String(index + 1).padStart(2, "0")}</span>{label}</div>
+            <div
+              className={stageDone[index] ? "done" : index === activeStageIndex ? "active" : ""}
+              key={label}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>{label}
+            </div>
           ))}
         </div>
       </section>
@@ -723,6 +757,11 @@ export default function App() {
           <>
             <article className="workspace-column source-column">
               <div className="column-heading"><div><ScanLine size={16}/><span>设计输入</span></div><span>FIGMA 资产包</span></div>
+              <div className="fixture-toggle">
+                <span>Fixture</span>
+                <button className={fixture === "product-grid" ? "active" : ""} onClick={() => setFixture("product-grid")}>商品网格</button>
+                <button className={fixture === "form-page" ? "active" : ""} onClick={() => setFixture("form-page")}>表单页</button>
+              </div>
               <div className="design-canvas">
                 {run?.previewUrl ? <img src={run.previewUrl} alt="Figma 商品网格预览" /> : <div className="empty-source"><Layers3 size={32}/><strong>结构化设计输入</strong><span>运行本地完整演示，或上传包含节点、变量与组件信息的 Figma 资产包。</span></div>}
                 <span className="canvas-badge">{run ? `${run.uiSpec.viewport.width} × ${run.uiSpec.viewport.height}` : "1440 × 900"}</span>
