@@ -6,3 +6,8 @@ test-results/
 runs/
 *.local
 .gstack/
+
+# 绝不入仓：本地 LLM key / 任何环境敏感变量
+.env
+.env.*
+!.env.example

@@ -195,6 +195,35 @@ describe("interpretCanvasEdit", () => {
     expect(allLogs).not.toContain("super-secret-key-do-not-leak");
     spy.mockRestore();
   });
+
+  it("input_schema 是合法 JSON Schema（不是 zod 内部对象），LLM 端才能解析", async () => {
+    let capturedBody = "";
+    const fetchImpl = makeFetch(async (_url, init) => {
+      capturedBody = String(init?.body ?? "");
+      return new Response(JSON.stringify({ content: [{ type: "text", text: "no" }] }), { status: 200 });
+    });
+    await interpretCanvasEdit({
+      baseUrl: "https://api.example.com",
+      apiKey: "k",
+      model: "MiniMax-M3",
+      text: "x",
+      specSummary: [],
+      fetchImpl,
+    });
+    const parsed = JSON.parse(capturedBody) as {
+      tools: Array<{ name: string; input_schema: unknown }>;
+    };
+    const schema = parsed.tools[0]?.input_schema;
+    // 不能出现 zod 内部字段（zod 序列化后含这些键，证明序列化没经过 zodToJsonSchema）
+    expect(schema).not.toHaveProperty("_def");
+    expect(schema).not.toHaveProperty("typeName");
+    // 必须含 ops + explanation + oneOf 节点
+    expect(JSON.stringify(schema)).toContain('"oneOf"');
+    expect(JSON.stringify(schema)).toContain('"set-prop"');
+    expect(JSON.stringify(schema)).toContain('"set-style"');
+    expect(JSON.stringify(schema)).toContain('"set-text"');
+    expect(JSON.stringify(schema)).toContain('"set-layout"');
+  });
 });
 
 // 模拟 UISpec → specSummary 的轻量投影（直接用 mockUiSpec 的关键字段）

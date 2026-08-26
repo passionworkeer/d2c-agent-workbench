@@ -22,9 +22,8 @@ export interface InterpretFailure {
 
 export type InterpretResult = InterpretSuccess | InterpretFailure;
 
-// 工具输入 schema：与服务端 editOpsSchema 同形（NodeSelector + EditOp 联合）。
-// 这里再展开一份，因为 LLM 端只接受纯 JSON Schema，zod 生成的不一定通过它的校验器。
-const editOpShape = z.union([
+// 服务端校验用 zod schema：LLM 返回的 ops 也用同一份 schema（与 JSON Schema 结构一致）。
+const editOpShapeInternal = z.union([
   z.object({
     kind: z.literal("set-prop"),
     selector: z.object({ kind: z.literal("nodeId"), nodeId: z.string() }),
@@ -49,7 +48,77 @@ const editOpShape = z.union([
     value: z.union([z.number(), z.string()]),
   }),
 ]);
-const editOpsShape = z.array(editOpShape);
+const editOpsShape = z.array(editOpShapeInternal);
+
+// LLM 端只接受纯 JSON Schema，zod 通过 JSON.stringify 不会变成合法 JSON Schema
+// （会输出 `{_def, typeName, ...}` 等内部字段）。这里手写一份，结构与 editOpsShape 一致。
+const nodeIdSelectorSchema = {
+  type: "object",
+  properties: {
+    kind: { const: "nodeId" },
+    nodeId: { type: "string" },
+  },
+  required: ["kind", "nodeId"],
+  additionalProperties: false,
+} as const;
+
+const editOpJsonSchema = {
+  oneOf: [
+    {
+      type: "object",
+      properties: {
+        kind: { const: "set-prop" },
+        selector: nodeIdSelectorSchema,
+        prop: { type: "string" },
+        value: { type: ["string", "number", "boolean"] },
+      },
+      required: ["kind", "selector", "prop", "value"],
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      properties: {
+        kind: { const: "set-style" },
+        selector: nodeIdSelectorSchema,
+        property: { type: "string" },
+        value: { type: ["string", "number"] },
+      },
+      required: ["kind", "selector", "property", "value"],
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      properties: {
+        kind: { const: "set-text" },
+        selector: nodeIdSelectorSchema,
+        text: { type: "string" },
+      },
+      required: ["kind", "selector", "text"],
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      properties: {
+        kind: { const: "set-layout" },
+        selector: nodeIdSelectorSchema,
+        property: { enum: ["gap", "padding", "direction"] },
+        value: { type: ["number", "string"] },
+      },
+      required: ["kind", "selector", "property", "value"],
+      additionalProperties: false,
+    },
+  ],
+} as const;
+
+const applyCanvasEditsToolSchema = {
+  type: "object",
+  properties: {
+    ops: { type: "array", items: editOpJsonSchema },
+    explanation: { type: "string" },
+  },
+  required: ["ops", "explanation"],
+  additionalProperties: false,
+} as const;
 
 interface InterpretRequest {
   baseUrl: string;
@@ -95,14 +164,7 @@ export async function interpretCanvasEdit(request: InterpretRequest): Promise<In
       {
         name: "apply_canvas_edits",
         description: "将一组结构化的画布编辑操作应用到当前 UISpec。",
-        input_schema: {
-          type: "object",
-          properties: {
-            ops: { type: "array", items: editOpShape },
-            explanation: { type: "string" },
-          },
-          required: ["ops", "explanation"],
-        },
+        input_schema: applyCanvasEditsToolSchema,
       },
     ],
     tool_choice: { type: "tool", name: "apply_canvas_edits" },
