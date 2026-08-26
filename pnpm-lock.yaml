@@ -41,6 +41,9 @@ importers:
       '@d2c/figma-importer':
         specifier: workspace:*
         version: link:../../packages/figma-importer
+      '@d2c/figma-patcher':
+        specifier: workspace:*
+        version: link:../../packages/figma-patcher
       '@d2c/orchestrator':
         specifier: workspace:*
         version: link:../../packages/orchestrator
@@ -197,6 +200,19 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
+
+  packages/figma-patcher:
+    dependencies:
+      '@d2c/canvas-ops':
+        specifier: workspace:*
+        version: link:../canvas-ops
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(jsdom@26.1.0)(tsx@4.23.12)
 
   packages/orchestrator:
     dependencies:

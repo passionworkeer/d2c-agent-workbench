@@ -265,3 +265,134 @@ describe("canvas/interpret route", () => {
     await app.close();
   });
 });
+
+describe("POST /api/figma/patch", () => {
+  const validSpec = {
+    version: 1,
+    name: "测试",
+    viewport: { width: 1440, height: 900 },
+    root: {
+      id: "page",
+      name: "Page",
+      type: "FRAME",
+      layout: { direction: "column", width: "fixed", height: "fixed" },
+      styles: {},
+      children: [
+        {
+          id: "card-1",
+          name: "Product Card",
+          type: "INSTANCE",
+          layout: { direction: "column", width: "fill", height: "hug" },
+          component: { figmaComponent: "Product Card / Default", props: { tone: "coral" } },
+          styles: {},
+          children: [],
+        },
+      ],
+    },
+  };
+  const validOps = [
+    { kind: "set-prop", selector: { kind: "nodeId", nodeId: "card-1" }, prop: "tone", value: "lime" },
+  ];
+
+  it("缺少 X-Figma-Token / fileKey → 400", async () => {
+    const app = buildApp();
+    const r1 = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      payload: { fileKey: "k", uiSpec: validSpec, editOps: validOps },
+    });
+    expect(r1.statusCode).toBe(400);
+    expect(r1.json().code).toBe("FIGMA_BAD_REQUEST");
+    const r2 = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "pat-123" },
+      payload: { uiSpec: validSpec, editOps: validOps },
+    });
+    expect(r2.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("uiSpec / editOps 不符合 schema → 400", async () => {
+    const app = buildApp();
+    const r1 = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "pat-123" },
+      payload: { fileKey: "k", uiSpec: { name: "缺 root" }, editOps: validOps },
+    });
+    expect(r1.statusCode).toBe(400);
+    const r2 = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "pat-123" },
+      payload: { fileKey: "k", uiSpec: validSpec, editOps: [{ kind: "不存在的op" }] },
+    });
+    expect(r2.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("dryRun：只返回 patch 预览，不发网络请求", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "pat-123" },
+      payload: { fileKey: "fig-key", uiSpec: validSpec, editOps: validOps, dryRun: true },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { dryRun: boolean; nodeChanges: Array<{ nodeId: string; fields: Record<string, unknown> }> };
+    expect(body.dryRun).toBe(true);
+    expect(body.nodeChanges[0]?.nodeId).toBe("card-1");
+    expect(body.nodeChanges[0]?.fields).toEqual({ componentProps: { tone: "lime" } });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("成功：PATCH 经代理 PUT 到 Figma，PAT 不出现在响应里", async () => {
+    const fetchSpy = vi.fn(async (url: unknown) => {
+      expect(String(url)).toContain("https://api.figma.com/v1/files/fig-key/nodes");
+      return new Response("{}", { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "pat-secret-456" },
+      payload: { fileKey: "fig-key", uiSpec: validSpec, editOps: validOps },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { transport: string; fileUrl: string; patchedNodeIds: string[] };
+    expect(body.transport).toBe("rest");
+    expect(body.fileUrl).toBe("https://www.figma.com/file/fig-key");
+    expect(body.patchedNodeIds).toEqual(["card-1"]);
+    expect(JSON.stringify(body)).not.toContain("pat-secret-456");
+    await app.close();
+  });
+
+  it("Figma 写权限不足 → 评论降级成功，transport=comment", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown) =>
+        String(url).includes("/comments")
+          ? new Response("{}", { status: 200 })
+          : new Response("Forbidden", { status: 403 }),
+      ),
+    );
+    const app = buildApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/figma/patch",
+      headers: { "x-figma-token": "read-only-pat" },
+      payload: { fileKey: "fig-key", uiSpec: validSpec, editOps: validOps },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { transport: string; message?: string };
+    expect(body.transport).toBe("comment");
+    expect(body.message).toContain("评论");
+    await app.close();
+  });
+});

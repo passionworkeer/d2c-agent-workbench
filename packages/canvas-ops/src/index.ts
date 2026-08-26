@@ -46,6 +46,12 @@ export interface ApplyResult {
   missed: EditOp[];
 }
 
+// 把 selector 解析成节点 id 列表（figma-patcher 回写 Figma 时用：
+// EditOp 的 selector 语义在服务器端必须与 applyEditOps 完全一致，所以从这里导出）。
+export function resolveSelectorNodeIds(spec: UISpec, selector: NodeSelector): string[] {
+  return selectNodes(spec, selector).map((node) => node.id);
+}
+
 function selectNodes(spec: UISpec, selector: NodeSelector): UISpecNode[] {
   switch (selector.kind) {
     case "nodeId": {

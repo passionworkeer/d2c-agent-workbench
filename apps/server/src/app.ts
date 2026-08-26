@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { scanRepo } from "@d2c/asset-indexer";
+import { editOpsSchema } from "@d2c/canvas-ops";
 import { SDS_REGISTRY_SIZE, buildRegistryFromEntries, mapSdsComponents } from "@d2c/component-matcher";
 import {
   designBundleSchema,
   evaluationReportSchema,
   traceEventSchema,
+  uiSpecSchema,
   type ComponentMapping,
   type DesignBundle,
   type EvaluationReport,
@@ -14,11 +16,13 @@ import {
   type UISpec,
   type WorkflowState,
 } from "@d2c/contracts";
+import { buildFigmaPatch } from "@d2c/figma-patcher";
 import { BundleError, parseFigmaBundle } from "@d2c/figma-importer";
 import { runReplayWorkflow } from "@d2c/orchestrator";
 import { compileUISpec } from "@d2c/ui-compiler";
 import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
+import { applyFigmaPatch } from "./figma";
 import { interpretCanvasEdit } from "./llm";
 import { interpretReferenceImage } from "./vision";
 
@@ -343,6 +347,80 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       explanation: result.explanation,
       provider: result.provider,
       model: result.model,
+    });
+  });
+
+  // Figma 回写路由：浏览器 → 本地 Fastify 代理（PAT 走 X-Figma-Token 请求头）→
+  // Figma REST 写端点，规避 CORS 并保证 PAT 不落仓库文件；与 X-LLM-Key 同模式。
+  // body 携带 {fileKey, uiSpec, editOps}：nodeChanges 由服务端统一从 editOps 构建
+  //（单一转换实现，避免前后端两套映射漂移）。dryRun 只返回 patch 预览不落 Figma。
+  app.post<{
+    Body: {
+      fileKey?: string;
+      uiSpec?: UISpec;
+      editOps?: unknown;
+      baseUrl?: string;
+      dryRun?: boolean;
+    };
+  }>("/api/figma/patch", async (request, reply) => {
+    const pat = request.headers["x-figma-token"];
+    const fileKey = request.body?.fileKey;
+    const dryRun = request.body?.dryRun === true;
+    if (typeof pat !== "string" || pat.length === 0) {
+      return reply.code(400).send({ code: "FIGMA_BAD_REQUEST", message: "缺少 X-Figma-Token 请求头" });
+    }
+    if (typeof fileKey !== "string" || fileKey.trim() === "") {
+      return reply.code(400).send({ code: "FIGMA_BAD_REQUEST", message: "缺少 fileKey 字段" });
+    }
+    const specResult = uiSpecSchema.safeParse(request.body?.uiSpec);
+    if (!specResult.success) {
+      return reply.code(400).send({ code: "FIGMA_BAD_REQUEST", message: "uiSpec 不符合 schema" });
+    }
+    const opsResult = editOpsSchema.safeParse(request.body?.editOps ?? []);
+    if (!opsResult.success) {
+      return reply.code(400).send({ code: "FIGMA_BAD_REQUEST", message: "editOps 不符合 schema" });
+    }
+
+    let patch;
+    try {
+      patch = buildFigmaPatch(specResult.data, opsResult.data, fileKey);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "patch 构建失败";
+      return reply.code(400).send({ code: "FIGMA_BAD_REQUEST", message });
+    }
+
+    if (dryRun) {
+      return reply.code(200).send({
+        ok: true,
+        dryRun: true,
+        nodeChanges: patch.nodeChanges,
+        skipped: patch.skipped,
+        degradations: patch.degradations,
+        unresolvedTokens: patch.unresolvedTokens,
+        summary: patch.summary,
+      });
+    }
+
+    const result = await applyFigmaPatch({
+      fileKey,
+      patch,
+      pat,
+      baseUrl: request.body?.baseUrl,
+    });
+    if (!result.ok) {
+      const httpCode =
+        result.code === "FIGMA_UNAVAILABLE" ? 502 : result.code === "FIGMA_FORBIDDEN" ? 403 : 400;
+      return reply.code(httpCode).send({ code: result.code, message: result.message });
+    }
+    return reply.code(200).send({
+      ok: true,
+      transport: result.transport,
+      fileUrl: result.fileUrl,
+      message: result.transport === "comment" ? result.message : undefined,
+      patchedNodeIds: patch.nodeChanges.map((change) => change.nodeId),
+      skipped: patch.skipped,
+      degradations: patch.degradations,
+      summary: patch.summary,
     });
   });
 

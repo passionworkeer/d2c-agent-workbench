@@ -144,8 +144,13 @@ export function createDesignEvents(input: DesignInput, vision?: VisionOverride):
 }
 
 // 导出的 Figma 兼容设计稿（可被 Figma 插件 / D2C 链路直接消费）。
-// tokens 从 spec.tokens 派生（vision 模式下是真实识别结果），不再硬编码。
-export function buildDesignBundle(spec: UISpec, mappings: ComponentMapping[]): Record<string, unknown> {
+// tokens 从 spec.tokens 派生（vision 模式下是真实识别结果），不再硬编码；
+// editOps 是对话编辑累计的操作，回写 Figma / 下游消费方据此知道改了什么。
+export function buildDesignBundle(
+  spec: UISpec,
+  mappings: ComponentMapping[],
+  editOps?: Array<{ kind: string }>,
+): Record<string, unknown> {
   return {
     manifest: {
       protocolVersion: "1.0",
@@ -156,5 +161,6 @@ export function buildDesignBundle(spec: UISpec, mappings: ComponentMapping[]): R
     uiSpec: spec,
     mappings,
     tokens: (spec.tokens ?? []).map((token) => token.name),
+    ...(editOps && editOps.length > 0 ? { editOps } : {}),
   };
 }

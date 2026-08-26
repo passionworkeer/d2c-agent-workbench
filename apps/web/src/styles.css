@@ -364,6 +364,18 @@ button { cursor: pointer; }
 .settings-hint { font-size: 10.5px; color: #858c82; line-height: 1.5; margin-top: 4px; }
 .settings-hint code { font-family: Consolas, monospace; font-size: 10px; background: #f4f1e8; padding: 1px 4px; border-radius: 3px; }
 .settings-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.settings-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.settings-tabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 8px; font-size: 11.5px; border: 1px solid var(--line); background: #fbfcfa; border-radius: 8px; cursor: pointer; color: var(--text); }
+.settings-tabs button.active { border-color: var(--acid-dark); background: var(--surface-tint); font-weight: 600; }
+
+.figma-patch-panel { margin: 14px; border-top: 1px solid var(--line); padding-top: 13px; display: flex; flex-direction: column; gap: 9px; }
+.figma-patch-panel .settings-row { grid-template-columns: 96px 1fr; }
+.figma-patch-actions { display: flex; gap: 7px; }
+.figma-patch-preview { list-style: none; margin: 0; padding: 8px 9px; border: 1px dashed var(--line); border-radius: 9px; display: flex; flex-direction: column; gap: 5px; }
+.figma-patch-preview li { display: flex; gap: 7px; align-items: baseline; font-size: 11px; }
+.figma-patch-preview code { font-family: Consolas, monospace; font-size: 10.5px; background: #f4f1e8; padding: 1px 4px; border-radius: 3px; }
+.figma-patch-preview span { color: #4c544a; }
+.figma-patch-note { font-size: 11px; color: #858c82; line-height: 1.5; padding: 7px 10px; border: 1px dashed var(--line); border-radius: 9px; }
 
 .delivery-column { padding-bottom: 14px; }
 .score-panel { margin: 14px; display: flex; align-items: center; gap: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfa; }

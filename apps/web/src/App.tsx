@@ -38,7 +38,8 @@ import {
 } from "./lib/mock-design";
 import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
-import { applyEditOps } from "@d2c/canvas-ops";
+import { FigmaPatchPanel } from "./components/FigmaPatchPanel";
+import { applyEditOps, type EditOp } from "@d2c/canvas-ops";
 import {
   interpretReferenceImageViaProvider,
   interpretViaProvider,
@@ -312,6 +313,8 @@ export default function App() {
   // 通过 canvas-ops.applyEditOps 落地并同步 events（CANVAS_EDITED 实时追加）。
   const [designSpec, setDesignSpec] = useState<UISpec | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  // 对话编辑累计的 ops：Figma 回写范围 = 这些 op 转成的 nodeChanges。
+  const [designEditOps, setDesignEditOps] = useState<EditOp[]>([]);
   // Provider 设置仅在 I2D 模式生效：默认规则解析（演示零风险），用户可在设置面板切到 LLM。
   const [providerSettings, setProviderSettings] = useState<ProviderSettings>(() => loadProviderSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -342,9 +345,11 @@ export default function App() {
     const outcome = await interpretViaProvider(text, designSpec, providerSettings);
     let agentText: string;
     let newSpec: UISpec = designSpec;
+    let appliedOps: EditOp[] = [];
     if (outcome.intent.ops.length > 0) {
       const applied = applyEditOps(designSpec, outcome.intent.ops);
       newSpec = applied.spec;
+      appliedOps = applied.applied;
       agentText = outcome.intent.explanation;
       if (applied.missed.length > 0) agentText += `；未命中 ${applied.missed.length} 项`;
     } else {
@@ -355,6 +360,10 @@ export default function App() {
     }
     setChatMessages((prev) => [...prev, userMsg, { role: "agent", text: agentText }]);
     setDesignSpec(newSpec);
+    if (appliedOps.length > 0) {
+      // 累计已应用的 ops（Figma 回写范围）——只记命中节点的 applied，missed 不进。
+      setDesignEditOps((prev) => [...prev, ...appliedOps]);
+    }
 
     if (outcome.intent.ops.length > 0) {
       const editIndex = events.filter((event) => event.state === "CANVAS_EDITED").length + 1;
@@ -408,6 +417,7 @@ export default function App() {
     setStepIndex(0);
     setDesignSpec(null);
     setChatMessages([]);
+    setDesignEditOps([]);
   }
 
   function consumeEvent(event: TraceEvent) {
@@ -860,6 +870,13 @@ export default function App() {
                 ))}
               </div>
               {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} />}
+              {designReady && (
+                <FigmaPatchPanel
+                  spec={designSpec}
+                  editOps={designEditOps}
+                  onExported={(event) => setEvents((prev) => (prev.some((item) => item.id === event.id) ? prev : [...prev, event]))}
+                />
+              )}
               {mappings.length > 0 && <div className="evidence-panel">
                 <div className="section-label"><span>组件识别证据</span><span>{mappings.length} 个实例</span></div>
                 {mappings.slice(0, 3).map((mapping) => (
@@ -899,7 +916,7 @@ export default function App() {
                 </div>
               )}
               <div className="delivery-actions">
-                <button className="button export" disabled={!designReady || !designSpec || running} onClick={() => downloadJson(buildDesignBundle(designSpec ?? mockUiSpec, mockMappings), "design-draft.product-grid.json")}><Download size={14}/>下载设计稿 JSON</button>
+                <button className="button export" disabled={!designReady || !designSpec || running} onClick={() => downloadJson(buildDesignBundle(designSpec ?? mockUiSpec, mockMappings, designEditOps), "design-draft.product-grid.json")}><Download size={14}/>下载设计稿 JSON</button>
                 <button className="button secondary" disabled={running} onClick={() => switchMode("d2c")}><ArrowRight size={14}/>进入 D2C 出码</button>
               </div>
             </article>

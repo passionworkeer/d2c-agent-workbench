@@ -430,4 +430,84 @@ describe("I2D 设计稿生成链路", () => {
       localStorage.clear();
     }
   });
+
+  it("对话编辑后 Figma 回写面板：dryRun 预览 → 应用成功追加 SPEC_EXPORTED 轨迹事件", async () => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+    vi.useRealTimers();
+
+    // 面板出现：无 PAT / 无编辑时按钮禁用
+    expect(screen.getByTestId("figma-patch-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("figma-apply")).toBeDisabled();
+
+    // 一轮对话编辑（规则 provider，无网络）
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "把第二张卡片换成 lime" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("chat-send"));
+    });
+
+    // 填 PAT + FileKey（写 localStorage）
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("figma-pat"), { target: { value: "figma-pat-test" } });
+      fireEvent.change(screen.getByTestId("figma-filekey"), { target: { value: "fig-key" } });
+    });
+    expect(screen.getByTestId("figma-apply")).toBeEnabled();
+
+    // mock /api/figma/patch：dryRun 返回预览，应用返回成功
+    const fakeFetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { dryRun?: boolean };
+      const headers = Object.fromEntries(new Headers(init?.headers ?? {}).entries());
+      expect(headers["x-figma-token"]).toBe("figma-pat-test");
+      if (body.dryRun) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            dryRun: true,
+            nodeChanges: [{ nodeId: "card-2", fields: { componentProps: { tone: "lime" } }, summary: "props.tone = lime" }],
+            summary: "1 个节点变更",
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          transport: "rest",
+          fileUrl: "https://www.figma.com/file/fig-key",
+          patchedNodeIds: ["card-2"],
+          summary: "1 个节点变更",
+        }),
+        { status: 200 },
+      );
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch as unknown as typeof fetch;
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("figma-preview"));
+      });
+      await waitFor(() => expect(screen.getByTestId("figma-patch-preview")).toBeInTheDocument());
+      expect(screen.getByText("props.tone = lime")).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("figma-apply"));
+      });
+      await waitFor(() => expect(screen.getByText("设计稿已回写 Figma")).toBeInTheDocument());
+      // 成功提示带 fileUrl
+      expect(screen.getByTestId("figma-patch-note")).toHaveTextContent("figma.com/file/fig-key");
+    } finally {
+      globalThis.fetch = originalFetch;
+      localStorage.clear();
+    }
+  });
 });

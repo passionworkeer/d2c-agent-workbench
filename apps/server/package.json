@@ -16,6 +16,7 @@
     "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
     "@d2c/figma-importer": "workspace:*",
+    "@d2c/figma-patcher": "workspace:*",
     "@d2c/orchestrator": "workspace:*",
     "@d2c/ui-compiler": "workspace:*",
     "@fastify/multipart": "^9.2.1",
