@@ -28,7 +28,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import { getRun, subscribeToRun, uploadBundle, type RunDetail } from "./lib/api";
 import { DiffView } from "./components/DiffView";
 import { SpecRenderer } from "./components/SpecRenderer";
-import { TraceEventCard } from "./components/TraceEventCard";
+import { TraceFeed } from "./components/TraceFeed";
 import {
   buildDesignBundle,
   createDesignEvents,
@@ -831,13 +831,13 @@ export default function App() {
                 <div><span>UISPEC v1</span><strong>{run?.uiSpec.name ?? "等待设计输入"}</strong></div>
                 <ArrowUpRight size={18}/>
               </div>
-              <div className="trace-feed">
-                {events.length === 0 ? (
+              {events.length === 0 ? (
+                <div className="trace-feed">
                   <div className="trace-empty"><CircleDot size={19}/><p>每一次 Tool 调用、Artifact 产出和评测修复都会按顺序显示在这里。</p></div>
-                ) : events.map((event, index) => (
-                  <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "REPAIRING" || event.state === "EVALUATED"} />
-                ))}
-              </div>
+                </div>
+              ) : (
+                <TraceFeed events={events} mode="d2c" highlightStates={new Set(["REPAIRING", "EVALUATED"])} />
+              )}
               {mappings.length > 0 && <div className="evidence-panel">
                 <div className="section-label"><span>组件匹配证据</span><span>{mappings.length} 个匹配</span></div>
                 {mappings.slice(0, 3).map((mapping) => (
@@ -967,13 +967,13 @@ export default function App() {
                 <div><span>{designInput === "image" ? "IMAGE → UISPEC" : "FIGMA → UISPEC"}</span><strong>{designReady ? (designSpec?.name ?? mockUiSpec.name) : "等待生成"}</strong></div>
                 <ArrowUpRight size={18}/>
               </div>
-              <div className="trace-feed">
-                {events.length === 0 ? (
+              {events.length === 0 ? (
+                <div className="trace-feed">
                   <div className="trace-empty"><CircleDot size={19}/><p>多模态 UI 理解、布局推断、组件识别与设计稿生成的每一步都会按顺序显示在这里。</p></div>
-                ) : events.map((event, index) => (
-                  <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "CANVAS_EDITED"} />
-                ))}
-              </div>
+                </div>
+              ) : (
+                <TraceFeed events={events} mode="i2d" highlightStates={new Set(["CANVAS_EDITED"])} />
+              )}
               {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} engine={providerSettings.provider} />}
               {designReady && (
                 <FigmaPatchPanel

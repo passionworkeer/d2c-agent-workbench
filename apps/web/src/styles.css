@@ -315,8 +315,40 @@ button { cursor: pointer; }
 .mapping-summary span { font-family: Consolas, monospace; font-size: 9px; color: var(--acid-dark); letter-spacing: .12em; }
 .mapping-summary strong { font-size: 13px; }
 .mapping-summary svg { color: #7a8476; }
-.trace-feed { margin: 0 14px; max-height: 460px; overflow: auto; padding-right: 4px; }
+/* 轨迹区：按阶段分组、组头吸顶；单列长页唯一滚动条是页面本身（去掉 460px 内滚） */
+.trace-feed { margin: 0 14px; }
+.trace-group { margin-bottom: 6px; }
+.trace-group-head {
+  position: sticky;
+  top: 128px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  margin: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(252, 253, 251, .97);
+  font-size: 11px;
+  color: #4c544a;
+}
+.trace-group-head .group-index { font-family: Consolas, monospace; font-size: 9px; color: var(--faint); letter-spacing: .08em; }
+.trace-group-head strong { font-size: 11px; color: var(--text); }
+.trace-group-head .group-count { font-size: 10px; color: var(--faint); }
+.trace-group-head.current { border-left: 3px solid var(--acid); background: #fbfee9; }
+.trace-group-head .group-collapse {
+  margin-left: auto;
+  display: inline-flex;
+  padding: 3px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+}
+.trace-group-head .group-collapse:hover { background: var(--surface-soft); color: var(--text); }
 .trace-event { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eceee9; }
+.trace-event.highlight { border-left: 3px solid var(--acid); border-radius: 8px; padding: 10px 8px 10px 9px; margin: 3px 0; background: #fbfee9; }
 .trace-event.repair { margin: 3px 0; padding: 10px 8px; border: 1px solid rgba(240, 90, 42, .25); background: #fff7f3; border-radius: 8px; }
 .trace-index { font-family: Consolas, monospace; font-size: 9px; color: #9aa097; padding-top: 2px; }
 .trace-title { justify-content: space-between; gap: 8px; }
@@ -503,6 +535,7 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
   .header-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .run-summary { justify-content: flex-start; }
   .step-bar { position: static; flex-wrap: wrap; }
+  .trace-group-head { top: 72px; }
   .repair-result ul { grid-template-columns: 1fr; }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
