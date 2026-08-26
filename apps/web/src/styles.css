@@ -390,7 +390,12 @@ button { cursor: pointer; }
 .chat-bubble.user { background: #fff; border: 1px solid var(--line); color: var(--text); }
 .chat-bubble.agent { background: var(--surface-tint); border: 1px solid #d9dfd2; color: #33401f; margin-left: auto; }
 .chat-empty { font-size: 11px; color: #858c82; padding: 7px 10px; border: 1px dashed var(--line); border-radius: 9px; margin-bottom: 8px; }
-.vision-note { font-size: 11px; color: #8a5a1f; background: #fdf6e7; border: 1px solid #ecd9ae; border-radius: 9px; padding: 7px 10px; margin-top: 9px; }
+/* vision-note 三态状态行（画布上方独立展示）：真实成功 / 真实降级 / 演示 mock */
+.vision-note { margin: 0 14px; font-size: 11px; border-radius: 9px; padding: 7px 10px; }
+.vision-note.mock { color: #596057; background: #f4f5f2; border: 1px solid var(--line); }
+.vision-note.ok { color: #2f5900; background: #f4fbe6; border: 1px solid #cbe48a; }
+.vision-note.warn { color: #8a5a1f; background: #fdf6e7; border: 1px solid #ecd9ae; }
+.layout-wait { margin: 4px 0 0; font-size: 11px; color: var(--faint); }
 .chat-form { display: flex; gap: 7px; margin-top: 9px; }
 .chat-form input { flex: 1; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; background: #fff; }
 .chat-form input:focus { outline: none; border-color: var(--acid); }
@@ -425,6 +430,15 @@ button { cursor: pointer; }
 .figma-patch-note { font-size: 11px; color: #858c82; line-height: 1.5; padding: 7px 10px; border: 1px dashed var(--line); border-radius: 9px; }
 
 .delivery-column { padding-bottom: 14px; }
+/* 交付区两段式：评测摘要（Eval 独立上下文）→ 交付产物（可审查 artifact） */
+.delivery-section { margin: 0 14px 16px; padding-top: 13px; border-top: 1px solid var(--line); }
+.column-heading + .delivery-section { border-top: 0; padding-top: 0; }
+.delivery-section-label { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; font-family: Consolas, monospace; font-size: 9px; letter-spacing: .11em; color: var(--muted); }
+.delivery-section-label span:first-child { font-size: 12px; font-weight: 800; letter-spacing: .02em; color: var(--text); }
+.delivery-section .score-panel, .delivery-section .metric-grid, .delivery-section .repair-result,
+.delivery-section .preview-tabs, .delivery-section .rendered-page, .delivery-section .code-preview,
+.delivery-section .diff-view { margin-left: 0; margin-right: 0; }
+.delivery-section .delivery-actions { margin: 14px 0 0; }
 .score-panel { margin: 14px; display: flex; align-items: center; gap: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfa; }
 .score-ring { --score: 0deg; width: 82px; height: 82px; border-radius: 50%; background: conic-gradient(var(--acid) var(--score), #e4e7e1 0); display: grid; place-items: center; position: relative; flex: none; }
 .score-ring::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
@@ -443,6 +457,10 @@ button { cursor: pointer; }
 .metric-grid strong { float: right; font-family: Consolas, monospace; font-size: 11px; }
 .metric-grid i { display: block; clear: both; height: 2px; background: #e4e7e1; margin-top: 8px; }
 .metric-grid b { display: block; height: 2px; background: var(--acid); }
+/* 指标阈值着色：≥90 深绿 / <90 橙（与最终评分 ≥90 门槛同语义） */
+.metric-grid strong.good { color: var(--acid-dark); }
+.metric-grid strong.warn { color: var(--orange); }
+.metric-grid b.warn { background: var(--orange); }
 .repair-result { margin: 0 14px 12px; padding: 9px 10px; border: 1px solid #d9dfd2; border-radius: 9px; background: var(--surface-tint); }
 .repair-result > div { display: flex; align-items: center; gap: 6px; color: var(--acid-dark); }
 .repair-result > div strong { font-size: 10px; }

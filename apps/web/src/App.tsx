@@ -1,4 +1,4 @@
-import type { ComponentMapping, EvaluationReport, ToolCall, TraceEvent, UISpec, UISpecNode, WorkflowState } from "@d2c/contracts";
+import type { ComponentMapping, EvaluationReport, TokenBinding, ToolCall, TraceEvent, UISpec, UISpecNode, WorkflowState } from "@d2c/contracts";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -162,6 +162,40 @@ const emptySpec: UISpec = {
   tokens: [],
   root: { id: "empty", name: "", type: "FRAME", layout: { direction: "column", width: "fixed", height: "fixed" }, styles: {}, children: [] },
 };
+
+const directionLabel: Record<string, string> = { row: "水平", column: "垂直", grid: "网格", none: "无布局" };
+
+function fmtEdge(edge: number | TokenBinding | undefined): string {
+  if (edge === undefined) return "—";
+  return typeof edge === "object" ? `${String(edge.value)}px · ${edge.variable}` : `${edge}px`;
+}
+
+// 从真实 designSpec 派生版式约束（替代此前的静态硬编码树）：
+// 主轴 / gap / padding + 一二级子节点概要；未就绪时调用方显示等待占位而不是假数据。
+function deriveLayoutFacts(spec: UISpec): Array<{ level: number; text: string; code: string }> {
+  const root = spec.root;
+  const rows: Array<{ level: number; text: string; code: string }> = [
+    {
+      level: 0,
+      text: `${root.name || "页面"} · ${directionLabel[root.layout.direction] ?? root.layout.direction}主轴 · gap ${fmtEdge(root.layout.gap)} · padding ${fmtEdge(root.layout.padding?.top)}`,
+      code: root.layout.direction.toUpperCase(),
+    },
+  ];
+  for (const child of root.children.slice(0, 4)) {
+    rows.push({ level: 1, text: `${child.name} · ${directionLabel[child.layout.direction] ?? child.layout.direction}`, code: child.type });
+    for (const grandchild of child.children.slice(0, 2)) {
+      rows.push({ level: 2, text: grandchild.name, code: grandchild.type });
+    }
+  }
+  return rows;
+}
+
+// vision-note 三态：真实视觉模型成功 / 真实链路降级 / 演示 mock——按文案前缀判定。
+function visionNoteTone(note: string): "ok" | "warn" | "mock" {
+  if (note.startsWith("已使用真实视觉模型")) return "ok";
+  if (note.includes("已降级")) return "warn";
+  return "mock";
+}
 
 // 对话式画布编辑：真实交互（消息列表 + 输入框 + 发送）。每条用户指令都通过 canvas-ops
 // 规则解析 → applyEditOps 落地到 designSpec；编辑事件实时追加进 events，不再预置。
@@ -851,48 +885,60 @@ export default function App() {
 
             <article className="workspace-column delivery-column">
               <div className="column-heading"><div><FileCode2 size={16}/><span>代码交付</span></div><span>REACT / TYPESCRIPT</span></div>
-              <div className="score-panel">
-                <ScoreRing score={final} />
-                <div className="score-copy"><span>最终质量评分</span><strong>{final >= 90 ? "已达到评审标准" : "等待评测"}</strong><div className="score-journey"><span data-testid="initial-score">{initial || "—"}</span><GitCompareArrows size={15}/><span data-testid="final-score">{final || "—"}</span><em data-testid="score-delta">{formatDelta(scoreDelta)}</em></div></div>
-              </div>
-              <div className="metric-grid">
-                {finalMetrics.map(([key, value]) => <div key={key}><span>{metricNames[key] ?? key}</span><strong>{value}</strong><i><b style={{width: `${value}%`}}/></i></div>)}
-              </div>
-              {firstViolations.length > 0 && final >= 90 && <div className="repair-result">
-                <div><WandSparkles size={13}/><strong>{firstViolations.length} 项问题已修复</strong><span>定向 Repair</span></div>
-                <ul>{firstViolations.map((violation) => <li key={violation.id}><Check size={11}/><span>{violation.message}</span></li>)}</ul>
-              </div>}
-              <div className="preview-tabs">
-                <button className={activeTab === "preview" ? "active" : ""} onClick={() => setActiveTab("preview")}>页面预览</button>
-                <button className={activeTab === "diff" ? "active" : ""} onClick={() => setActiveTab("diff")}>代码 Diff</button>
-                <span><WandSparkles size={13}/>自动修复 {formatDelta(scoreDelta)}</span>
-              </div>
-              {activeTab === "preview" ? (
-                <>
-                  <SpecRenderer uiSpec={run?.uiSpec ?? emptySpec} />
-                  <div className="code-preview">
-                    <div>
-                      <span>{activeStepState === "GENERATED" ? "草稿 ProductGridPage.tsx" : activeStepState === "COMPLETED" ? "终稿 ProductGridPage.tsx" : "ProductGridPage.tsx"}</span>
-                      <span className="diff-stat">{activeStepState === "COMPLETED" ? "+ tokens.css 增量" : activeStepState === "GENERATED" ? "草稿：未定稿 token" : "+24 −3"}</span>
-                    </div>
-                    <pre><code>{generatedCode || "// Build Agent 运行后将在这里显示生成代码。"}</code></pre>
-                  </div>
-                </>
-              ) : (
-                <DiffView
-                  beforeCode={draftTokensCss}
-                  afterCode={finalTokensCss}
-                  beforeLabel="草稿 tokens.css"
-                  afterLabel="终稿 tokens.css"
-                  patches={repairPatches}
-                />
-              )}
-              {run && (
-                <div className="delivery-actions">
-                  <button className="button secondary" disabled={running} onClick={startStepDemo}><RotateCcw size={14}/>重新演示</button>
-                  <button className="button export" disabled={running} onClick={() => downloadJson({ run, events, mappings, evaluations, scoreDelta }, `${run.id}-report.json`)}><Download size={14}/>下载报告</button>
+              <div className="delivery-section">
+                <div className="delivery-section-label"><span>评测摘要</span><span>EVAL SUMMARY · 独立 Eval Agent</span></div>
+                <div className="score-panel">
+                  <ScoreRing score={final} />
+                  <div className="score-copy"><span>最终质量评分</span><strong>{final >= 90 ? "已达到评审标准" : "等待评测"}</strong><div className="score-journey"><span data-testid="initial-score">{initial || "—"}</span><GitCompareArrows size={15}/><span data-testid="final-score">{final || "—"}</span><em data-testid="score-delta">{formatDelta(scoreDelta)}</em></div></div>
                 </div>
-              )}
+                <div className="metric-grid">
+                  {finalMetrics.map(([key, value]) => (
+                    <div key={key}>
+                      <span>{metricNames[key] ?? key}</span>
+                      <strong className={value >= 90 ? "good" : "warn"}>{value}</strong>
+                      <i><b className={value >= 90 ? "good" : "warn"} style={{width: `${value}%`}}/></i>
+                    </div>
+                  ))}
+                </div>
+                {firstViolations.length > 0 && final >= 90 && <div className="repair-result">
+                  <div><WandSparkles size={13}/><strong>{firstViolations.length} 项问题已修复</strong><span>定向 Repair</span></div>
+                  <ul>{firstViolations.map((violation) => <li key={violation.id}><Check size={11}/><span>{violation.message}</span></li>)}</ul>
+                </div>}
+              </div>
+              <div className="delivery-section">
+                <div className="delivery-section-label"><span>交付产物</span><span>ARTIFACTS · 可审查可交付</span></div>
+                <div className="preview-tabs">
+                  <button className={activeTab === "preview" ? "active" : ""} onClick={() => setActiveTab("preview")}>页面预览</button>
+                  <button className={activeTab === "diff" ? "active" : ""} onClick={() => setActiveTab("diff")}>代码 Diff</button>
+                  <span><WandSparkles size={13}/>自动修复 {formatDelta(scoreDelta)}</span>
+                </div>
+                {activeTab === "preview" ? (
+                  <>
+                    <SpecRenderer uiSpec={run?.uiSpec ?? emptySpec} />
+                    <div className="code-preview">
+                      <div>
+                        <span>{activeStepState === "GENERATED" ? "草稿 ProductGridPage.tsx" : activeStepState === "COMPLETED" ? "终稿 ProductGridPage.tsx" : "ProductGridPage.tsx"}</span>
+                        <span className="diff-stat">{activeStepState === "COMPLETED" ? "+ tokens.css 增量" : activeStepState === "GENERATED" ? "草稿：未定稿 token" : "+24 −3"}</span>
+                      </div>
+                      <pre><code>{generatedCode || "// Build Agent 运行后将在这里显示生成代码。"}</code></pre>
+                    </div>
+                  </>
+                ) : (
+                  <DiffView
+                    beforeCode={draftTokensCss}
+                    afterCode={finalTokensCss}
+                    beforeLabel="草稿 tokens.css"
+                    afterLabel="终稿 tokens.css"
+                    patches={repairPatches}
+                  />
+                )}
+                {run && (
+                  <div className="delivery-actions">
+                    <button className="button secondary" disabled={running} onClick={startStepDemo}><RotateCcw size={14}/>重新演示</button>
+                    <button className="button export" disabled={running} onClick={() => downloadJson({ run, events, mappings, evaluations, scoreDelta }, `${run.id}-report.json`)}><Download size={14}/>下载报告</button>
+                  </div>
+                )}
+              </div>
             </article>
           </>
         ) : (
@@ -933,13 +979,15 @@ export default function App() {
                   >真实视觉模型 LLM</button>
                 </div>
               )}
+              {visionNote && (
+                <div className={`vision-note ${visionNoteTone(visionNote)}`} data-testid="vision-note">{visionNote}</div>
+              )}
               <div className="design-canvas">
                 {designInput === "image" ? (
                   <img src={referenceImage ?? referenceImageUrl} alt="参考图线框" />
                 ) : (
                   <div className="figma-tree-preview"><NodeTree uiSpec={mockUiSpec} /></div>
                 )}
-                {visionNote && <div className="vision-note" data-testid="vision-note">{visionNote}</div>}
                 <span className="canvas-badge">{designInput === "image" ? "800 × 500" : "STRUCTURED NODES"}</span>
               </div>
               <div className="source-stats">
@@ -947,18 +995,20 @@ export default function App() {
                 <div><strong>{designStats ? String(designStats.instances).padStart(2, "0") : "—"}</strong><span>组件实例</span></div>
                 <div><strong>{designStats ? String(designStats.tokens).padStart(2, "0") : "—"}</strong><span>Design Token</span></div>
               </div>
-              {designStats && (
-                <div className="section-block">
-                  <div className="section-label"><span>识别出的版式约束</span><span>AUTO LAYOUT</span></div>
+              <div className="section-block">
+                <div className="section-label"><span>识别出的版式约束</span><span>AUTO LAYOUT · UISpec 派生</span></div>
+                {designSpec ? (
                   <div className="node-tree">
-                    <div><ChevronRight size={13}/><Box size={13}/><strong>页面 · 垂直主轴</strong><code>VERTICAL</code></div>
-                    <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>页头 · 水平<code>ROW</code></div>
-                    <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>文案区 · 垂直<code>COLUMN</code></div>
-                    <div className="level-1"><ChevronRight size={13}/><Layers3 size={13}/>商品网格 · 4 列<code>GRID</code></div>
-                    <div className="level-2"><ChevronRight size={13}/><Box size={13}/>商品卡片 × 4<code>INSTANCE</code></div>
+                    {deriveLayoutFacts(designSpec).map((row, index) => (
+                      <div className={row.level > 0 ? `level-${row.level}` : ""} key={index}>
+                        <ChevronRight size={13}/>{row.level === 0 ? <Box size={13}/> : <Layers3 size={13}/>}{row.text}<code>{row.code}</code>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="layout-wait">等待 UI 理解完成后展示真实约束</p>
+                )}
+              </div>
             </article>
 
             <article className="workspace-column trace-column">
@@ -973,14 +1023,6 @@ export default function App() {
                 </div>
               ) : (
                 <TraceFeed events={events} mode="i2d" highlightStates={new Set(["CANVAS_EDITED"])} />
-              )}
-              {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} engine={providerSettings.provider} />}
-              {designReady && (
-                <FigmaPatchPanel
-                  spec={designSpec}
-                  editOps={designEditOps}
-                  onExported={(event) => setEvents((prev) => (prev.some((item) => item.id === event.id) ? prev : [...prev, event]))}
-                />
               )}
               {mappings.length > 0 && <div className="evidence-panel">
                 <div className="section-label"><span>组件识别证据</span><span>{mappings.length} 个实例</span></div>
@@ -1002,6 +1044,7 @@ export default function App() {
               {designReady && designSpec ? <SpecRenderer uiSpec={designSpec} /> : (
                 <div className="placeholder-panel"><WandSparkles size={26}/><p>组件识别与 Token 绑定完成后，这里会展示生成的结构化设计稿，并支持对话式编辑。</p></div>
               )}
+              {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} engine={providerSettings.provider} />}
               {designReady && designSpec && (
                 <div className="section-block">
                   <div className="section-label"><span>生成稿节点树</span><span>EDITABLE</span></div>
@@ -1013,6 +1056,13 @@ export default function App() {
                   <div className="section-label"><span>绑定的 Design Token</span><span>{designStats ? `${designStats.tokens} / ${designStats.tokens}` : ""}</span></div>
                   <TokenPills uiSpec={designSpec} />
                 </div>
+              )}
+              {designReady && (
+                <FigmaPatchPanel
+                  spec={designSpec}
+                  editOps={designEditOps}
+                  onExported={(event) => setEvents((prev) => (prev.some((item) => item.id === event.id) ? prev : [...prev, event]))}
+                />
               )}
               {designExported && (
                 <div className="export-files">
