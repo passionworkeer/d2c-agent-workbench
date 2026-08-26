@@ -970,11 +970,11 @@ export default function App() {
               )}
               <div className="design-canvas">
                 {designInput === "image" ? (
-                  <img src={referenceImage ?? referenceImageUrl} alt="参考图线框" />
+                  <img src={referenceImage ?? referenceImageUrl} alt="参考图 · 多模态 UI 理解输入" />
                 ) : (
                   <div className="figma-tree-preview"><NodeTree uiSpec={mockUiSpec} /></div>
                 )}
-                <span className="canvas-badge">{designInput === "image" ? "800 × 500" : "STRUCTURED NODES"}</span>
+                <span className="canvas-badge">{designInput === "image" ? "INPUT · 800 × 500" : "STRUCTURED NODES"}</span>
               </div>
               <div className="source-stats">
                 <div><strong>{designStats ? String(designStats.nodes).padStart(2, "0") : "—"}</strong><span>识别节点</span></div>

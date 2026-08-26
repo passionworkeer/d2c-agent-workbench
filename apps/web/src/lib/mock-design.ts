@@ -22,8 +22,59 @@ export interface VisionOverride {
 
 const designRunId = "mock-design-run";
 
-// 参考图用线框风格（wireframe），与生成后的成品稿形成「草稿 → 成品」的视觉对照。
-const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fdfdfb"/><g fill="none" stroke="#b7bab1" stroke-width="1.5" stroke-dasharray="6 4"><rect x="24" y="24" width="752" height="56" rx="6"/></g><text x="40" y="58" fill="#a2a69c" font-family="Arial" font-size="13">页头 Header</text><rect x="24" y="120" width="300" height="10" rx="5" fill="#d8dad2"/><rect x="24" y="144" width="470" height="26" rx="6" fill="#c7cac0"/><g fill="none" stroke="#b7bab1" stroke-width="1.5" stroke-dasharray="6 4"><rect x="24" y="205" width="176" height="250" rx="8"/><rect x="216" y="205" width="176" height="250" rx="8"/><rect x="408" y="205" width="176" height="250" rx="8"/><rect x="600" y="205" width="176" height="250" rx="8"/></g><g stroke="#d3d5cc" stroke-width="1.2"><line x1="24" y1="205" x2="200" y2="455"/><line x1="200" y1="205" x2="24" y2="455"/><line x1="216" y1="205" x2="392" y2="455"/><line x1="392" y1="205" x2="216" y2="455"/><line x1="408" y1="205" x2="584" y2="455"/><line x1="584" y1="205" x2="408" y2="455"/><line x1="600" y1="205" x2="776" y2="455"/><line x1="776" y1="205" x2="600" y2="455"/></g><g fill="#a2a69c" font-family="Arial" font-size="11" text-anchor="middle"><text x="112" y="330">商品卡片</text><text x="304" y="330">商品卡片</text><text x="496" y="330">商品卡片</text><text x="688" y="330">商品卡片</text></g></svg>`;
+// 参考图用「设计师手稿」风格（不再是空线框）：和生成的成品稿共用同一套
+// header / 文案 / 商品卡结构与配色，让 demo 叙事里「这张图 → 那张结构化稿」的
+// 视觉对应一眼可读。
+const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#f3f1ea"/>
+  <!-- header -->
+  <rect x="32" y="24" width="736" height="52" rx="10" fill="#171713"/>
+  <text x="52" y="57" fill="#f3f1ea" font-family="Arial" font-weight="700" font-size="18">KINETIC®</text>
+  <text x="600" y="55" fill="#f3f1ea" font-family="Arial" font-size="12">26FW 系列 · 购物车 04</text>
+  <!-- subtitle + title -->
+  <text x="32" y="116" fill="#ef5b2a" font-family="Arial" font-weight="700" font-size="10" letter-spacing="2">NEW SEASON / 26FW</text>
+  <text x="32" y="156" fill="#171713" font-family="Arial" font-weight="700" font-size="28">为运动而生的设计。</text>
+  <!-- card-1 cobalt · 弧线跑鞋 01 · 圆 -->
+  <g transform="translate(32 196)">
+    <rect width="178" height="284" rx="16" fill="#3154e8"/>
+    <circle cx="89" cy="118" r="46" fill="#f3f1ea"/>
+    <circle cx="89" cy="118" r="22" fill="#171713"/>
+    <text x="14" y="248" fill="#fff" font-family="Arial" font-size="12" font-weight="700">弧线跑鞋 01</text>
+    <text x="14" y="266" fill="#fff" font-family="Arial" font-size="10">¥ 1,290 · 新品</text>
+    <rect x="134" y="12" width="32" height="14" rx="7" fill="#f3f1ea"/>
+    <text x="150" y="22" fill="#3154e8" font-family="Arial" font-size="8" font-weight="700" text-anchor="middle">New</text>
+  </g>
+  <!-- card-2 coral · 形态手袋 02 · 胶囊 -->
+  <g transform="translate(222 196)">
+    <rect width="178" height="284" rx="16" fill="#ef5b2a"/>
+    <rect x="50" y="68" width="78" height="100" rx="38" fill="#171713"/>
+    <rect x="62" y="118" width="54" height="6" rx="3" fill="#f3f1ea" opacity=".4"/>
+    <text x="14" y="248" fill="#fff" font-family="Arial" font-size="12" font-weight="700">形态手袋 02</text>
+    <text x="14" y="266" fill="#fff" font-family="Arial" font-size="10">¥ 890 · 限量</text>
+    <rect x="124" y="12" width="44" height="14" rx="7" fill="#f3f1ea"/>
+    <text x="146" y="22" fill="#ef5b2a" font-family="Arial" font-size="8" font-weight="700" text-anchor="middle">Limited</text>
+  </g>
+  <!-- card-3 lime · 机能外套 03 · 三角 -->
+  <g transform="translate(412 196)">
+    <rect width="178" height="284" rx="16" fill="#b8e636"/>
+    <path d="M89 60 L138 168 L40 168 Z" fill="#171713"/>
+    <rect x="86" y="60" width="6" height="108" fill="#f3f1ea"/>
+    <text x="14" y="248" fill="#171713" font-family="Arial" font-size="12" font-weight="700">机能外套 03</text>
+    <text x="14" y="266" fill="#171713" font-family="Arial" font-size="10">¥ 1,590 · 核心款</text>
+    <rect x="130" y="12" width="36" height="14" rx="7" fill="#171713"/>
+    <text x="148" y="22" fill="#b8e636" font-family="Arial" font-size="8" font-weight="700" text-anchor="middle">Core</text>
+  </g>
+  <!-- card-4 charcoal · 虚空帽 04 · 椭圆 -->
+  <g transform="translate(602 196)">
+    <rect width="166" height="284" rx="16" fill="#292927"/>
+    <ellipse cx="83" cy="118" rx="52" ry="32" fill="none" stroke="#f3f1ea" stroke-width="10" transform="rotate(-15 83 118)"/>
+    <path d="M30 134 Q83 152 138 134 L138 142 Q83 162 30 142 Z" fill="#f3f1ea"/>
+    <text x="14" y="248" fill="#fff" font-family="Arial" font-size="12" font-weight="700">虚空帽 04</text>
+    <text x="14" y="266" fill="#fff" font-family="Arial" font-size="10">¥ 490 · 典藏</text>
+    <rect x="118" y="12" width="40" height="14" rx="7" fill="#f3f1ea"/>
+    <text x="138" y="22" fill="#292927" font-family="Arial" font-size="8" font-weight="700" text-anchor="middle">Archive</text>
+  </g>
+</svg>`;
 
 export const referenceImageUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(referenceSvg)}`;
 

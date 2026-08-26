@@ -5,37 +5,71 @@
   <text x="1160" y="76" fill="#f3f1ea" font-family="Arial" font-size="16">26FW 系列 · 购物车 04</text>
   <text x="56" y="180" fill="#ef5b2a" font-family="Arial" font-weight="700" font-size="12" letter-spacing="2">NEW SEASON / 26FW</text>
   <text x="56" y="250" fill="#171713" font-family="Arial" font-weight="700" font-size="64">Objects for motion.</text>
-  <!-- card-1 cobalt · 弧线跑鞋 01 · 圆 -->
+  <!-- card-1 cobalt · 弧线跑鞋 01 · RunningShoeArt -->
   <g transform="translate(56 310)">
     <rect width="317" height="500" rx="28" fill="#3154e8"/>
-    <circle cx="158" cy="220" r="80" fill="#f3f1ea"/>
+    <svg x="13" y="70" width="290" height="200" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet" color="#f3f1ea">
+      <path d="M14 92 Q18 84 28 82 L170 80 Q186 80 188 92 Q188 100 178 102 L24 104 Q12 104 14 92 Z" fill="currentColor" opacity="0.92"/>
+      <path d="M28 82 Q34 60 60 50 L94 42 Q108 38 122 42 L156 52 Q172 58 178 72 L180 82 Z" fill="currentColor"/>
+      <path d="M88 42 Q92 30 104 30 L120 32 Q126 34 124 44 L122 52 Q108 50 96 50 Z" fill="currentColor" opacity="0.75"/>
+      <path d="M58 76 Q82 64 110 60 L150 64" stroke="currentColor" stroke-width="2" fill="none" opacity="0.35"/>
+      <circle cx="72" cy="60" r="2.4" fill="currentColor" opacity="0.5"/>
+      <circle cx="86" cy="56" r="2.4" fill="currentColor" opacity="0.5"/>
+      <circle cx="100" cy="52" r="2.4" fill="currentColor" opacity="0.5"/>
+      <path d="M40 96 L50 96 M70 96 L82 96 M104 96 L118 96 M142 96 L158 96" stroke="currentColor" stroke-width="2" opacity="0.35"/>
+      <path d="M62 56 Q90 44 118 46" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.4"/>
+    </svg>
     <text x="28" y="440" fill="#fff" font-family="Arial" font-size="22" font-weight="700">弧线跑鞋 01</text>
     <text x="28" y="470" fill="#fff" font-family="Arial" font-size="14">¥ 1,290 · 新品</text>
     <rect x="245" y="20" width="56" height="22" rx="11" fill="#f3f1ea"/>
     <text x="273" y="36" fill="#3154e8" font-family="Arial" font-size="11" font-weight="700" text-anchor="middle">New</text>
   </g>
-  <!-- card-2 coral · 形态手袋 02 · 胶囊 -->
+  <!-- card-2 coral · 形态手袋 02 · HandbagArt -->
   <g transform="translate(393 310)">
     <rect width="317" height="500" rx="28" fill="#ef5b2a"/>
-    <rect x="80" y="120" width="157" height="200" rx="78" fill="#171713"/>
+    <svg x="13" y="70" width="290" height="200" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet" color="#f3f1ea">
+      <path d="M62 28 Q62 12 100 12 Q138 12 138 28" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M40 36 Q40 30 48 30 L152 30 Q160 30 160 36 L168 100 Q168 108 160 108 L40 108 Q32 108 32 100 Z" fill="currentColor"/>
+      <path d="M40 56 L160 56" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+      <rect x="92" y="64" width="16" height="10" rx="2" fill="currentColor" opacity="0.55"/>
+      <path d="M50 78 L150 78 M50 92 L150 92" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+      <path d="M64 32 Q66 22 78 20" stroke="currentColor" stroke-width="3" fill="none" opacity="0.4"/>
+    </svg>
     <text x="28" y="440" fill="#fff" font-family="Arial" font-size="22" font-weight="700">形态手袋 02</text>
     <text x="28" y="470" fill="#fff" font-family="Arial" font-size="14">¥ 890 · 限量</text>
     <rect x="245" y="20" width="56" height="22" rx="11" fill="#f3f1ea"/>
     <text x="273" y="36" fill="#ef5b2a" font-family="Arial" font-size="11" font-weight="700" text-anchor="middle">Limited</text>
   </g>
-  <!-- card-3 lime · 机能外套 03 · 三角 -->
+  <!-- card-3 lime · 机能外套 03 · JacketArt -->
   <g transform="translate(730 310)">
     <rect width="317" height="500" rx="28" fill="#b8e636"/>
-    <path d="M158 100 L238 320 L78 320 Z" fill="#171713"/>
+    <svg x="13" y="70" width="290" height="200" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet" color="#171713">
+      <path d="M70 22 Q100 8 130 22 Q126 30 118 32 L82 32 Q74 30 70 22 Z" fill="currentColor"/>
+      <path d="M58 34 Q60 30 66 30 L84 32 L100 40 L116 32 L134 30 Q140 30 142 34 L162 56 Q166 62 162 66 L156 70 L156 110 Q156 114 152 114 L48 114 Q44 114 44 110 L44 70 L38 66 Q34 62 38 56 Z" fill="currentColor"/>
+      <path d="M100 40 L100 114" stroke="currentColor" stroke-width="2" opacity="0.4"/>
+      <rect x="96" y="46" width="8" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+      <path d="M82 32 Q100 28 118 32" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.4"/>
+      <path d="M58 86 L86 86 L86 110 L58 110 Z M114 86 L142 86 L142 110 L114 110 Z" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.35"/>
+      <path d="M44 80 L44 110" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+      <path d="M156 80 L156 110" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+    </svg>
     <text x="28" y="440" fill="#171713" font-family="Arial" font-size="22" font-weight="700">机能外套 03</text>
     <text x="28" y="470" fill="#171713" font-family="Arial" font-size="14">¥ 1,590 · 核心款</text>
     <rect x="245" y="20" width="56" height="22" rx="11" fill="#171713"/>
     <text x="273" y="36" fill="#b8e636" font-family="Arial" font-size="11" font-weight="700" text-anchor="middle">Core</text>
   </g>
-  <!-- card-4 charcoal · 虚空帽 04 · 椭圆 -->
+  <!-- card-4 charcoal · 虚空帽 04 · HatArt -->
   <g transform="translate(1067 310)">
     <rect width="317" height="500" rx="28" fill="#292927"/>
-    <ellipse cx="158" cy="220" rx="90" ry="55" fill="none" stroke="#f3f1ea" stroke-width="18" transform="rotate(-15 158 220)"/>
+    <svg x="13" y="70" width="290" height="200" viewBox="0 0 200 120" preserveAspectRatio="xMidYMid meet" color="#f3f1ea">
+      <path d="M48 70 Q48 24 116 22 Q150 22 156 48 L158 72 Z" fill="currentColor"/>
+      <path d="M28 72 Q28 86 60 92 L172 92 Q186 88 184 76 Q182 68 168 68 L42 68 Q30 68 28 72 Z" fill="currentColor" opacity="0.85"/>
+      <path d="M116 22 Q124 44 158 70" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.4"/>
+      <circle cx="84" cy="48" r="2.5" fill="currentColor" opacity="0.45"/>
+      <circle cx="100" cy="42" r="2.5" fill="currentColor" opacity="0.45"/>
+      <circle cx="118" cy="38" r="2.5" fill="currentColor" opacity="0.45"/>
+      <path d="M58 84 L150 84" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+    </svg>
     <text x="28" y="440" fill="#fff" font-family="Arial" font-size="22" font-weight="700">虚空帽 04</text>
     <text x="28" y="470" fill="#fff" font-family="Arial" font-size="14">¥ 490 · 典藏</text>
     <rect x="245" y="20" width="56" height="22" rx="11" fill="#f3f1ea"/>
