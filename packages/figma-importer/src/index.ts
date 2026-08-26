@@ -42,6 +42,18 @@ function parseJson(files: Record<string, Uint8Array>, name: string): unknown {
   }
 }
 
+// base64 编码必须浏览器 / Node 双端可用：本地真实管线在浏览器内调用 parseFigmaBundle，
+// 不能依赖 Node 的 Buffer（Chromium 里是 ReferenceError）。btoa 两端都有；
+// 分块拼接避免一次性展开超限参数（预览上限 2MB）。
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
+  }
+  return btoa(binary);
+}
+
 export function parseFigmaBundle(archive: Uint8Array): DesignBundle {
   let files: Record<string, Uint8Array>;
   try {
@@ -90,7 +102,7 @@ export function parseFigmaBundle(archive: Uint8Array): DesignBundle {
   // 超限预览按缺失处理（previewUrl 本就是可选字段），不放大内存常驻。
   const previewUrl =
     preview && preview.byteLength <= MAX_PREVIEW_BYTES
-      ? `data:image/svg+xml;base64,${Buffer.from(preview).toString("base64")}`
+      ? `data:image/svg+xml;base64,${toBase64(preview)}`
       : undefined;
 
   const candidate = {

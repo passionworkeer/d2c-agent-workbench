@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { BundleError, parseFigmaBundle } from "./index";
@@ -53,6 +54,15 @@ describe("parseFigmaBundle", () => {
     expect(result.manifest.name).toBe("Product Grid");
     expect(result.nodes[0]?.layoutMode).toBe("VERTICAL");
     expect(result.previewUrl).toMatch(/^data:image\/svg\+xml;base64,/);
+  });
+
+  it("源码不出现 Buffer 调用（本地真实管线在浏览器内执行，Node 全局会 ReferenceError）", () => {
+    // 运行时守护不可行：vitest 跑在 Node 里，Buffer 恒存在；把 Buffer 换成
+    // undefined 又会破坏测试运行时自身。改为钉源码——本包被 web 直接 import，
+    // 出现 Buffer.<method> 调用即在真实浏览器炸（此前 previewUrl 曾用 Buffer.from 触发过；
+    // 只匹配值调用，类型标注位置的 Buffer 编译后即被擦除、无害）。
+    const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/\bBuffer\s*\./);
   });
 
   it("drops oversized previews instead of keeping them in memory", () => {
