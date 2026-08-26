@@ -84,7 +84,7 @@ describe("D2C 工作台", () => {
     expect(screen.getByTestId("final-score")).toHaveTextContent("94");
   });
 
-  it("代码 Diff 页签真实可切换并展示 diff 与修复补丁", async () => {
+  it("代码 Diff 页签真实可切换并展示 tokens.css 真实差异与修复补丁", async () => {
     render(<App />);
 
     await act(async () => {
@@ -96,7 +96,9 @@ describe("D2C 工作台", () => {
       fireEvent.click(screen.getByRole("button", { name: "代码 Diff" }));
     });
     expect(screen.getByTestId("diff-view")).toBeInTheDocument();
-    expect(screen.getByText("+ ProductGridPage.tsx")).toBeInTheDocument();
+    // DiffView 现在跑真实 LCS：终稿相对草稿补全 typography 两个 token，所以 typography 行必出现
+    expect(screen.getByText("--typography-label-font-size: 12px;")).toBeInTheDocument();
+    expect(screen.getByText("--typography-display-font-size: 64px;")).toBeInTheDocument();
     expect(screen.getByText("硬编码间距 → var(--spacing)")).toBeInTheDocument();
 
     await act(async () => {

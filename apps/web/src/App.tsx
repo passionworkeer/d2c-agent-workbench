@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { getRun, subscribeToRun, uploadBundle, type RunDetail } from "./lib/api";
+import { DiffView } from "./components/DiffView";
+import { TraceEventCard } from "./components/TraceEventCard";
 import {
   applyCanvasEdit,
   buildDesignBundle,
@@ -154,28 +156,6 @@ function ProductPreview({ uiSpec }: { uiSpec: UISpec }) {
   );
 }
 
-function DiffView({ diffText, patches }: { diffText: string; patches: string[] }) {
-  const lines = diffText ? diffText.split("\n") : [];
-  return (
-    <div className="diff-view" data-testid="diff-view">
-      {lines.length === 0 && patches.length === 0 && (
-        <p className="diff-empty">Build Agent 生成代码后，这里会显示文件级变更 Diff 与修复补丁。</p>
-      )}
-      {lines.map((line) => (
-        <div className={`diff-line ${line.startsWith("+") ? "add" : ""}`} key={line}>{line}</div>
-      ))}
-      {patches.length > 0 && (
-        <div className="diff-patches">
-          <span className="diff-patches-label">REPAIR PATCHES · 定向修复</span>
-          {patches.map((patch) => (
-            <div className="diff-patch" key={patch}>{patch}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ChatPanel({ edits }: { edits: typeof canvasEdits }) {
   return (
     <div className="chat-panel" data-testid="chat-panel">
@@ -293,6 +273,18 @@ export default function App() {
     }
     return [];
   }, [events]);
+
+  // 从事件载荷提取草稿/终稿 tokens.css（事件 6/12 真实管线产物），供 DiffView 渲染真实差异。
+  const draftTokensCss = useMemo(() => {
+    const generated = events.find((event) => event.state === "GENERATED");
+    return (generated?.data?.tokensCss as string | undefined) ?? "";
+  }, [events]);
+  const finalTokensCss = useMemo(() => {
+    const completed = events.find((event) => event.state === "COMPLETED");
+    return (completed?.data?.tokensCss as string | undefined) ?? "";
+  }, [events]);
+
+  const activeStepState: WorkflowState | null = events.at(-1)?.state ?? null;
 
   // I2D 派生：设计稿在 SPEC_GENERATED 后可见，CANVAS_EDITED 后叠加对话编辑。
   const designReady = mode === "i2d" && events.some((event) => event.state === "SPEC_GENERATED");
@@ -613,10 +605,7 @@ export default function App() {
                 {events.length === 0 ? (
                   <div className="trace-empty"><CircleDot size={19}/><p>每一次 Tool 调用、Artifact 产出和评测修复都会按顺序显示在这里。</p></div>
                 ) : events.map((event, index) => (
-                  <div className={`trace-event ${event.state === "REPAIRING" ? "repair" : ""}`} key={event.id}>
-                    <div className="trace-index">{String(index + 1).padStart(2, "0")}</div>
-                    <div><div className="trace-title"><strong>{event.title}</strong><span>{stateNames[event.state]}</span></div>{event.detail && <p>{event.detail}</p>}</div>
-                  </div>
+                  <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "REPAIRING" || event.state === "EVALUATED"} />
                 ))}
               </div>
               {mappings.length > 0 && <div className="evidence-panel">
@@ -652,12 +641,21 @@ export default function App() {
                 <>
                   <ProductPreview uiSpec={run?.uiSpec ?? emptySpec} />
                   <div className="code-preview">
-                    <div><span>ProductGridPage.tsx</span><span className="diff-stat">+24 −3</span></div>
+                    <div>
+                      <span>{activeStepState === "GENERATED" ? "草稿 ProductGridPage.tsx" : activeStepState === "COMPLETED" ? "终稿 ProductGridPage.tsx" : "ProductGridPage.tsx"}</span>
+                      <span className="diff-stat">{activeStepState === "COMPLETED" ? "+ tokens.css 增量" : activeStepState === "GENERATED" ? "草稿：未定稿 token" : "+24 −3"}</span>
+                    </div>
                     <pre><code>{generatedCode || "// Build Agent 运行后将在这里显示生成代码。"}</code></pre>
                   </div>
                 </>
               ) : (
-                <DiffView diffText={diffText} patches={repairPatches} />
+                <DiffView
+                  beforeCode={draftTokensCss}
+                  afterCode={finalTokensCss}
+                  beforeLabel="草稿 tokens.css"
+                  afterLabel="终稿 tokens.css"
+                  patches={repairPatches}
+                />
               )}
               {run && (
                 <div className="delivery-actions">
@@ -713,10 +711,7 @@ export default function App() {
                 {events.length === 0 ? (
                   <div className="trace-empty"><CircleDot size={19}/><p>多模态 UI 理解、布局推断、组件识别与设计稿生成的每一步都会按顺序显示在这里。</p></div>
                 ) : events.map((event, index) => (
-                  <div className={`trace-event ${event.state === "CANVAS_EDITED" ? "repair" : ""}`} key={event.id}>
-                    <div className="trace-index">{String(index + 1).padStart(2, "0")}</div>
-                    <div><div className="trace-title"><strong>{event.title}</strong><span>{stateNames[event.state]}</span></div>{event.detail && <p>{event.detail}</p>}</div>
-                  </div>
+                  <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "CANVAS_EDITED"} />
                 ))}
               </div>
               {designEdited && <ChatPanel edits={canvasEdits} />}

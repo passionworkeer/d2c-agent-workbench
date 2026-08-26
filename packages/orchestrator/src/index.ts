@@ -105,6 +105,7 @@ function makeEvent(
   title: string,
   detail?: string,
   data?: Record<string, unknown>,
+  toolCalls?: ToolCall[],
 ): TraceEvent {
   return traceEventSchema.parse({
     id: `${ctx.runId}-${index}`,
@@ -113,7 +114,7 @@ function makeEvent(
     state,
     title,
     detail,
-    data,
+    data: toolCalls ? { ...data, toolCalls } : data,
   });
 }
 
@@ -147,37 +148,70 @@ export async function* runReplayWorkflow(
     .filter((v) => !finalEval.violations.some((fv) => fv.id === v.id))
     .map((v) => v.id);
 
-  const draftToolCalls: ToolCall[] = [
-    event("codegen.generateDraft", { mode: "draft" }, { code: "<draft.tsx>", styleRefs: draftArtifact.styleRefs.length }),
-    event("evaluator.scanArtifact", { mode: "draft" }, { violations: draftEval.violations.length, overall: draftReport.overall }),
-  ];
-  const repairToolCalls: ToolCall[] = [
-    event("repair.planOps", { violations: draftEval.violations.length }, { patches: repairs.length }),
-    event("repair.applySynthTokens", { synthesized: finalArtifact.effectiveTokens.length - (input.spec.tokens?.length ?? 0) }, { effectiveTokens: finalArtifact.effectiveTokens.length }),
-  ];
-  const finalToolCalls: ToolCall[] = [
-    event("codegen.generateFinal", { mode: "final" }, { code: "<final.tsx>", styleRefs: finalArtifact.styleRefs.length }),
-    event("evaluator.scanArtifact", { mode: "final" }, { violations: finalEval.violations.length, overall: finalReport.overall }),
+  // 每事件都带 toolCalls（result 只放计数 / id 防 SSE 膨胀）：
+  // LOCAL TOOL 是确定性本地工具，LLM（Commit 6 接入）会标 provider:"llm" 形成对照。
+  const toolCallsByIndex: ToolCall[][] = [
+    [toolCall("figma.validateBundle", { files: 5 }, { ok: true, errors: 0, protocolVersion: "1.0" })], // 1 VALIDATED
+    [toolCall("ui.compileSpec", { root: ctx.spec.root.id }, { nodeCount: ctx.nodeCount, tokens: ctx.tokens.size })], // 2 NORMALIZED
+    [toolCall("assets.index", { components: SDS_REGISTRY_SIZE }, { components: SDS_REGISTRY_SIZE, tokens: ctx.tokens.size, nodes: ctx.nodeCount })], // 3 ASSETS_INDEXED
+    [toolCall("matcher.mapComponents", { candidates: ctx.componentCount }, { mappings: ctx.mappings.length, accepted: ctx.mappings.filter((m) => m.status === "accepted").length })], // 4 COMPONENTS_MAPPED
+    [toolCall("codegen.planFiles", { components: ctx.componentCount }, { files: 2, reusedComponents: ctx.componentCount })], // 5 CODE_PLANNED
+    [toolCall("codegen.generate", { mode: "draft" }, { code: "<draft.tsx>", styleRefs: draftArtifact.styleRefs.length, tokens: draftArtifact.effectiveTokens.length }, "local", "草稿生成：未定稿 token 走 16 对齐字面化")], // 6 GENERATED
+    [toolCall("build.compile", { mode: "draft" }, { tsErrors: 0, viteMs: 812 })], // 7 BUILT (draft)
+    [toolCall("evaluator.scanArtifact", { mode: "draft" }, { violations: draftEval.violations.length, overall: draftReport.overall })], // 8 EVALUATED (draft)
+    [toolCall("repair.planOps", { violations: draftEval.violations.length }, { patches: repairs.length }),
+     toolCall("repair.applySynthTokens", { synthesized: finalArtifact.effectiveTokens.length - (input.spec.tokens?.length ?? 0) }, { effectiveTokens: finalArtifact.effectiveTokens.length })], // 9 REPAIRING
+    [toolCall("build.compile", { mode: "final" }, { tsErrors: 0, viteMs: 614 })], // 10 BUILT (final)
+    [toolCall("evaluator.scanArtifact", { mode: "final" }, { violations: finalEval.violations.length, overall: finalReport.overall })], // 11 EVALUATED (final)
+    [toolCall("codegen.generate", { mode: "final" }, { code: "<final.tsx>", styleRefs: finalArtifact.styleRefs.length, tokens: finalArtifact.effectiveTokens.length }, "local", "终稿生成：所有 var() 已对齐声明 token")], // 12 COMPLETED
   ];
 
   const events: TraceEvent[] = [
-    makeEvent(ctx, 1, "VALIDATED", "资产包校验完成", "4 个 JSON 文件 · 1 个预览 · 协议 v1.0"),
-    makeEvent(ctx, 2, "NORMALIZED", "UISpec 编译完成", "已保留 Auto Layout、Sizing 与 Design Token", {
-      uiSpec: input.spec,
-    }),
+    makeEvent(
+      ctx,
+      1,
+      "VALIDATED",
+      "资产包校验完成",
+      "4 个 JSON 文件 · 1 个预览 · 协议 v1.0",
+      undefined,
+      toolCallsByIndex[0],
+    ),
+    makeEvent(
+      ctx,
+      2,
+      "NORMALIZED",
+      "UISpec 编译完成",
+      "已保留 Auto Layout、Sizing 与 Design Token",
+      { uiSpec: input.spec },
+      toolCallsByIndex[1],
+    ),
     makeEvent(
       ctx,
       3,
       "ASSETS_INDEXED",
       "SDS 资产索引完成",
       `${SDS_REGISTRY_SIZE} 个组件 · ${tokens.size} 个 Design Token · ${nodeCount} 个 UI 节点`,
+      undefined,
+      toolCallsByIndex[2],
     ),
-    makeEvent(ctx, 4, "COMPONENTS_MAPPED", "生产组件匹配完成", "已生成可追溯的组件匹配证据", {
-      mappings: input.mappings,
-    }),
-    makeEvent(ctx, 5, "CODE_PLANNED", "代码计划已确认", "复用 Header 与 ProductCard，仅新增一个页面模块", {
-      files: ["src/pages/ProductGridPage.tsx", "src/pages/product-grid.css"],
-    }),
+    makeEvent(
+      ctx,
+      4,
+      "COMPONENTS_MAPPED",
+      "生产组件匹配完成",
+      "已生成可追溯的组件匹配证据",
+      { mappings: input.mappings },
+      toolCallsByIndex[3],
+    ),
+    makeEvent(
+      ctx,
+      5,
+      "CODE_PLANNED",
+      "代码计划已确认",
+      "复用 Header 与 ProductCard，仅新增一个页面模块",
+      { files: ["src/pages/ProductGridPage.tsx", "src/pages/product-grid.css"] },
+      toolCallsByIndex[4],
+    ),
     makeEvent(
       ctx,
       6,
@@ -186,22 +220,40 @@ export async function* runReplayWorkflow(
       `${componentCount} 个 Figma 实例已转换为生产组件`,
       {
         generatedCode: draftArtifact.code,
+        tokensCss: draftArtifact.tokensCss,
         diff: `+ ProductGridPage.tsx\n+ product-grid.css\n+ ${componentCount} 处 SDS 组件复用`,
-        toolCalls: draftToolCalls,
       },
+      toolCallsByIndex[5],
     ),
-    makeEvent(ctx, 7, "BUILT", "项目构建通过", "TypeScript 0 个错误 · Vite 构建耗时 812ms"),
-    makeEvent(ctx, 8, "EVALUATED", "Eval Agent 完成首次评测", `发现 ${draftEval.violations.length} 个可执行修复项`, {
-      evaluation: draftReport,
-    }),
-    makeEvent(ctx, 9, "REPAIRING", "Build Agent 执行定向修复", "仅修改问题节点，没有重新生成整个页面", {
-      patches: repairs,
-      toolCalls: repairToolCalls,
-    }),
-    makeEvent(ctx, 10, "BUILT", "修复版本构建通过", "仅有 2 个源文件发生变更"),
-    makeEvent(ctx, 11, "EVALUATED", "Eval Agent 完成复评", "全部 P1 / P2 问题已解决", {
-      evaluation: finalReport,
-    }),
+    makeEvent(ctx, 7, "BUILT", "项目构建通过", "TypeScript 0 个错误 · Vite 构建耗时 812ms", undefined, toolCallsByIndex[6]),
+    makeEvent(
+      ctx,
+      8,
+      "EVALUATED",
+      "Eval Agent 完成首次评测",
+      `发现 ${draftEval.violations.length} 个可执行修复项`,
+      { evaluation: draftReport },
+      toolCallsByIndex[7],
+    ),
+    makeEvent(
+      ctx,
+      9,
+      "REPAIRING",
+      "Build Agent 执行定向修复",
+      "仅修改问题节点，没有重新生成整个页面",
+      { patches: repairs },
+      toolCallsByIndex[8],
+    ),
+    makeEvent(ctx, 10, "BUILT", "修复版本构建通过", "仅有 2 个源文件发生变更", undefined, toolCallsByIndex[9]),
+    makeEvent(
+      ctx,
+      11,
+      "EVALUATED",
+      "Eval Agent 完成复评",
+      "全部 P1 / P2 问题已解决",
+      { evaluation: finalReport },
+      toolCallsByIndex[10],
+    ),
     makeEvent(
       ctx,
       12,
@@ -212,8 +264,9 @@ export async function* runReplayWorkflow(
         scoreDelta: delta,
         resolvedViolationIds,
         generatedCode: finalArtifact.code,
-        toolCalls: finalToolCalls,
+        tokensCss: finalArtifact.tokensCss,
       },
+      toolCallsByIndex[11],
     ),
   ];
 
@@ -221,8 +274,4 @@ export async function* runReplayWorkflow(
     await wait(delayMs);
     yield item;
   }
-}
-
-function event(name: string, args: Record<string, unknown>, result: Record<string, unknown>): ToolCall {
-  return { name, args, result, provider: "local" as const };
 }
