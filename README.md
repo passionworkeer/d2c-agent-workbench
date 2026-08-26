@@ -79,7 +79,7 @@ I2D 上传参考图默认走演示链路（零风险）。provider=llm 且已填
 
 - 请求走 `POST /api/vision/interpret`（key 复用 LLM 设置，同样走 `X-LLM-Key` 头经代理转发）。
 - 服务端用 Anthropic vision 格式（base64 image content block）+ `emit_ui_spec` tool calling，返回经 zod 校验的 UISpec / mappings / tokens。
-- 失败（模型不可达 / 输出不符 schema）自动降级演示链路，画布下方如实显示降级原因。
+- 失败（模型不可达 / 输出不符 schema）自动降级演示链路，画布上方 vision-note 状态行如实显示降级原因。
 - 真端点冒烟脚本：`node scripts/llm-integration.mjs`（读 `.env`，仓库已 gitignore）。
 
 ## Figma 回写（可选）
@@ -141,7 +141,7 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 | `packages/asset-indexer` | 企业组件资产库扫描器：设计系统仓库（React + Storybook + Code Connect）→ matcher 可注入的 registry |
 | `packages/figma-patcher` | EditOp → Figma setNodeChanges：token 解字面量、GRID 降级记录、selector 复用 canvas-ops 语义 |
 | `apps/server` | Run 管理、上传 API、SSE 事件流、LLM / 视觉模型 / Figma 回写三个代理路由 |
-| `apps/web` | 三栏 Agent 工作台、SpecRenderer、TraceEventCard、DiffView、ChatPanel、SettingsPopover、FigmaPatchPanel |
+| `apps/web` | 单列分区块 Agent 工作台、SpecRenderer、TraceFeed（轨迹分组）、DiffView、ChatPanel、SettingsPopover、FigmaPatchPanel |
 | `examples/figma-bundles/product-grid` | 主 fixture：4 张商品卡 + 5 SDS 组件实例 + 12 typography |
 | `examples/figma-bundles/form-page` | 第二 fixture：表单 + Input + Checkbox（未映射）+ Button |
 | `examples/sample-design-system` | 企业设计系统样本：6 个真 React 组件 + Storybook + Code Connect，供 asset-indexer 扫描 |

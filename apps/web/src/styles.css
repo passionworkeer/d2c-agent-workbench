@@ -549,11 +549,13 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
   .hero-strip { flex-wrap: wrap; gap: 10px; }
   .hero-strip > p { flex-basis: 100%; }
   .hero-strip h1 { white-space: normal; }
+  .pipeline-rail { flex-wrap: wrap; }
   .topbar { grid-template-columns: auto 1fr; }
   .header-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .run-summary { justify-content: flex-start; }
   .step-bar { position: static; flex-wrap: wrap; }
-  .trace-group-head { top: 72px; }
+  .trace-group-head { top: 72px; flex-wrap: wrap; }
+  .source-toggle, .fixture-toggle, .engine-picker { flex-wrap: wrap; }
   .repair-result ul { grid-template-columns: 1fr; }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }

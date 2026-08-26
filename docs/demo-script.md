@@ -11,7 +11,7 @@
 
 “这个 Demo 解决的不是截图转 HTML，而是**如何把 Figma 的设计意图编译成可维护、可评测、可进入研发流程的代码**。我会演示六个亮点：真实评测闭环、可观察 Agent 工具调用、对话式画布编辑、真视觉模型、企业组件资产库接入、以及设计稿回写 Figma。”
 
-让面试官先看到三栏：「设计输入」「Agent 执行轨迹」「代码交付」。
+让面试官先看到三个区块（自上而下：「设计输入」→「Agent 执行轨迹」→「代码交付」）。
 
 ### 亮点 1：真实评测闭环 40 秒
 
@@ -62,7 +62,7 @@
 
 “这个 Demo 解决的不是截图转 HTML，而是如何把 Figma 里的设计意图编译成可维护、可评测、能进入研发流程的代码。重点有四个：结构化输入、企业资产复用、可观察的 Agent 工作流，以及独立评测驱动的修复闭环。”
 
-先打开工作台，但不要立刻点击运行。让面试官看到三栏：「设计输入」「Agent 执行轨迹」「代码交付」。
+先打开工作台，但不要立刻点击运行。让面试官看到三个区块（上下排布：「设计输入」→「Agent 执行轨迹」→「代码交付」）。
 
 ### 1. 输入不是一张图：1 分钟
 
@@ -152,7 +152,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 - 上传一张参考图 PNG → 服务端 `POST /api/vision/interpret` 用 Anthropic vision 格式（base64 image content block）+ `emit_ui_spec` tool calling
 - 模型输出不进自由文本：tool 参数经 zod 校验后才进链路（UISpec / mappings / tokens）
 - SPEC_GENERATED / COMPONENTS_DETECTED 载荷全部换成真实识别结果，toolCalls 标 `provider=llm`
-- 失败（模型不可达 / 输出不符 schema）自动降级演示链路，画布下方 vision-note 如实标注原因
+- 失败（模型不可达 / 输出不符 schema）自动降级演示链路，画布上方 vision-note 状态行如实标注原因（成功绿 / 降级橙 / 演示灰三态）
 
 **Figma 回写**（编辑产生价值闭环）：
 
