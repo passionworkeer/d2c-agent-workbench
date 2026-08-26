@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import type { UISpec, UISpecNode } from "@d2c/contracts";
+import { ProductArt, type ProductTone } from "./ProductArt";
 
 // 通用 UISpec → JSX 渲染器：按 semanticRole / figmaComponent 派发到不同可视分支。
 // 同一个组件既能渲染商品网格也能渲染表单页：和现有 ProductPreview 等价，
@@ -9,26 +10,16 @@ export interface SpecRendererProps {
   uiSpec: UISpec;
 }
 
-function getToneClass(tone: unknown): string {
+const VALID_TONES: ProductTone[] = ["cobalt", "coral", "lime", "charcoal"];
+
+function getToneClass(tone: unknown): ProductTone {
   if (typeof tone !== "string") return "cobalt";
-  return ["cobalt", "coral", "lime", "charcoal"].includes(tone) ? tone : "cobalt";
+  return VALID_TONES.includes(tone as ProductTone) ? (tone as ProductTone) : "cobalt";
 }
 
 function getStateClass(state: unknown): string {
   if (typeof state !== "string") return "default";
   return ["default", "error"].includes(state) ? state : "default";
-}
-
-// 形状按 tone 而非 index 选取——和 Figma 设计稿里的视觉语义一致（cobalt=圆/coral=胶囊/
-// lime=三角/charcoal=椭圆）。同一份映射供 SpecRenderer 与 product-grid 预览 SVG 共同遵守。
-function getShapeByTone(tone: string): string {
-  switch (tone) {
-    case "cobalt": return "circle";
-    case "coral": return "capsule";
-    case "lime": return "triangle";
-    case "charcoal": return "orbit";
-    default: return "circle";
-  }
 }
 
 const productNames = ["弧线跑鞋 01", "形态手袋 02", "机能外套 03", "虚空帽 04"];
@@ -92,8 +83,10 @@ function renderProductCard(node: UISpecNode, gridIndex: number): ReactElement | 
   return (
     <div key={node.id} className="node-instance">
       <article className={`product-card ${tone}`}>
-        <div className={`product-shape ${getShapeByTone(tone)}`} />
-        <div>
+        <div className="product-art">
+          <ProductArt tone={tone} className="product-image" />
+        </div>
+        <div className="product-meta">
           <strong>{productNames[gridIndex % 4]}</strong>
           <span>{productMetas[gridIndex % 4]}</span>
         </div>

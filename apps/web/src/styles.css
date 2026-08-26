@@ -508,37 +508,55 @@ button { cursor: pointer; }
 .preview-tabs button { border: 0; background: none; color: #858c82; padding: 9px 10px; font-size: 11px; font-weight: 700; }
 .preview-tabs button.active { color: var(--text); border-bottom: 2px solid var(--acid); }
 .preview-tabs span { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--orange); }
-.rendered-page { margin: 10px 14px; max-width: 860px; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #f3f1ea; color: #171713; }
-.rendered-nav { height: 32px; border-radius: 7px; background: #171713; color: #f3f1ea; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font-size: 9px; }
-.rendered-nav strong { font-size: 11px; }
-.rendered-copy { padding: 10px 0 8px; }
-.rendered-copy span { color: #ef5b2a; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
-.rendered-copy h3 { font-size: 24px; letter-spacing: -.04em; margin: 3px 0; }
+.rendered-page {
+  margin: 14px;
+  max-width: 780px;
+  aspect-ratio: 16 / 10;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f3f1ea;
+  color: #171713;
+}
+.rendered-page > .rendered-nav { flex: none; }
+.rendered-page > .rendered-copy { flex: none; padding: 16px 0 10px; }
+.rendered-page > .product-grid { flex: 1; min-height: 0; gap: 8px; }
+.rendered-nav { height: 56px; border-radius: 14px; background: #171713; color: #f3f1ea; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.rendered-nav strong { font-size: 18px; }
+.rendered-copy span { color: #ef5b2a; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.rendered-copy h3 { font-size: 44px; letter-spacing: -.04em; margin: 4px 0 6px; }
 .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.product-card { height: 132px; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
+.product-card { aspect-ratio: 317 / 500; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; overflow: hidden; position: relative; min-height: 0; }
 .product-card.cobalt { background: #3154e8; color: white; }
 .product-card.coral { background: #ef5b2a; color: white; }
-.product-card.lime { background: #b8e636; }
+.product-card.lime { background: #b8e636; color: #171713; }
 .product-card.charcoal { background: #292927; color: white; }
-.product-shape { margin: auto; }
-.product-shape.circle { width: 36px; height: 36px; border-radius: 50%; background: #f3f1ea; }
-.product-shape.capsule { width: 26px; height: 42px; border-radius: 20px; background: #171713; }
-.product-shape.triangle { width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 40px solid #171713; }
-.product-shape.orbit { width: 44px; height: 28px; border-radius: 50%; border: 8px solid #f3f1ea; transform: rotate(-18deg); }
-.product-card strong { display: block; font-size: 9px; }
-.product-card span { font-size: 8px; opacity: .78; }
+.product-art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; margin: 4px 0 10px; }
+.product-image { width: 100%; height: 100%; max-height: 78%; color: rgba(243, 241, 234, .94); }
+.product-card.cobalt .product-image,
+.product-card.coral .product-image,
+.product-card.charcoal .product-image { color: rgba(243, 241, 234, .94); }
+.product-card.lime .product-image { color: #171713; }
+.product-meta { display: flex; flex-direction: column; gap: 2px; }
+.product-meta strong { display: block; font-size: 15px; }
+.product-meta span { font-size: 12px; opacity: .78; }
 .product-card .badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 6px;
-  border-radius: 5px;
+  top: 10px;
+  right: 10px;
+  padding: 3px 9px;
+  border-radius: 6px;
   background: rgba(243, 241, 234, .92);
-  color: #171713;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .05em;
+  color: #3154e8;
+  font-size: 10px;
+  font-weight: 700;
 }
+.product-card.coral .badge { color: #ef5b2a; }
+.product-card.lime .badge { background: rgba(23, 26, 22, .92); color: #b8e636; }
+.product-card.charcoal .badge { color: #292927; }
 
 /* 表单页 fixture 渲染（SpecRenderer 按 semanticRole / figmaComponent 派发，与商品网格共用一套渲染器） */
 .node-instance { display: contents; }
