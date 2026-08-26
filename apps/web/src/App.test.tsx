@@ -231,12 +231,12 @@ describe("I2D 设计稿生成链路", () => {
     });
     await act(async () => vi.runAllTimersAsync());
 
-    // 设计稿生成 + 对话编辑 + 导出全部到位
+    // 设计稿生成完成 → ChatPanel 出现（无预置对话，等待真实输入）
     expect(screen.getByText("结构化设计稿已生成")).toBeInTheDocument();
     expect(screen.getByTestId("generated-preview")).toBeInTheDocument();
     expect(document.querySelectorAll(".product-card")).toHaveLength(4);
     expect(screen.getByTestId("chat-panel")).toBeInTheDocument();
-    expect(screen.getByText(/第二张卡片的配色换成 lime/)).toBeInTheDocument();
+    expect(screen.getByTestId("chat-input")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /下载设计稿 JSON/ })).toBeEnabled();
     expect(screen.getByText(/design-draft\.product-grid\.json/)).toBeInTheDocument();
 
@@ -257,5 +257,72 @@ describe("I2D 设计稿生成链路", () => {
 
     await advanceToEnd();
     expect(screen.getByText("设计稿生成流程完成")).toBeInTheDocument();
+  });
+
+  it("对话式画布编辑：真实输入『把第二张卡片换成 lime』→ 实时落地 + trace 出现 CANVAS_EDITED", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+
+    // 初始：card-2 是 coral
+    const card2Before = document.querySelectorAll(".product-card")[1];
+    expect(card2Before?.classList.contains("coral")).toBe(true);
+
+    // 输入框输入真实指令 → 点击发送
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "把第二张卡片换成 lime" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("chat-send"));
+    });
+
+    // SpecRenderer 真实刷新：card-2 现在是 lime
+    const card2After = document.querySelectorAll(".product-card")[1];
+    expect(card2After?.classList.contains("lime")).toBe(true);
+    expect(card2After?.classList.contains("coral")).toBe(false);
+
+    // 聊天面板出现用户/agent 消息气泡
+    expect(screen.getByText(/设计同学/)).toBeInTheDocument();
+    expect(screen.getByText(/Canvas Agent/)).toBeInTheDocument();
+    expect(screen.getByText(/第二张卡片/)).toBeInTheDocument();
+
+    // trace 出现 CANVAS_EDITED 事件 + toolCalls（local tool 标签）
+    const traceEvents = screen.getAllByText("画布已编辑");
+    expect(traceEvents.length).toBeGreaterThan(0);
+  });
+
+  it("无法识别的指令走诚实兜底，不修改 designSpec", async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /自动播放/ }));
+    });
+    await act(async () => vi.runAllTimersAsync());
+
+    const card1Before = document.querySelectorAll(".product-card")[0];
+    const beforeTone = card1Before?.className;
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "调整一下那个奇怪的滑块" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("chat-send"));
+    });
+
+    expect(screen.getByText(/暂未识别该指令/)).toBeInTheDocument();
+    const card1After = document.querySelectorAll(".product-card")[0];
+    expect(card1After?.className).toBe(beforeTone);
   });
 });

@@ -1,4 +1,4 @@
-import type { ComponentMapping, EvaluationReport, TraceEvent, UISpec, UISpecNode, WorkflowState } from "@d2c/contracts";
+import type { ComponentMapping, EvaluationReport, ToolCall, TraceEvent, UISpec, UISpecNode, WorkflowState } from "@d2c/contracts";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -18,27 +18,29 @@ import {
   Play,
   RotateCcw,
   ScanLine,
+  Send,
   Sparkles,
   Upload,
   WandSparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { getRun, subscribeToRun, uploadBundle, type RunDetail } from "./lib/api";
 import { DiffView } from "./components/DiffView";
 import { SpecRenderer } from "./components/SpecRenderer";
 import { TraceEventCard } from "./components/TraceEventCard";
 import {
-  applyCanvasEdit,
   buildDesignBundle,
-  canvasEdits,
   createDesignEvents,
   referenceImageUrl,
   type DesignInput,
 } from "./lib/mock-design";
 import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
+import { applyEditOps, parseIntent } from "@d2c/canvas-ops";
 
 type Mode = "d2c" | "i2d";
+
+type ChatMsg = { role: "user" | "agent"; text: string };
 
 const metricNames: Record<string, string> = {
   geometry: "布局还原",
@@ -129,13 +131,43 @@ const emptySpec: UISpec = {
   root: { id: "empty", name: "", type: "FRAME", layout: { direction: "column", width: "fixed", height: "fixed" }, styles: {}, children: [] },
 };
 
-function ChatPanel({ edits }: { edits: typeof canvasEdits }) {
+// 对话式画布编辑：真实交互（消息列表 + 输入框 + 发送）。每条用户指令都通过 canvas-ops
+// 规则解析 → applyEditOps 落地到 designSpec；编辑事件实时追加进 events，不再预置。
+function ChatPanel({
+  messages,
+  onSend,
+}: {
+  messages: ChatMsg[];
+  onSend: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const value = draft.trim();
+    if (!value) return;
+    onSend(value);
+    setDraft("");
+  }
   return (
     <div className="chat-panel" data-testid="chat-panel">
       <div className="section-label"><span>对话式画布编辑</span><span>CANVAS EDIT</span></div>
-      {edits.map((item, index) => (
+      {messages.length === 0 ? (
+        <div className="chat-empty">输入自然语言指令，让 Canvas Agent 实时编辑当前设计稿。</div>
+      ) : messages.map((item, index) => (
         <div className={`chat-bubble ${item.role}`} key={index}>{item.role === "user" ? "设计同学" : "Canvas Agent"}：{item.text}</div>
       ))}
+      <form className="chat-form" onSubmit={submit}>
+        <input
+          data-testid="chat-input"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="例：把第二张卡片换成 lime；标题改成 春季新品"
+          aria-label="画布编辑指令"
+        />
+        <button data-testid="chat-send" type="submit" className="button primary" disabled={!draft.trim()}>
+          <Send size={14} />发送
+        </button>
+      </form>
     </div>
   );
 }
@@ -260,13 +292,21 @@ export default function App() {
 
   const activeStepState: WorkflowState | null = events.at(-1)?.state ?? null;
 
-  // I2D 派生：设计稿在 SPEC_GENERATED 后可见，CANVAS_EDITED 后叠加对话编辑。
+  // I2D 派生：设计稿在 SPEC_GENERATED 后可见，对话编辑由 useState 实时维护。
   const designReady = mode === "i2d" && events.some((event) => event.state === "SPEC_GENERATED");
   const designEdited = events.some((event) => event.state === "CANVAS_EDITED");
   const designExported = events.some((event) => event.state === "SPEC_EXPORTED");
-  const designSpec = useMemo(() => (designEdited ? applyCanvasEdit(mockUiSpec) : mockUiSpec), [designEdited]);
+  // designSpec 改 useState：SPEC_GENERATED 时一次性播种（idempotent）；后续编辑由 ChatPanel
+  // 通过 canvas-ops.applyEditOps 落地并同步 events（CANVAS_EDITED 实时追加）。
+  const [designSpec, setDesignSpec] = useState<UISpec | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  useEffect(() => {
+    if (designSpec) return;
+    const seed = events.find((event) => event.state === "SPEC_GENERATED")?.data?.uiSpec as UISpec | undefined;
+    if (seed) setDesignSpec(seed);
+  }, [events, designSpec]);
   const designStats = useMemo(() => {
-    if (!designReady) return null;
+    if (!designReady || !designSpec) return null;
     const tokens = new Set<string>();
     collectTokens(designSpec.root, tokens);
     return {
@@ -275,6 +315,60 @@ export default function App() {
       tokens: tokens.size,
     };
   }, [designReady, designSpec]);
+
+  // 用户发送画布编辑指令：parseIntent → applyEditOps → 写回 designSpec 并追加 CANVAS_EDITED 事件。
+  function handleChatSend(text: string) {
+    const userMsg: ChatMsg = { role: "user", text };
+    if (!designSpec) {
+      setChatMessages((prev) => [...prev, userMsg, { role: "agent", text: "设计稿尚未生成，请先运行演示。" }]);
+      return;
+    }
+    const intent = parseIntent(text, designSpec);
+    let agentText: string;
+    let newSpec: UISpec = designSpec;
+    let ops: ReturnType<typeof parseIntent> extends infer T ? T extends { ops: infer O } ? O : never : never = [] as never;
+    let explanation = "";
+    let confidence = 0;
+    if (intent && intent.ops.length > 0) {
+      const applied = applyEditOps(designSpec, intent.ops);
+      newSpec = applied.spec;
+      ops = intent.ops as never;
+      explanation = intent.explanation;
+      confidence = intent.confidence;
+      agentText = intent.explanation;
+      if (applied.missed.length > 0) agentText += `；未命中 ${applied.missed.length} 项`;
+      setDesignSpec(newSpec);
+    } else {
+      agentText = "暂未识别该指令——可以试试『把第二张卡片换成 lime』『标题改成 春季新品』等具体指令。";
+    }
+    setChatMessages((prev) => [...prev, userMsg, { role: "agent", text: agentText }]);
+
+    if (intent && intent.ops.length > 0) {
+      const editIndex = events.filter((event) => event.state === "CANVAS_EDITED").length + 1;
+      const toolCalls: ToolCall[] = [
+        {
+          name: "canvas.parseIntent",
+          provider: "local",
+          args: { text },
+          result: { ops: intent.ops, explanation, confidence },
+        },
+      ];
+      const editEvent: TraceEvent = {
+        id: `mock-design-run-edit-${editIndex}`,
+        runId: "mock-design-run",
+        timestamp: new Date(Date.UTC(2026, 7, 25, 2, 0, 8 + editIndex)).toISOString(),
+        state: "CANVAS_EDITED",
+        title: "对话式画布编辑已应用",
+        detail: explanation,
+        data: {
+          ops: intent.ops,
+          userText: text,
+          toolCalls,
+        },
+      };
+      setEvents((prev) => (prev.some((event) => event.id === editEvent.id) ? prev : [...prev, editEvent]));
+    }
+  }
 
   const currentState: WorkflowState | "READY" = events.at(-1)?.state ?? run?.state ?? "READY";
   const stepping = stepQueue !== null;
@@ -287,6 +381,8 @@ export default function App() {
     setEvents([]);
     setStepQueue(null);
     setStepIndex(0);
+    setDesignSpec(null);
+    setChatMessages([]);
   }
 
   function consumeEvent(event: TraceEvent) {
@@ -684,7 +780,7 @@ export default function App() {
             <article className="workspace-column trace-column">
               <div className="column-heading"><div><Sparkles size={16}/><span>Agent 执行轨迹</span></div><span>{events.length} 个事件</span></div>
               <div className="mapping-summary">
-                <div><span>{designInput === "image" ? "IMAGE → UISPEC" : "FIGMA → UISPEC"}</span><strong>{designReady ? designSpec.name : "等待生成"}</strong></div>
+                <div><span>{designInput === "image" ? "IMAGE → UISPEC" : "FIGMA → UISPEC"}</span><strong>{designReady ? (designSpec?.name ?? mockUiSpec.name) : "等待生成"}</strong></div>
                 <ArrowUpRight size={18}/>
               </div>
               <div className="trace-feed">
@@ -694,7 +790,7 @@ export default function App() {
                   <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "CANVAS_EDITED"} />
                 ))}
               </div>
-              {designEdited && <ChatPanel edits={canvasEdits} />}
+              {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} />}
               {mappings.length > 0 && <div className="evidence-panel">
                 <div className="section-label"><span>组件识别证据</span><span>{mappings.length} 个实例</span></div>
                 {mappings.slice(0, 3).map((mapping) => (
@@ -712,16 +808,16 @@ export default function App() {
                 <div><span>DESIGN DRAFT v1</span><strong>{designReady ? "动感商品网格 · 已结构化" : "等待 UI 理解完成"}</strong></div>
                 <MessageSquareText size={18}/>
               </div>
-              {designReady ? <SpecRenderer uiSpec={designSpec} /> : (
+              {designReady && designSpec ? <SpecRenderer uiSpec={designSpec} /> : (
                 <div className="placeholder-panel"><WandSparkles size={26}/><p>组件识别与 Token 绑定完成后，这里会展示生成的结构化设计稿，并支持对话式编辑。</p></div>
               )}
-              {designReady && (
+              {designReady && designSpec && (
                 <div className="section-block">
                   <div className="section-label"><span>生成稿节点树</span><span>EDITABLE</span></div>
                   <NodeTree uiSpec={designSpec} />
                 </div>
               )}
-              {designReady && (
+              {designReady && designSpec && (
                 <div className="section-block token-block">
                   <div className="section-label"><span>绑定的 Design Token</span><span>{designStats ? `${designStats.tokens} / ${designStats.tokens}` : ""}</span></div>
                   <TokenPills uiSpec={designSpec} />
@@ -734,7 +830,7 @@ export default function App() {
                 </div>
               )}
               <div className="delivery-actions">
-                <button className="button export" disabled={!designReady || running} onClick={() => downloadJson(buildDesignBundle(designSpec, mockMappings), "design-draft.product-grid.json")}><Download size={14}/>下载设计稿 JSON</button>
+                <button className="button export" disabled={!designReady || !designSpec || running} onClick={() => downloadJson(buildDesignBundle(designSpec ?? mockUiSpec, mockMappings), "design-draft.product-grid.json")}><Download size={14}/>下载设计稿 JSON</button>
                 <button className="button secondary" disabled={running} onClick={() => switchMode("d2c")}><ArrowRight size={14}/>进入 D2C 出码</button>
               </div>
             </article>

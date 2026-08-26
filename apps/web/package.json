@@ -17,6 +17,7 @@
     "@d2c/figma-importer": "workspace:*",
     "@d2c/orchestrator": "workspace:*",
     "@d2c/ui-compiler": "workspace:*",
+    "@d2c/canvas-ops": "workspace:*",
     "fflate": "^0.8.2",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",

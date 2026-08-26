@@ -57,6 +57,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@d2c/canvas-ops':
+        specifier: workspace:*
+        version: link:../../packages/canvas-ops
       '@d2c/codegen':
         specifier: workspace:*
         version: link:../../packages/codegen
@@ -112,6 +115,15 @@ importers:
       vite:
         specifier: ^7.1.3
         version: 7.3.6(@types/node@22.20.1)(tsx@4.23.12)
+
+  packages/canvas-ops:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
 
   packages/codegen:
     dependencies:
