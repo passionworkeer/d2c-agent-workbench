@@ -378,6 +378,57 @@ describe("I2D 设计稿生成链路", () => {
     }
   });
 
+  it("识别引擎选择器：默认 mock 跑演示 → vision-note 如实标注「未启用」而非「降级」", async () => {
+    localStorage.clear();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    fireEvent.click(screen.getByRole("button", { name: "运行设计稿生成演示" }));
+
+    // mock 不再静默：明确告知演示链路 + 未启用真实视觉模型（「降级」只属于真实链路失败）
+    expect(screen.getByTestId("vision-note")).toBeInTheDocument();
+    expect(screen.getByTestId("vision-note")).toHaveTextContent("未启用真实视觉模型");
+    expect(screen.getByTestId("vision-note")).not.toHaveTextContent("降级");
+    // 演示链路照常启动
+    expect(screen.getAllByText("参考图已导入").length).toBeGreaterThan(0);
+  });
+
+  it("识别引擎选择器：切到 LLM 且无 key → 立即打开设置面板并提示补 Key", async () => {
+    localStorage.clear();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("engine-llm"));
+    });
+
+    expect(screen.getByTestId("settings-popover")).toBeInTheDocument();
+    expect(screen.getByText("已选择 LLM 引擎，还需填写 API Key")).toBeInTheDocument();
+    localStorage.clear();
+  });
+
+  it("识别引擎选择器：切换即写 localStorage（provider.v1）", async () => {
+    localStorage.clear();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("engine-llm"));
+    });
+    expect(JSON.parse(localStorage.getItem("d2c-agent-workbench.provider.v1") ?? "{}").provider).toBe("llm");
+
+    // 关掉引导弹窗后回切 Mock：localStorage 同步回 rule，面板不再出现
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("engine-mock"));
+    });
+    expect(JSON.parse(localStorage.getItem("d2c-agent-workbench.provider.v1") ?? "{}").provider).toBe("rule");
+    expect(screen.queryByTestId("settings-popover")).not.toBeInTheDocument();
+    localStorage.clear();
+  });
+
   it("上传参考图 + provider=llm + key → 视觉模型 502 → 降级 mock 链路 + vision-note 提示", async () => {
     localStorage.clear();
     render(<App />);

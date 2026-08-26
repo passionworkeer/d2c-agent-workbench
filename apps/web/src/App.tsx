@@ -168,9 +168,11 @@ const emptySpec: UISpec = {
 function ChatPanel({
   messages,
   onSend,
+  engine,
 }: {
   messages: ChatMsg[];
   onSend: (text: string) => void;
+  engine: "rule" | "llm";
 }) {
   const [draft, setDraft] = useState("");
   function submit(event: FormEvent) {
@@ -182,7 +184,7 @@ function ChatPanel({
   }
   return (
     <div className="chat-panel" data-testid="chat-panel">
-      <div className="section-label"><span>对话式画布编辑</span><span>CANVAS EDIT</span></div>
+      <div className="section-label"><span>对话式画布编辑</span><span>CANVAS EDIT · {engine === "llm" ? "LLM 引擎" : "演示引擎"}</span></div>
       {messages.length === 0 ? (
         <div className="chat-empty">输入自然语言指令，让 Canvas Agent 实时编辑当前设计稿。</div>
       ) : messages.map((item, index) => (
@@ -493,6 +495,15 @@ export default function App() {
     startQueueDemo(createDesignEvents(input));
   }
 
+  // 引擎选择器主控：底层仍是单一 ProviderSettings.provider（同时驱动对话解析与视觉识别）。
+  // 切换即写 localStorage；切到 LLM 但未填 key 时直接打开引擎设置面板引导补全。
+  function setEngine(next: ProviderSettings["provider"]) {
+    const nextSettings = { ...providerSettings, provider: next };
+    setProviderSettings(nextSettings);
+    saveProviderSettings(nextSettings);
+    if (next === "llm" && nextSettings.key === "") setSettingsOpen(true);
+  }
+
   function switchMode(target: Mode) {
     if (target === mode) return;
     generation.current += 1;
@@ -603,34 +614,43 @@ export default function App() {
     reader.onload = () => {
       const dataUrl = String(reader.result);
       setReferenceImage(dataUrl);
-      // vision 模式判定：provider=llm 且已填 key（与 ChatPanel 共用同一设置）。
-      // 满足则先调真实视觉模型，失败自动降级 mock 链路 + 提示；不满足直接走 mock。
-      const visionEligible = providerSettings.provider === "llm" && providerSettings.key !== "";
-      if (!visionEligible) {
-        setVisionNote("");
-        startDesignDemo("image");
-        return;
-      }
-      setVisionNote("视觉模型识别中…");
-      void (async () => {
-        const outcome = await interpretReferenceImageViaProvider(dataUrl, providerSettings);
-        if (outcome.ok && outcome.uiSpec) {
-          const override: VisionOverride = {
-            uiSpec: outcome.uiSpec,
-            mappings: outcome.mappings ?? [],
-            tokens: outcome.tokens ?? [],
-            explanation: outcome.explanation ?? "",
-            model: providerSettings.model,
-          };
-          setVisionNote(`已使用真实视觉模型（${providerSettings.model}）识别`);
-          startQueueDemo(createDesignEvents("image", override));
-        } else {
-          setVisionNote(`视觉模型不可达（${outcome.errorMessage ?? "未知错误"}），已降级演示链路`);
-          startDesignDemo("image");
-        }
-      })();
+      // 上传真实参考图后输入源切回参考图（画布 / 引擎选择器同步出现），再走统一 vision 判定。
+      setDesignInput("image");
+      void runImagePipeline(dataUrl, "image");
     };
     reader.readAsDataURL(file);
+  }
+
+  // 统一 vision 判定（上传与「运行设计稿生成演示」按钮共用）：三个条件写死——
+  // 输入源是参考图、拿到用户上传的真实图（内置 SVG 线框不算）、引擎为 LLM 且已填 key。
+  // 任一不满足直接走演示链路并如实标注；绝不无 key / 内置图发真实 fetch。
+  async function runImagePipeline(uploadedDataUrl: string | null, source: DesignInput) {
+    const visionEligible =
+      source === "image" &&
+      uploadedDataUrl !== null &&
+      providerSettings.provider === "llm" &&
+      providerSettings.key !== "";
+    if (!visionEligible) {
+      setVisionNote("演示链路（未启用真实视觉模型）· 使用内置演示数据");
+      startDesignDemo("image");
+      return;
+    }
+    setVisionNote("视觉模型识别中…");
+    const outcome = await interpretReferenceImageViaProvider(uploadedDataUrl, providerSettings);
+    if (outcome.ok && outcome.uiSpec) {
+      const override: VisionOverride = {
+        uiSpec: outcome.uiSpec,
+        mappings: outcome.mappings ?? [],
+        tokens: outcome.tokens ?? [],
+        explanation: outcome.explanation ?? "",
+        model: providerSettings.model,
+      };
+      setVisionNote(`已使用真实视觉模型（${providerSettings.model}）识别`);
+      startQueueDemo(createDesignEvents("image", override));
+    } else {
+      setVisionNote(`视觉模型不可达（${outcome.errorMessage ?? "未知错误"}），已降级演示链路`);
+      startDesignDemo("image");
+    }
   }
 
   const initial = evaluations[0]?.overall ?? 0;
@@ -694,17 +714,34 @@ export default function App() {
               </button>
               <button className="button secondary" disabled={running} onClick={() => imageInput.current?.click()}><ImageIcon size={15} />上传参考图</button>
               <a className="button ghost skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
-              <button className="button primary" disabled={running} onClick={() => startDesignDemo(designInput)}><Play size={15} fill="currentColor" />运行设计稿生成演示</button>
+              <button
+                className="button primary"
+                disabled={running}
+                onClick={() => {
+                  // 演示按钮与上传共用同一 vision 判定：参考图输入 + 已传真实图 + LLM 引擎有 key
+                  // 才会走真实视觉模型，否则走演示链路并如实标注。
+                  if (designInput === "image") {
+                    void runImagePipeline(referenceImage, "image");
+                  } else {
+                    setVisionNote("");
+                    startDesignDemo("figma");
+                  }
+                }}
+              >
+                <Play size={15} fill="currentColor" />运行设计稿生成演示
+              </button>
             </>
           )}
         </div>
       </header>
 
-      <SettingsPopover
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onChange={(next) => setProviderSettings(next)}
-      />
+      {settingsOpen && (
+        <SettingsPopover
+          open
+          onClose={() => setSettingsOpen(false)}
+          onChange={(next) => setProviderSettings(next)}
+        />
+      )}
 
       {stepQueue && (
         <div className="step-bar">
@@ -864,9 +901,38 @@ export default function App() {
               <div className="column-heading"><div><ImageIcon size={16}/><span>设计输入</span><span>{designInput === "image" ? "REFERENCE IMAGE" : "FIGMA NODETREE"}</span></div></div>
               <div className="source-toggle">
                 <span>输入源</span>
-                <button className={designInput === "image" ? "active" : ""} onClick={() => setDesignInput("image")}>参考图</button>
-                <button className={designInput === "figma" ? "active" : ""} onClick={() => setDesignInput("figma")}>Figma 资产包（演示）</button>
+                <button
+                  className={designInput === "image" ? "active" : ""}
+                  onClick={() => {
+                    setDesignInput("image");
+                    setVisionNote("");
+                  }}
+                >参考图</button>
+                <button
+                  className={designInput === "figma" ? "active" : ""}
+                  onClick={() => {
+                    setDesignInput("figma");
+                    setVisionNote("");
+                  }}
+                >Figma 资产包（演示）</button>
               </div>
+              {designInput === "image" && (
+                <div className="engine-picker">
+                  <span>识别引擎</span>
+                  <button
+                    type="button"
+                    data-testid="engine-mock"
+                    className={providerSettings.provider === "rule" ? "active" : ""}
+                    onClick={() => setEngine("rule")}
+                  >演示 Mock</button>
+                  <button
+                    type="button"
+                    data-testid="engine-llm"
+                    className={providerSettings.provider === "llm" ? "active" : ""}
+                    onClick={() => setEngine("llm")}
+                  >真实视觉模型 LLM</button>
+                </div>
+              )}
               <div className="design-canvas">
                 {designInput === "image" ? (
                   <img src={referenceImage ?? referenceImageUrl} alt="参考图线框" />
@@ -908,7 +974,7 @@ export default function App() {
                   <TraceEventCard event={event} index={index} key={event.id} highlight={event.state === "CANVAS_EDITED"} />
                 ))}
               </div>
-              {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} />}
+              {designReady && <ChatPanel messages={chatMessages} onSend={handleChatSend} engine={providerSettings.provider} />}
               {designReady && (
                 <FigmaPatchPanel
                   spec={designSpec}

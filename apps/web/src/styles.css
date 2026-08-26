@@ -266,7 +266,7 @@ button { cursor: pointer; }
 .empty-source { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 280px; color: #929990; gap: 7px; }
 .empty-source strong { color: #4c544a; font-size: 13px; }
 .empty-source span { font-size: 11px; line-height: 1.6; }
-.source-toggle, .fixture-toggle {
+.source-toggle, .fixture-toggle, .engine-picker {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -278,7 +278,7 @@ button { cursor: pointer; }
   font-size: 11px;
   color: var(--muted);
 }
-.source-toggle button, .fixture-toggle button {
+.source-toggle button, .fixture-toggle button, .engine-picker button {
   padding: 6px 11px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
@@ -287,7 +287,8 @@ button { cursor: pointer; }
   font-weight: 700;
   color: var(--muted);
 }
-.source-toggle button.active, .fixture-toggle button.active { border-color: #a8df21; background: #f2fccf; color: #2d3d0b; }
+.source-toggle button.active, .fixture-toggle button.active, .engine-picker button.active { border-color: #a8df21; background: #f2fccf; color: #2d3d0b; }
+.engine-picker span { color: var(--faint); }
 .source-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 14px 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .source-stats div { padding: 12px; border-right: 1px solid var(--line); }
 .source-stats div:last-child { border: 0; }
@@ -379,10 +380,8 @@ button { cursor: pointer; }
 .icon-button:hover { color: var(--acid-dark); }
 .settings-hint { font-size: 10.5px; color: #858c82; line-height: 1.5; margin-top: 4px; }
 .settings-hint code { font-family: Consolas, monospace; font-size: 10px; background: #f4f1e8; padding: 1px 4px; border-radius: 3px; }
+.settings-alert { margin: 0 0 10px; padding: 8px 10px; border: 1px solid rgba(240, 90, 42, .35); border-radius: 8px; background: #fff7f3; color: #a43b19; font-size: 11px; }
 .settings-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
-.settings-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-.settings-tabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 8px; font-size: 11.5px; border: 1px solid var(--line); background: #fbfcfa; border-radius: 8px; cursor: pointer; color: var(--text); }
-.settings-tabs button.active { border-color: var(--acid-dark); background: var(--surface-tint); font-weight: 600; }
 
 .figma-patch-panel { margin: 14px; border-top: 1px solid var(--line); padding-top: 13px; display: flex; flex-direction: column; gap: 9px; }
 .figma-patch-panel .settings-row { grid-template-columns: 96px 1fr; }
