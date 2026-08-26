@@ -1,5 +1,5 @@
 import type { TraceEvent } from "@d2c/contracts";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -375,6 +375,59 @@ describe("I2D 设计稿生成链路", () => {
       expect(screen.getByText(/mock LLM 不可达/)).toBeInTheDocument();
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("上传参考图 + provider=llm + key → 视觉模型 502 → 降级 mock 链路 + vision-note 提示", async () => {
+    localStorage.clear();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /参考图 → 设计稿/ }));
+
+    // 设置 provider=llm + key（复用 ChatPanel 同一设置）
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("open-settings"));
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("settings-provider"), { target: { value: "llm" } });
+      fireEvent.change(screen.getByTestId("settings-key"), { target: { value: "vision-test-key" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("settings-save"));
+    });
+
+    // mock /api/vision/interpret → 502（真实链路不可达）
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(JSON.stringify({ code: "VISION_UNAVAILABLE", message: "mock 视觉模型不可达" }), { status: 502 });
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch as unknown as typeof fetch;
+    try {
+      await act(async () => {
+        fireEvent.change(screen.getByTestId("image-input"), {
+          target: { files: [new File(["png"], "ref.png", { type: "image/png" })] },
+        });
+      });
+
+      // FileReader + fetch 都是异步：等 vision-note 出现并显示降级提示
+      await waitFor(() => expect(screen.getByTestId("vision-note")).toBeInTheDocument());
+      expect(screen.getByTestId("vision-note")).toHaveTextContent("降级");
+      expect(screen.getByTestId("vision-note")).toHaveTextContent("mock 视觉模型不可达");
+
+      // 请求打到 vision 端点且 key 走 X-LLM-Key 头
+      expect(fakeFetch).toHaveBeenCalledTimes(1);
+      expect(capturedUrl).toBe("/api/vision/interpret");
+      expect(new Headers(capturedInit?.headers ?? {}).get("x-llm-key")).toBe("vision-test-key");
+
+      // 降级后 mock 链路照常启动（第一步事件出现）
+      expect(screen.getAllByText("参考图已导入").length).toBeGreaterThan(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      localStorage.clear();
     }
   });
 });

@@ -1,4 +1,4 @@
-import type { UISpec } from "@d2c/contracts";
+import type { ComponentMapping, TokenDefinition, UISpec } from "@d2c/contracts";
 import { parseIntent, type EditOp, type IntentResult } from "@d2c/canvas-ops";
 
 // 浏览器 → 本地 Fastify 代理 → MiniMax：
@@ -134,4 +134,65 @@ export async function interpretViaProvider(
 // 同步规则解析：parseIntent 是 sync 函数，这里走直接 import 避免异步派发看起来奇怪。
 function parseIntentLocal(text: string, spec: UISpec): IntentResult {
   return parseIntent(text, spec) ?? { ops: [], explanation: "暂未识别该指令", confidence: 0 };
+}
+
+// ===== 视觉模型（I2D 参考图 → UISpec）=====
+// 与 interpretViaProvider 同模式：浏览器 → Fastify 代理（X-LLM-Key）→ MiniMax 视觉端点。
+
+export interface VisionOutcome {
+  ok: boolean;
+  uiSpec?: UISpec;
+  mappings?: ComponentMapping[];
+  tokens?: TokenDefinition[];
+  explanation?: string;
+  errorMessage?: string;
+}
+
+interface VisionServerResponse {
+  uiSpec?: UISpec;
+  mappings?: ComponentMapping[];
+  tokens?: TokenDefinition[];
+  explanation?: string;
+  message?: string;
+}
+
+export async function interpretReferenceImageViaProvider(
+  imageDataUrl: string,
+  settings: ProviderSettings,
+  fetchImpl: typeof fetch = fetch,
+): Promise<VisionOutcome> {
+  if (settings.provider !== "llm" || !settings.key) {
+    return { ok: false, errorMessage: "视觉模型需要 provider=llm 且已填 key" };
+  }
+  try {
+    const response = await fetchImpl("/api/vision/interpret", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-llm-key": settings.key,
+      },
+      body: JSON.stringify({
+        imageDataUrl,
+        baseUrl: settings.baseUrl,
+        model: settings.model,
+      }),
+    });
+    if (!response.ok) {
+      const errBody = (await response.json().catch(() => ({}))) as LlmServerError;
+      return { ok: false, errorMessage: errBody.message ?? `视觉模型 ${response.status}` };
+    }
+    const body = (await response.json()) as VisionServerResponse;
+    return {
+      ok: true,
+      uiSpec: body.uiSpec,
+      mappings: body.mappings ?? [],
+      tokens: body.tokens ?? [],
+      explanation: body.explanation,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      errorMessage: error instanceof Error ? error.message : "视觉模型不可达",
+    };
+  }
 }

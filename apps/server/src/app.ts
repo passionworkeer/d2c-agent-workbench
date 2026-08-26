@@ -19,6 +19,7 @@ import { compileUISpec } from "@d2c/ui-compiler";
 import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 import { interpretCanvasEdit } from "./llm";
+import { interpretReferenceImage } from "./vision";
 
 interface BuildAppOptions {
   replayDelayMs?: number;
@@ -277,6 +278,42 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }
     return reply.code(200).send({
       ops: result.ops,
+      explanation: result.explanation,
+      provider: result.provider,
+      model: result.model,
+    });
+  });
+
+  // Vision interpret 路由：浏览器 → 本地 Fastify 代理（key 走 X-LLM-Key 请求头）→ MiniMax 视觉端点，
+  // 规避 CORS 并保证 key 不落仓库文件。与 canvas/interpret 同模式。
+  app.post<{
+    Body: {
+      imageDataUrl?: string;
+      name?: string;
+      model?: string;
+      baseUrl?: string;
+    };
+  }>("/api/vision/interpret", async (request, reply) => {
+    const apiKey = request.headers["x-llm-key"];
+    const imageDataUrl = request.body?.imageDataUrl;
+    const name = request.body?.name;
+    const model = request.body?.model ?? "MiniMax-M3";
+    const baseUrl = request.body?.baseUrl ?? "https://api.minimaxi.com/anthropic";
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+      return reply.code(400).send({ code: "VISION_BAD_REQUEST", message: "缺少 X-LLM-Key 请求头" });
+    }
+    if (typeof imageDataUrl !== "string" || imageDataUrl.length === 0) {
+      return reply.code(400).send({ code: "VISION_BAD_REQUEST", message: "缺少 imageDataUrl 字段" });
+    }
+    const result = await interpretReferenceImage({ baseUrl, apiKey, model, imageDataUrl, name });
+    if (!result.ok) {
+      const httpCode = result.code === "VISION_UNAVAILABLE" ? 502 : 400;
+      return reply.code(httpCode).send({ code: result.code, message: result.message });
+    }
+    return reply.code(200).send({
+      uiSpec: result.uiSpec,
+      mappings: result.mappings,
+      tokens: result.tokens,
       explanation: result.explanation,
       provider: result.provider,
       model: result.model,

@@ -343,6 +343,7 @@ button { cursor: pointer; }
 .chat-bubble.user { background: #fff; border: 1px solid var(--line); color: var(--text); }
 .chat-bubble.agent { background: var(--surface-tint); border: 1px solid #d9dfd2; color: #33401f; margin-left: auto; }
 .chat-empty { font-size: 11px; color: #858c82; padding: 7px 10px; border: 1px dashed var(--line); border-radius: 9px; margin-bottom: 8px; }
+.vision-note { font-size: 11px; color: #8a5a1f; background: #fdf6e7; border: 1px solid #ecd9ae; border-radius: 9px; padding: 7px 10px; margin-top: 9px; }
 .chat-form { display: flex; gap: 7px; margin-top: 9px; }
 .chat-form input { flex: 1; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; background: #fff; }
 .chat-form input:focus { outline: none; border-color: var(--acid); }

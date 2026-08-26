@@ -34,11 +34,13 @@ import {
   createDesignEvents,
   referenceImageUrl,
   type DesignInput,
+  type VisionOverride,
 } from "./lib/mock-design";
 import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
 import { applyEditOps } from "@d2c/canvas-ops";
 import {
+  interpretReferenceImageViaProvider,
   interpretViaProvider,
   loadProviderSettings,
   saveProviderSettings,
@@ -226,6 +228,8 @@ export default function App() {
   const [uploadedFile, setUploadedFile] = useState("");
   const [activeTab, setActiveTab] = useState<"preview" | "diff">("preview");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  // 视觉模型结果提示（成功 / 降级原因），显示在 I2D 输入面板下方
+  const [visionNote, setVisionNote] = useState<string>("");
   // 分步演示：queue 是完整事件序列，index 指向已揭示到第几步。
   const [stepQueue, setStepQueue] = useState<TraceEvent[] | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -468,6 +472,7 @@ export default function App() {
     setCanFallback(false);
     setUploadedFile("");
     setReferenceImage(null);
+    setVisionNote("");
     setActiveTab("preview");
   }
 
@@ -565,8 +570,34 @@ export default function App() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setReferenceImage(String(reader.result));
-      startDesignDemo("image");
+      const dataUrl = String(reader.result);
+      setReferenceImage(dataUrl);
+      // vision 模式判定：provider=llm 且已填 key（与 ChatPanel 共用同一设置）。
+      // 满足则先调真实视觉模型，失败自动降级 mock 链路 + 提示；不满足直接走 mock。
+      const visionEligible = providerSettings.provider === "llm" && providerSettings.key !== "";
+      if (!visionEligible) {
+        setVisionNote("");
+        startDesignDemo("image");
+        return;
+      }
+      setVisionNote("视觉模型识别中…");
+      void (async () => {
+        const outcome = await interpretReferenceImageViaProvider(dataUrl, providerSettings);
+        if (outcome.ok && outcome.uiSpec) {
+          const override: VisionOverride = {
+            uiSpec: outcome.uiSpec,
+            mappings: outcome.mappings ?? [],
+            tokens: outcome.tokens ?? [],
+            explanation: outcome.explanation ?? "",
+            model: providerSettings.model,
+          };
+          setVisionNote(`已使用真实视觉模型（${providerSettings.model}）识别`);
+          startQueueDemo(createDesignEvents("image", override));
+        } else {
+          setVisionNote(`视觉模型不可达（${outcome.errorMessage ?? "未知错误"}），已降级演示链路`);
+          startDesignDemo("image");
+        }
+      })();
     };
     reader.readAsDataURL(file);
   }
@@ -793,6 +824,7 @@ export default function App() {
                 ) : (
                   <div className="figma-tree-preview"><NodeTree uiSpec={mockUiSpec} /></div>
                 )}
+                {visionNote && <div className="vision-note" data-testid="vision-note">{visionNote}</div>}
                 <span className="canvas-badge">{designInput === "image" ? "800 × 500" : "STRUCTURED NODES"}</span>
               </div>
               <div className="source-stats">
