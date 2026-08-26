@@ -264,7 +264,7 @@ button { cursor: pointer; }
 .empty-source { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 280px; color: #929990; gap: 7px; }
 .empty-source strong { color: #4c544a; font-size: 13px; }
 .empty-source span { font-size: 11px; line-height: 1.6; }
-.source-toggle {
+.source-toggle, .fixture-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -276,7 +276,8 @@ button { cursor: pointer; }
   font-size: 11px;
   color: var(--muted);
 }
-.source-toggle button {
+.header-actions .fixture-toggle { margin: 0; }
+.source-toggle button, .fixture-toggle button {
   padding: 6px 11px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
@@ -285,7 +286,7 @@ button { cursor: pointer; }
   font-weight: 700;
   color: var(--muted);
 }
-.source-toggle button.active { border-color: #a8df21; background: #f2fccf; color: #2d3d0b; }
+.source-toggle button.active, .fixture-toggle button.active { border-color: #a8df21; background: #f2fccf; color: #2d3d0b; }
 .source-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 14px 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .source-stats div { padding: 12px; border-right: 1px solid var(--line); }
 .source-stats div:last-child { border: 0; }
@@ -322,6 +323,18 @@ button { cursor: pointer; }
 .trace-event p { font-size: 11px; color: var(--muted); margin: 4px 0 0; line-height: 1.55; }
 .trace-empty { height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #a1a79e; }
 .trace-empty p { max-width: 260px; font-size: 11px; line-height: 1.6; }
+
+/* toolCalls 可观察区：LOCAL / LLM 徽章 + 可展开的原始 JSON */
+.tool-list { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 4px; }
+.tool-list-label { display: flex; align-items: center; gap: 5px; font-family: Consolas, monospace; font-size: 9px; letter-spacing: .1em; color: var(--faint); }
+.tool-list-label svg { color: var(--acid-dark); }
+.tool-toggle { display: flex; align-items: center; gap: 7px; width: 100%; padding: 5px 7px; border: 0; border-radius: 6px; background: transparent; font-size: 10.5px; color: #4c544a; text-align: left; }
+.tool-toggle:hover { background: var(--surface-soft); }
+.tool-toggle code { font-family: Consolas, monospace; font-size: 10.5px; color: var(--text); }
+.tool-badge { flex: none; padding: 2px 6px; border-radius: 4px; font-family: Consolas, monospace; font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+.tool-badge.local { color: #596057; background: #f1f2ef; border: 1px solid var(--line); }
+.tool-badge.llm { color: var(--acid-dark); background: rgba(155, 213, 0, .16); border: 1px solid rgba(155, 213, 0, .55); }
+.tool-json { margin: 2px 0 6px 24px; max-height: 200px; overflow: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #f8f9f6; font-family: Consolas, monospace; font-size: 10px; line-height: 1.5; color: #424940; white-space: pre-wrap; }
 .evidence-panel { margin: 14px; border-top: 1px solid var(--line); padding-top: 13px; }
 .mapping-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfa; }
 .mapping-row > div:first-child { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
@@ -349,8 +362,10 @@ button { cursor: pointer; }
 .chat-form input:focus { outline: none; border-color: var(--acid); }
 .chat-form button { display: inline-flex; gap: 4px; align-items: center; }
 
-/* LLM Provider 设置面板 */
-.settings-popover { position: fixed; top: 64px; right: 16px; z-index: 50; width: 320px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px rgba(23, 26, 22, 0.12); padding: 12px 14px; }
+/* LLM Provider 设置面板：全屏遮罩 + 居中弹层（点遮罩 / Esc 关闭） */
+.settings-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(23, 26, 22, .28); display: grid; place-items: center; padding: 20px; }
+.settings-popover { position: relative; width: 340px; max-height: calc(100vh - 40px); overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px rgba(23, 26, 22, 0.12); padding: 12px 14px; animation: pop-in .18s ease-out; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(.98); } }
 .settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .settings-head div { display: flex; align-items: center; gap: 6px; }
 .settings-body { display: flex; flex-direction: column; gap: 9px; }
@@ -439,6 +454,22 @@ button { cursor: pointer; }
   font-weight: 800;
   letter-spacing: .05em;
 }
+
+/* 表单页 fixture 渲染（SpecRenderer 按 semanticRole / figmaComponent 派发，与商品网格共用一套渲染器） */
+.node-instance { display: contents; }
+.form-page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0 12px; border-bottom: 1px solid rgba(23, 23, 19, .12); }
+.page-title { font-size: 22px; letter-spacing: -.03em; margin: 0; color: #171713; }
+.form-hint { font-size: 9px; color: #6f756d; letter-spacing: .04em; }
+.form-section { display: flex; flex-direction: column; gap: 14px; max-width: 480px; margin: 14px 0; }
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+.form-input { min-height: 38px; display: flex; align-items: center; padding: 0 12px; border: 1px solid rgba(23, 23, 19, .22); border-radius: 8px; background: #fff; }
+.form-input.error { border-color: #ef5b2a; background: #fff7f3; }
+.form-input-value { font-size: 11px; color: #8a9188; }
+.form-submit { min-height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #171713; color: #f3f1ea; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.form-submit:hover { background: #2a2a27; }
+.form-checkbox { width: 16px; height: 16px; flex: none; border: 1.5px solid rgba(23, 23, 19, .3); border-radius: 4px; background: #fff; display: inline-grid; place-items: center; font-size: 10px; color: #171713; }
+.form-checkbox.checked { background: #b8e636; border-color: #86b800; }
+.unmapped-instance { padding: 6px 10px; border: 1px dashed rgba(239, 91, 42, .5); border-radius: 7px; font-family: Consolas, monospace; font-size: 9px; color: #a43b19; background: #fff7f3; }
 .code-preview { margin: 10px 14px; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: #f8f9f6; }
 .code-preview > div { display: flex; justify-content: space-between; padding: 7px 9px; border-bottom: 1px solid var(--line); font-family: Consolas, monospace; font-size: 9px; color: var(--muted); }
 .diff-stat { color: var(--acid-dark); }
@@ -448,6 +479,7 @@ button { cursor: pointer; }
 .diff-view { margin: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa; overflow: hidden; }
 .diff-line { padding: 9px 12px; font-family: Consolas, monospace; font-size: 11px; color: #424940; border-bottom: 1px solid #eceee9; }
 .diff-line.add { color: #2f7d0f; background: rgba(155, 213, 0, .09); }
+.diff-line.remove { color: #b33b16; background: rgba(240, 90, 42, .08); }
 .diff-patches { padding: 10px 12px; }
 .diff-patches-label { font-family: Consolas, monospace; font-size: 9px; color: var(--muted); letter-spacing: .12em; }
 .diff-patch { margin-top: 6px; padding: 8px 10px; border-radius: 6px; background: #fff; border: 1px solid var(--line); font-family: Consolas, monospace; font-size: 10px; color: #b33b16; }
