@@ -1,6 +1,6 @@
 import type { UISpec, UISpecNode } from "@d2c/contracts";
 import { describe, expect, it } from "vitest";
-import { mapSdsComponents, SDS_REGISTRY_SIZE } from "./index";
+import { buildRegistryFromEntries, mapSdsComponents, SDS_REGISTRY_SIZE } from "./index";
 
 function instance(id: string, name: string, props: Record<string, unknown> = {}): UISpecNode {
   return {
@@ -35,7 +35,8 @@ function specWith(...nodes: UISpecNode[]): UISpec {
 
 describe("mapSdsComponents", () => {
   it("exposes the registry size for trace declarations", () => {
-    expect(SDS_REGISTRY_SIZE).toBe(6);
+    // 静态表是演示下限；企业组件资产库（asset-indexer 扫描注入）可超过该值。
+    expect(SDS_REGISTRY_SIZE).toBeGreaterThanOrEqual(6);
   });
 
   it("maps exact names case-insensitively with truthful evidence", () => {
@@ -94,5 +95,51 @@ describe("mapSdsComponents", () => {
       confidence: 0,
       status: "unmapped",
     });
+  });
+});
+
+describe("registry 注入（asset-indexer → matcher）", () => {
+  it("mapSdsComponents 接受自定义 registry，命中注入的 figma 名称", () => {
+    const custom = buildRegistryFromEntries([
+      { codeComponent: "HeroCarousel", importPath: "@/company/HeroCarousel", figmaNames: ["Hero Carousel", "轮播横幅"] },
+    ]);
+    const mappings = mapSdsComponents(specWith(instance("hero", "轮播横幅")), custom);
+
+    expect(mappings[0]).toMatchObject({
+      codeComponent: "HeroCarousel",
+      importPath: "@/company/HeroCarousel",
+      confidence: 0.96,
+      status: "accepted",
+    });
+  });
+
+  it("空 registry → 全部 unmapped（诚实降级，不回退静态表）", () => {
+    const mappings = mapSdsComponents(specWith(instance("card", "Product Card / Default")), []);
+
+    expect(mappings[0]).toMatchObject({
+      codeComponent: "UnmappedComponent",
+      status: "unmapped",
+    });
+  });
+
+  it("注入条目可声明多个别名，归一化命中走 0.82 置信度", () => {
+    const custom = buildRegistryFromEntries([
+      { codeComponent: "Multi", importPath: "@/company/Multi", figmaNames: ["Multi Alias One", "Multi Alias Two"] },
+    ]);
+    const exact = mapSdsComponents(specWith(instance("a", "multi alias one")), custom);
+    const normalized = mapSdsComponents(specWith(instance("b", "Multi Alias  One")), custom);
+
+    expect(exact[0]).toMatchObject({ codeComponent: "Multi", confidence: 0.96 });
+    expect(normalized[0]).toMatchObject({ codeComponent: "Multi", confidence: 0.82 });
+  });
+
+  it("buildRegistryFromEntries 跳过缺名 / 缺别名的残缺条目", () => {
+    const registry = buildRegistryFromEntries([
+      { codeComponent: "Good", importPath: "@/company/Good", figmaNames: ["Good Name"] },
+      { codeComponent: "", importPath: "@/company/NoName", figmaNames: ["No Name"] },
+      { codeComponent: "NoAlias", importPath: "@/company/NoAlias", figmaNames: [] },
+    ]);
+    expect(registry).toHaveLength(1);
+    expect(registry[0]?.codeComponent).toBe("Good");
   });
 });

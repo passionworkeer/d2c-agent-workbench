@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { SDS_REGISTRY_SIZE, mapSdsComponents } from "@d2c/component-matcher";
+import { scanRepo } from "@d2c/asset-indexer";
+import { SDS_REGISTRY_SIZE, buildRegistryFromEntries, mapSdsComponents } from "@d2c/component-matcher";
 import {
   designBundleSchema,
   evaluationReportSchema,
@@ -81,6 +82,19 @@ function isTerminal(state: WorkflowState): boolean {
   return TERMINAL_STATES.has(state);
 }
 
+// 企业组件资产库扫描：examples/sample-design-system 是演示样本，
+// ?scan=dynamic 时实时扫描（结果缓存 —— 单进程只扫一次，避免每次 health 都做文件 IO）。
+const sampleDesignSystemDirectory = fileURLToPath(
+  new URL("../../../examples/sample-design-system/", import.meta.url),
+);
+let cachedDynamicRegistrySize: number | null = null;
+async function getDynamicRegistrySize(): Promise<number> {
+  if (cachedDynamicRegistrySize !== null) return cachedDynamicRegistrySize;
+  const entries = await scanRepo({ repoRoot: sampleDesignSystemDirectory });
+  cachedDynamicRegistrySize = buildRegistryFromEntries(entries).length;
+  return cachedDynamicRegistrySize;
+}
+
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
   const runs = new Map<string, RunRecord>();
@@ -156,7 +170,19 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     return record;
   }
 
-  app.get("/api/health", async () => ({ status: "ok", registry: { sdsComponents: SDS_REGISTRY_SIZE } }));
+  app.get<{ Querystring: { scan?: string } }>("/api/health", async (request) => {
+    const payload: Record<string, unknown> = {
+      status: "ok",
+      registry: { sdsComponents: SDS_REGISTRY_SIZE },
+    };
+    if (request.query?.scan === "dynamic") {
+      payload.registry = {
+        ...((payload.registry as Record<string, unknown>)),
+        dynamic: await getDynamicRegistrySize(),
+      };
+    }
+    return payload;
+  });
 
   app.post("/api/runs/demo", async (_request, reply) => {
     let bundle: DesignBundle;

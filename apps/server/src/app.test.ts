@@ -44,6 +44,17 @@ describe("D2C server", () => {
     await app.close();
   });
 
+  it("?scan=dynamic 实时扫描 sample-design-system 返回动态 registry 大小", async () => {
+    const app = buildApp({ replayDelayMs: 0 });
+    const response = await app.inject({ method: "GET", url: "/api/health?scan=dynamic" });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { registry: { sdsComponents: number; dynamic: number } };
+    expect(body.registry.sdsComponents).toBe(6);
+    expect(body.registry.dynamic).toBeGreaterThanOrEqual(6);
+    await app.close();
+  });
+
   it("creates and completes a demo run", async () => {
     const app = buildApp({ replayDelayMs: 0 });
     const created = await app.inject({ method: "POST", url: "/api/runs/demo" });

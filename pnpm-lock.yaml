@@ -26,6 +26,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@d2c/asset-indexer':
+        specifier: workspace:*
+        version: link:../../packages/asset-indexer
       '@d2c/canvas-ops':
         specifier: workspace:*
         version: link:../../packages/canvas-ops
@@ -121,6 +124,21 @@ importers:
       vite:
         specifier: ^7.1.3
         version: 7.3.6(@types/node@22.20.1)(tsx@4.23.12)
+
+  packages/asset-indexer:
+    devDependencies:
+      '@d2c/component-matcher':
+        specifier: workspace:*
+        version: link:../component-matcher
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@d2c/ui-compiler':
+        specifier: workspace:*
+        version: link:../ui-compiler
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(jsdom@26.1.0)(tsx@4.23.12)
 
   packages/canvas-ops:
     dependencies:
