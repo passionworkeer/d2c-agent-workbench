@@ -1,1 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><rect width="800" height="500" fill="#f3f1ea"/><rect x="160" y="40" width="480" height="40" rx="6" fill="#171713"/><text x="180" y="68" fill="#fff" font-family="Arial" font-weight="700" font-size="20">KINETIC®</text><text x="180" y="140" fill="#171713" font-family="Arial" font-weight="700" font-size="22">Create your account.</text><text x="180" y="170" fill="#171713" font-family="Arial" font-size="13">Already have one? Sign in.</text><text x="180" y="208" fill="#171713" font-family="Arial" font-weight="700" font-size="12">EMAIL</text><rect x="180" y="220" width="440" height="36" rx="6" fill="#fff" stroke="#cbd0c2" stroke-width="1.5"/><text x="192" y="244" fill="#a2a69c" font-family="Arial" font-size="12">demo@example.com</text><text x="180" y="276" fill="#c53030" font-family="Arial" font-size="11">We'll never share it.</text><text x="180" y="304" fill="#171713" font-family="Arial" font-weight="700" font-size="12">PASSWORD</text><rect x="180" y="316" width="440" height="36" rx="6" fill="#fff" stroke="#c53030" stroke-width="1.5"/><text x="192" y="340" fill="#a2a69c" font-family="Arial" font-size="12">••••••••</text><text x="180" y="372" fill="#c53030" font-family="Arial" font-size="11">Use 8+ characters.</text><text x="180" y="400" fill="#171713" font-family="Arial" font-weight="700" font-size="12">TEAM NAME</text><rect x="180" y="412" width="440" height="36" rx="6" fill="#fff" stroke="#cbd0c2" stroke-width="1.5"/><rect x="180" y="464" width="14" height="14" rx="3" fill="none" stroke="#171713" stroke-width="1.5"/><text x="200" y="476" fill="#171713" font-family="Arial" font-size="12">I agree to the Terms.</text><rect x="180" y="488" width="440" height="44" rx="8" fill="#171713"/><text x="400" y="516" fill="#fff" font-family="Arial" font-weight="700" font-size="14" text-anchor="middle">Sign Up</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#f3f1ea"/>
+  <!-- title block -->
+  <text x="180" y="48" fill="#171713" font-family="Arial" font-weight="700" font-size="22">Create your account.</text>
+  <text x="180" y="76" fill="#171713" font-family="Arial" font-size="13">Already have one? Sign in.</text>
+  <!-- field-1 Email -->
+  <text x="180" y="120" fill="#171713" font-family="Arial" font-size="13">Email</text>
+  <rect x="180" y="128" width="440" height="36" rx="6" fill="#fff" stroke="#cbd0c2" stroke-width="1.5"/>
+  <text x="192" y="151" fill="#a2a69c" font-family="Arial" font-size="13">请输入…</text>
+  <text x="180" y="184" fill="#a2a69c" font-family="Arial" font-size="12">We'll never share it.</text>
+  <!-- field-2 Password · error state -->
+  <text x="180" y="218" fill="#171713" font-family="Arial" font-size="13">Password</text>
+  <rect x="180" y="226" width="440" height="36" rx="6" fill="#fff" stroke="#c53030" stroke-width="1.5"/>
+  <text x="192" y="249" fill="#a2a69c" font-family="Arial" font-size="13">请输入…</text>
+  <text x="180" y="282" fill="#c53030" font-family="Arial" font-size="12">Use 8+ characters.</text>
+  <!-- field-3 Team name -->
+  <text x="180" y="316" fill="#171713" font-family="Arial" font-size="13">Team name</text>
+  <rect x="180" y="324" width="440" height="36" rx="6" fill="#fff" stroke="#cbd0c2" stroke-width="1.5"/>
+  <text x="192" y="347" fill="#a2a69c" font-family="Arial" font-size="13">请输入…</text>
+  <!-- terms row -->
+  <rect x="180" y="378" width="14" height="14" rx="3" fill="#fff" stroke="#171713" stroke-width="1.5"/>
+  <text x="200" y="390" fill="#171713" font-family="Arial" font-size="13">I agree to the Terms.</text>
+  <!-- submit button -->
+  <rect x="180" y="412" width="440" height="44" rx="8" fill="#171713"/>
+  <text x="400" y="440" fill="#fff" font-family="Arial" font-weight="700" font-size="14" text-anchor="middle">Sign Up</text>
+  <!-- footer -->
+  <text x="180" y="484" fill="#77776f" font-family="Arial" font-size="11">© Kinetic 2026</text>
+</svg>
