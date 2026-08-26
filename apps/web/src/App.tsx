@@ -36,7 +36,7 @@ import {
   type DesignInput,
   type VisionOverride,
 } from "./lib/mock-design";
-import { createLocalRunEvents, extractRunDetail, playEvents, type LocalFixtureId } from "./lib/local-run";
+import { createLocalRunEvents, extractRunDetail, fixturePreviewUrl, playEvents, type LocalFixtureId } from "./lib/local-run";
 import { mockMappings, mockUiSpec } from "./lib/mock-run";
 import { FigmaPatchPanel } from "./components/FigmaPatchPanel";
 import { applyEditOps, type EditOp } from "@d2c/canvas-ops";
@@ -834,7 +834,7 @@ export default function App() {
                 <button className={fixture === "form-page" ? "active" : ""} onClick={() => setFixture("form-page")}>表单页</button>
               </div>
               <div className="design-canvas">
-                {run?.previewUrl ? <img src={run.previewUrl} alt="Figma 商品网格预览" /> : <div className="empty-source"><Layers3 size={32}/><strong>结构化设计输入</strong><span>运行本地完整演示，或上传包含节点、变量与组件信息的 Figma 资产包。</span></div>}
+                <img src={run?.previewUrl ?? fixturePreviewUrl(fixture)} alt={`${fixture === "product-grid" ? "商品网格" : "表单页"} Figma 预览`} />
                 <span className="canvas-badge">{run ? `${run.uiSpec.viewport.width} × ${run.uiSpec.viewport.height}` : "1440 × 900"}</span>
               </div>
               <div className="source-stats">

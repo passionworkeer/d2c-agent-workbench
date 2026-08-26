@@ -263,9 +263,6 @@ button { cursor: pointer; }
   font-size: 9px;
   color: #fff;
 }
-.empty-source { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 280px; color: #929990; gap: 7px; }
-.empty-source strong { color: #4c544a; font-size: 13px; }
-.empty-source span { font-size: 11px; line-height: 1.6; }
 .source-toggle, .fixture-toggle, .engine-picker {
   display: flex;
   align-items: center;

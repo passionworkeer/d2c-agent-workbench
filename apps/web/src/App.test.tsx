@@ -36,6 +36,27 @@ describe("D2C 工作台", () => {
     expect(link).toHaveAttribute("download", "d2c-agent-workbench-skill.zip");
   });
 
+  it("设计输入画布：未运行时也展示当前 fixture 的真实预览，切换 Fixture 跟随", async () => {
+    render(<App />);
+
+    const canvasImg = () => document.querySelector(".design-canvas img");
+    const before = canvasImg()?.getAttribute("src") ?? "";
+    expect(before.startsWith("data:image/svg+xml")).toBe(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "表单页" }));
+    });
+    const after = canvasImg()?.getAttribute("src") ?? "";
+    expect(after.startsWith("data:image/svg+xml")).toBe(true);
+    expect(after).not.toBe(before);
+
+    // 本地完整演示的 run 不带 previewUrl，画布仍走 fixture 预览兜底
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "运行完整演示" }));
+    });
+    expect(canvasImg()?.getAttribute("src")?.startsWith("data:image/svg+xml")).toBe(true);
+  });
+
   it("分步演示：点一下揭示一步，可回退，走完得到 72 → 94", async () => {
     render(<App />);
 

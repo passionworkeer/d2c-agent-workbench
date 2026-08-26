@@ -64,6 +64,14 @@ function asEntries(record: Record<string, string>): Zippable {
   return out;
 }
 
+// 设计输入画布预览：与 mock-run 的 previewUrl 同一 data-URL 形态。
+// 运行前的画布直接展示当前选中 fixture 的真实预览（本地运行的 run 不带 previewUrl，也走这里），
+// 上传链路的 run.previewUrl 优先——它反映的是用户真实上传的资产。
+export function fixturePreviewUrl(fixtureId: LocalFixtureId): string {
+  const svg = fixtures[fixtureId].files["preview/root.svg"] ?? "";
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export function buildLocalBundle(fixtureId: LocalFixtureId): Uint8Array {
   return zipSync(asEntries(fixtures[fixtureId].files));
 }
