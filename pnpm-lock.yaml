@@ -236,6 +236,12 @@ importers:
         specifier: workspace:*
         version: link:../ui-compiler
 
+  packages/production-runtime:
+    dependencies:
+      '@d2c/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/ui-compiler:
     dependencies:
       '@d2c/contracts':
