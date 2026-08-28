@@ -101,9 +101,9 @@ function componentName(spec: ActivitySpec): string {
   return `${parts.map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join("") || "Campaign"}Page`;
 }
 
-function renderNode(node: ActivityNode, nodes: Map<string, ActivityNode>, assetUrls: Map<string, string>, mappings: Map<string, ComponentMapping>, depth: number): string {
+function renderNode(node: ActivityNode, nodes: Map<string, ActivityNode>, assetUrls: Map<string, string>, mappings: Map<string, ComponentMapping>, depth: number, isRoot = false): string {
   const indent = "  ".repeat(depth);
-  const attributes = `data-d2c-node-id=${JSON.stringify(node.id)} className={styles[${JSON.stringify(className(node.id))}]}`;
+  const attributes = `data-d2c-node-id=${JSON.stringify(node.id)}${isRoot ? ' data-d2c-ready="true"' : ""} className={styles[${JSON.stringify(className(node.id))}]}`;
   const mapping = mappings.get(node.id);
   if (mapping && mapping.status !== "unmapped") return `${indent}<${mapping.codeComponent} ${attributes} {...${JSON.stringify(mapping.props)}} />`;
   if (node.role === "text") return `${indent}<p ${attributes}>{${JSON.stringify(node.content?.text ?? "")}}</p>`;
@@ -131,8 +131,8 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
   const mappingByNode = new Map(mappings.map((mapping) => [mapping.nodeId, mapping]));
   const imports = [...new Map(mappings.filter((mapping) => mapping.status !== "unmapped").map((mapping) => [mapping.codeComponent, mapping.importPath]))]
     .map(([component, path]) => `import { ${component} } from ${JSON.stringify(path)};`).join("\n");
-  const body = spec.nodes.filter((node) => !node.parentId).map((node) => renderNode(node, nodes, assetUrls, mappingByNode, 2)).join("\n");
-  const code = `import styles from "./${name}.module.css";${imports ? `\n${imports}` : ""}\n\nexport function ${name}() {\n  return (\n${body}\n  );\n}\n`;
+  const body = spec.nodes.filter((node) => !node.parentId).map((node) => renderNode(node, nodes, assetUrls, mappingByNode, 2, true)).join("\n");
+  const code = `import styles from "./${name}.module.css";${imports ? `\n${imports}` : ""}\n\nexport function ${name}() {\n  return (\n${body}\n  );\n}\n\nexport default ${name};\n`;
   const css = `${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
   const sourceMap = sourceMapSchema.parse({ version: "1.0", locators: spec.nodes.map((node) => ({
     nodeId: node.id, file: tsxPath, componentName: name, styleFile: cssPath, styleSelector: `.${className(node.id)}`,

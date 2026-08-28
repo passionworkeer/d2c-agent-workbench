@@ -34,7 +34,9 @@ export async function runAllowedCommand(command: string[], options: CommandOptio
     const child = spawn(executable, args, {
       cwd: options.cwd,
       env: options.env ?? process.env,
-      shell: false,
+      // Windows 的 pnpm/npm 是 .CMD 垫片，无 shell 无法直接执行；
+      // 命令必须先通过 allowlist 精确匹配（见上），参数不含用户输入，此处 shell 不会引入注入面。
+      shell: process.platform === "win32",
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });

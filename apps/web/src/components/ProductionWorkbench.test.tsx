@@ -11,7 +11,10 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../lib/production-api", () => ({
-  GOLDEN_PRODUCTION_SAMPLE: {},
+  GOLDEN_PRODUCTION_SAMPLE: {
+    spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page" }, { id: "hero" }, { id: "hero-title" }] },
+    profile: { repositoryPath: "examples/activity-target" },
+  },
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
   getProductionRun: apiMocks.getProductionRun,
@@ -64,6 +67,7 @@ describe("ProductionWorkbench", () => {
   it("shows real build artifacts, diff regions and targeted patch scope", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
 
@@ -77,6 +81,7 @@ describe("ProductionWorkbench", () => {
     apiMocks.createProductionRun.mockRejectedValue(new Error("目标仓库不在允许的根目录内"));
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     expect(await screen.findByText(/目标仓库不在允许的根目录内/)).toBeInTheDocument();
   });

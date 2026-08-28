@@ -50,6 +50,8 @@ describe("generateProductionPage", () => {
     expect(output.plan.files.map((file) => file.path)).toContain("src/pages/campaign/CampaignPage.tsx");
     expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain('data-d2c-node-id="hero"');
     expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain("夏日好物节");
+    expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain('data-d2c-ready="true"');
+    expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain("export default CampaignPage");
     expect(output.files["src/pages/campaign/CampaignPage.module.css"]).toContain("display: flex");
     expect(output.sourceMap.locators.find((item) => item.nodeId === "hero")?.file).toBe("src/pages/campaign/CampaignPage.tsx");
   });

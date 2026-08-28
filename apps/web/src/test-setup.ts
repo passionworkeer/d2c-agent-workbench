@@ -22,3 +22,8 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+// Puck 拖拽层在 pointer move 时调用 elementsFromPoint；jsdom 未实现，返回空命中。
+if (typeof document !== "undefined" && typeof document.elementsFromPoint !== "function") {
+  document.elementsFromPoint = () => [];
+}

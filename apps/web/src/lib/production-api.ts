@@ -139,7 +139,7 @@ export const GOLDEN_PRODUCTION_SAMPLE: ProductionRunPayload = {
   profile: {
     repositoryPath: "examples/activity-target", framework: "react", language: "typescript", packageManager: "pnpm",
     routeEntry: "src/App.tsx", generatedRoot: "src/pages/campaign", assetRoot: "public/campaign", styleStrategy: "css-modules",
-    commands: { typecheck: ["pnpm", "typecheck"], build: ["pnpm", "build"], dev: ["pnpm", "dev"] },
+    commands: { install: ["pnpm", "install"], typecheck: ["pnpm", "typecheck"], build: ["pnpm", "build"], dev: ["pnpm", "dev"] },
     previewUrl: "http://127.0.0.1:4173/campaign/summer",
     allowedWriteGlobs: ["src/pages/campaign/**", "public/campaign/**"],
     designSystemRoots: ["src/components"], tokenRoots: [],

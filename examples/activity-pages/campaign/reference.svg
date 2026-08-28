@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <!-- 黄金样例参考稿：夏日好物节活动页（桌面 1440×900）
+       hero 区块从 x=0 起占满整行（1440×500），标题位于 (40,40)。 -->
+  <rect width="1440" height="900" fill="#ffffff"/>
+  <rect x="0" y="0" width="1440" height="500" fill="#f5f6f8"/>
+  <text x="40" y="92" font-family="PingFang SC" font-size="48" font-weight="700" fill="#ff5000">夏日好物节 · 全场 5 折</text>
+  <rect x="0" y="500" width="1440" height="400" fill="#ffffff"/>
+  <text x="40" y="560" font-family="PingFang SC" font-size="20" fill="#8a8f85">参考基准：hero (0,0,1440,500) · hero-title (40,40,600,72)</text>
+</svg>

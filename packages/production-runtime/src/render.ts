@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "@playwright/test";
+import { getFreePort, startPreviewServer } from "./seed";
 
 export interface RenderViewport {
   name: string;
@@ -46,10 +47,19 @@ export interface RenderPageInput {
   outputDir: string;
   viewports: RenderViewport[];
   timeoutMs?: number;
+  /** 提供时在 cwd 启动 vite preview（自由端口）并以其地址为准渲染 */
+  server?: { cwd: string; executable?: string };
 }
 
 export async function renderPage(input: RenderPageInput): Promise<RenderResult> {
   await mkdir(input.outputDir, { recursive: true });
+  let baseUrl = input.url;
+  let server: Awaited<ReturnType<typeof startPreviewServer>> | undefined;
+  if (input.server) {
+    const port = await getFreePort();
+    server = await startPreviewServer({ cwd: input.server.cwd, port, executable: input.server.executable, timeoutMs: input.timeoutMs ?? 30_000 });
+    baseUrl = server.url;
+  }
   const browser = await chromium.launch({ headless: true });
   const runtimeErrors: string[] = [];
   const renders: ViewportRender[] = [];
@@ -59,7 +69,7 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
       const page = await context.newPage();
       page.on("console", (message) => { if (message.type() === "error") runtimeErrors.push(message.text()); });
       page.on("pageerror", (error) => runtimeErrors.push(error.message));
-      await page.goto(input.url, { waitUntil: "networkidle", timeout: input.timeoutMs ?? 30_000 });
+      await page.goto(baseUrl, { waitUntil: "networkidle", timeout: input.timeoutMs ?? 30_000 });
       await page.addStyleTag({ content: "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}" });
       await page.evaluate(async () => {
         await document.fonts.ready;
@@ -89,6 +99,7 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
     }
   } finally {
     await browser.close();
+    await server?.dispose();
   }
-  return { url: input.url, viewports: renders, runtimeErrors };
+  return { url: baseUrl, viewports: renders, runtimeErrors };
 }

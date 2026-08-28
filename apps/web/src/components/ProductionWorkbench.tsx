@@ -16,6 +16,7 @@ export function ProductionWorkbench() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [violations, setViolations] = useState<ProductionViolation[]>([]);
   const [selectedViolation, setSelectedViolation] = useState<ProductionViolation | null>(null);
+  const [sampleLoaded, setSampleLoaded] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
@@ -74,11 +75,19 @@ export function ProductionWorkbench() {
           {finalScore !== null && (
             <span className="production-score" data-testid="production-final-score">{finalScore}</span>
           )}
-          <button className="button primary" disabled={running} onClick={() => void runLoop()}>
+          <button className="button secondary" disabled={sampleLoaded || running} onClick={() => setSampleLoaded(true)}>载入黄金样例</button>
+          <button className="button primary" disabled={!sampleLoaded || running} onClick={() => void runLoop()}>
             {running ? "生产闭环执行中…" : "运行生产闭环"}
           </button>
         </div>
       </header>
+
+      {sampleLoaded && events.length === 0 && (
+        <div className="production-sample" data-testid="production-sample">
+          黄金样例已载入：{GOLDEN_PRODUCTION_SAMPLE.spec.page.route} · {GOLDEN_PRODUCTION_SAMPLE.spec.nodes.length} 个节点 ·
+          目标仓库 {GOLDEN_PRODUCTION_SAMPLE.profile.repositoryPath}（含一处可修复的 Hero 间距问题）
+        </div>
+      )}
 
       {error && <div className="production-error" role="alert">{error}</div>}
 
@@ -134,7 +143,7 @@ export function ProductionWorkbench() {
 
           {repairFiles.length > 0 && (
             <div className="repair-scope" data-testid="repair-scope">
-              <h4>定向修复范围</h4>
+              <h4>局部修复范围</h4>
               <p>仅修改 {repairFiles.length} 个文件</p>
               <ul>
                 {repairFiles.map((file) => <li key={file}><code>{file}</code></li>)}

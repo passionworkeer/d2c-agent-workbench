@@ -27,6 +27,23 @@
 
 > 默认演示的 Agent 输出是浏览器内确定性管线的真实执行（产物扫描、类型化修复、LCS Diff），不是字符串 Mock。LLM 通过 `POST /api/canvas/interpret` 可选接入；key 仅存浏览器 localStorage（设置面板），仓库任何文件、下载报告与日志都不含 key。
 
+## 活动页生产（PRODUCTION）模式
+
+在 D2C / I2D 之外，工作台新增**真实生产闭环**：以 `ActivitySpec v2` 为单一事实源，把设计意图一路推进到可交付的活动页代码。
+
+- **真实代码生成**：`packages/codegen` 生成真正的 TSX + CSS Module（带 `data-d2c-node-id` / `data-d2c-ready` 稳定标记）与 `d2c-source-map.json`，而不是 JSX 字符串。
+- **隔离工作区**：目标仓库骨架（`examples/activity-target`）被复制进 `.data/production/workspaces/<runId>`，忽略 `node_modules/.git/dist`；所有写入都在 Profile `allowedWriteGlobs` 边界内，产物用 `wx` 一次性写入不可覆盖。
+- **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 在白名单内以 `spawn(shell:false)` 执行，超时杀进程树，输出限幅。
+- **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；build 失败是 P0 硬门槛，任何分数不可覆盖。
+- **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，最多 3 轮、连续两轮提升 <1 分即停。
+- **服务端 API**：`POST /api/production/runs`（目标仓库必须在允许根目录内）→ SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载。
+- **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
+- **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（编辑发出类型化 SpecEditOp）；`buildFigmaImportBundle` 产出 html-to-figma 兼容节点 JSON，保留 `pluginData.d2cNodeId`。
+
+黄金样例 `examples/activity-pages/campaign/` 内置一处可修复的 Hero 间距问题（目标仓库骨架 `padding-left: 48px` vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` P1，局部修复仅改生成的 Campaign CSS，复评后状态 `COMPLETED`、终局分数 ≥90。
+
+外部依赖说明：三种模式边界清晰——**D2C**（浏览器内确定性管线，零依赖）、**I2D**（可选 MiniMax 视觉模型 / Figma PAT）、**PRODUCTION**（需要 pnpm 可用、目标仓库可安装构建；视觉草稿的模型调用可选）。
+
 ## 立即运行
 
 环境要求：Node.js 22+、pnpm 11+。

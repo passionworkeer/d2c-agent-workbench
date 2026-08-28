@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import {
   activitySpecSchema,
   targetProjectProfileSchema,
@@ -25,6 +27,7 @@ import {
   planTargetedRepair,
   runAllowedCommand,
   renderPage,
+  seedWorkspaceFrom,
   shouldContinueRepair,
   type ApplyPatchOptions,
   type CommandResult,
@@ -37,6 +40,8 @@ import {
 
 export interface ProductionWorkflowAdapters {
   inspect: (input: { root: string; profile: TargetProjectProfile }) => Promise<ProjectIndex>;
+  /** 写入生成代码前播种工作区（复制目标仓库骨架并安装依赖）；返回写入的顶层条目 */
+  prepare?: (input: { workspace: RunWorkspace; repositoryRoot: string; profile: TargetProjectProfile }) => Promise<string[]>;
   generate: (spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]) => GeneratedProductionOutput | Promise<GeneratedProductionOutput>;
   typecheck: () => Promise<CommandResult>;
   build: () => Promise<CommandResult>;
@@ -74,10 +79,21 @@ export function createRealAdapters(deps: {
   profile: TargetProjectProfile;
   workspace: RunWorkspace;
   render: RenderPageInput;
+  repositoryRoot?: string;
 }): ProductionWorkflowAdapters {
   const allowedCommands = [deps.profile.commands.install, deps.profile.commands.typecheck, deps.profile.commands.build, deps.profile.commands.dev].filter(Boolean) as string[][];
   return {
     inspect: (input) => inspectTargetProject(input),
+    prepare: deps.repositoryRoot
+      ? async ({ workspace, repositoryRoot, profile }) => {
+        const copied = await seedWorkspaceFrom(repositoryRoot, workspace);
+        if (profile.commands.install && !existsSync(join(workspace.root, "node_modules"))) {
+          const install = await runAllowedCommand(profile.commands.install, { cwd: workspace.root, allowedCommands: [profile.commands.install], timeoutMs: 600_000 });
+          if (install.exitCode !== 0) throw new Error(`依赖安装失败：${install.stderr.slice(0, 200)}`);
+        }
+        return copied;
+      }
+      : undefined,
     generate: (spec, profile, mappings) => generateProductionPage(spec, profile, mappings),
     typecheck: () => runAllowedCommand(deps.profile.commands.typecheck, { cwd: deps.workspace.root, allowedCommands }),
     build: () => runAllowedCommand(deps.profile.commands.build, { cwd: deps.workspace.root, allowedCommands }),
@@ -167,6 +183,12 @@ export async function* runProductionWorkflow(
   validateCodePlan(generated.plan, input.profile);
   const planArtifact = await input.artifacts.writeJson("plan", "code-plan", generated.plan);
   yield event("CODE_PLANNED", "代码计划已生成", `${generated.plan.files.length} 个文件 · ${generated.plan.reusedComponents.length} 个复用组件`, { artifactId: planArtifact.id, files: generated.plan.files.map((file) => file.path) });
+
+  if (adapters.prepare) {
+    const seeded = await adapters.prepare({ workspace: input.workspace, repositoryRoot: input.repositoryRoot, profile: input.profile });
+    const prepareArtifact = await input.artifacts.writeJson("workspace", "seed-manifest", { entries: seeded });
+    yield event("GENERATED", "工作区已播种目标仓库", `复制 ${seeded.length} 个顶层条目并安装依赖`, { artifactId: prepareArtifact.id, entries: seeded });
+  }
 
   await input.workspace.apply({ files: generated.files });
   const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files) });

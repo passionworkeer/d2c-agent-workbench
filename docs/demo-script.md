@@ -210,4 +210,23 @@ Build 和 Eval 隔离上下文；关键门槛由 TypeScript、Build、页面加�
 
 ### 下一步最优先做什么？
 
-接 Codex Adapter（真实仓库代码生成）和 Playwright Geometry / Visual Eval（渲染级几何校验）。资产索引（asset-indexer）与 Figma 回写 Patch 已经落地。
+真实代码生成、隔离构建与 Playwright 渲染评测已在 PRODUCTION 模式落地（含错误归因与文件级定向修复）。剩余优先级：视觉模型按 Region 归因接入像素 diff（compareImages 适配器已留位）、真 PAT 的 Figma 回写实弹彩排、以及把黄金样例扩展成多页面回归集。
+
+## 演示动线 4：活动页生产闭环（PRODUCTION）
+
+> 入口：顶栏「活动页生产」模式。这条链路从设计意图直达真实可构建的代码，全程 Artifact 可追溯。
+
+1. 切到「活动页生产」模式，讲清定位：D2C 演示链路（确定性管线）、I2D（可选真视觉模型）、PRODUCTION（真实构建渲染评测修复）三者边界。
+2. 点击「载入黄金样例」：展示黄金 fixture（`examples/activity-pages/campaign/`——参考稿、PRD、ActivitySpec、目标 Profile 四件套）。
+3. 点击「运行生产闭环」，按事件流讲解：
+   - **工作区播种**：目标仓库 `examples/activity-target` 复制进隔离工作区（忽略 node_modules），`pnpm install` 真实安装依赖；
+   - **真实代码**：生成器写出 CampaignPage.tsx + CSS Module + source map，节点带稳定 id；
+   - **typecheck / build**：真实 `tsc` 与 `vite build`，白名单命令、超时杀树；失败即 P0，分数不可覆盖；
+   - **渲染评测**：`vite preview` 起服务，Playwright 1440×900 渲染，采集逐节点几何——首轮 hero 偏移 48px（目标仓库骨架的已知问题），产出 `layout:hero` P1；
+   - **归因与局部修复**：点击违规展示 Region → Node → Source（CampaignPage.module.css 的 .hero），修复仅触碰 1 个文件，CSS 声明级替换，回滚快照已存档；
+   - **复评通过**：修复后重新 typecheck/build/渲染评测，hero 回到 (0,0,1440,500)，终局分数 ≥90，状态 COMPLETED。
+4. 收尾追问点：
+   - **为什么不重新生成整页？** 修复是文件级定向 patch（≤5 文件、幂等 CSS/AST 补丁），保留人工确认的映射与编辑。
+   - **怎么防刷分？** build 失败是硬门槛；评测输入全部来自真实渲染几何，不是自评。
+   - **企业仓库怎么接？** 换 `target-profile.json`（命令白名单 + 写入边界）即可，链路不动。
+   - **怎么回到设计工具？** Puck 原型编辑（类型化 EditOp）与 Figma 导出（保留 d2cNodeId 的 html-to-figma 包）与代码共用同一份 ActivitySpec。

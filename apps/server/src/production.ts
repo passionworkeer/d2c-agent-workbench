@@ -38,6 +38,7 @@ export interface ProductionRunRecord {
   spec: ActivitySpec;
   profile: TargetProjectProfile;
   mappings: ComponentMapping[];
+  referenceNodes: Record<string, { x: number; y: number; width: number; height: number }>;
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
   generated?: GeneratedProductionOutput;
@@ -90,8 +91,14 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       url: record.profile.previewUrl,
       viewports: [{ name: "desktop", width: record.spec.page.canonicalViewport.width, height: record.spec.page.canonicalViewport.height }],
       outputDir: join(dataRoot, "renders", record.run.id),
+      server: { cwd: record.workspace.root },
     };
-    const defaults = createRealAdapters({ profile: record.profile, workspace: record.workspace, render: renderInput });
+    const defaults = createRealAdapters({
+      profile: record.profile,
+      workspace: record.workspace,
+      render: renderInput,
+      repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
+    });
     const adapters = { ...defaults, ...options.adapters } as ProductionWorkflowAdapters;
     if (reuseGenerated && record.generated) {
       // 修复迭代：复用已生成的 plan/sourceMap 且不重写文件，保留上一轮修复成果
@@ -115,7 +122,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         workspace: record.workspace,
         artifacts: record.artifactStore,
         render: renderInput,
-        referenceNodes: {},
+        referenceNodes: record.referenceNodes,
       }, adapters)) {
         publish(record, event);
       }
@@ -155,6 +162,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       });
       const record: ProductionRunRecord = {
         run, events: [], spec: specResult.data, profile, mappings: mappingsResult,
+        referenceNodes: (request.body?.referenceNodes ?? {}) as ProductionRunRecord["referenceNodes"],
       };
       records.set(id, record);
       while (records.size > MAX_RUNS) {

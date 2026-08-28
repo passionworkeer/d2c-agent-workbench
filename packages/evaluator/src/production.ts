@@ -143,7 +143,7 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
   const violations: ProductionViolation[] = [];
   if (engineering.buildSuccess === 0) violations.push(makeViolation({ id: "build:failed", severity: "P0", type: "build", nodeIds: [], sourceLocators: [], expected: { exitCode: 0, runtimeErrors: [] }, actual: input.build, suggestedAction: "修复 typecheck/build/runtime 错误" }));
   for (const error of geometry.errors.filter((item) => item.error >= .015)) violations.push(makeViolation({
-    id: `layout:${error.nodeId}`, severity: error.error >= .25 ? "P1" : "P2", type: "layout", nodeIds: [error.nodeId],
+    id: `layout:${error.nodeId}`, severity: error.error >= .05 ? "P1" : "P2", type: "layout", nodeIds: [error.nodeId],
     sourceLocators: locators(input.sourceMap, [error.nodeId]), expected: error.expected, actual: error.actual ?? null,
     suggestedAction: "修正父容器布局、间距或尺寸约束", confidence: .95,
   }));
