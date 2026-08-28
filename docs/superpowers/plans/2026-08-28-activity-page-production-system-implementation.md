@@ -39,7 +39,7 @@ examples/activity-pages/                       真实黄金 Fixture 与目标仓
 - Modify: `packages/contracts/src/index.ts`
 - Test: `packages/contracts/src/production.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("rejects structural absolute nodes without rationale", () => {
@@ -58,12 +58,12 @@ it("rejects target profiles whose generated root is not allowed", () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/contracts test -- production.test.ts`
 Expected: FAIL，提示 `activitySpecSchema` 尚未导出。
 
-- [ ] **Step 3: 实现 Schema**
+- [x] **Step 3: 实现 Schema**
 
 实现并导出：
 
@@ -82,12 +82,12 @@ productionRunSchema
 
 所有 Schema 使用 `.strict()`，路径字段必须是相对路径，置信度为 `0..1`，Patch 最多 5 个文件、Run 最多 3 轮。
 
-- [ ] **Step 4: 验证 GREEN**
+- [x] **Step 4: 验证 GREEN**
 
 Run: `pnpm --filter @d2c/contracts test -- production.test.ts && pnpm --filter @d2c/contracts typecheck`
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add packages/contracts
@@ -101,7 +101,7 @@ git commit -m "feat(contracts): 新增活动页生产协议"
 - Modify: `packages/asset-indexer/src/index.ts`
 - Test: `packages/asset-indexer/src/project.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("indexes exports, props, stories, Code Connect and tokens with evidence", async () => {
@@ -113,12 +113,12 @@ it("indexes exports, props, stories, Code Connect and tokens with evidence", asy
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/asset-indexer test -- project.test.ts`
 Expected: FAIL，缺少 `inspectTargetProject`。
 
-- [ ] **Step 3: 实现 Inspector**
+- [x] **Step 3: 实现 Inspector**
 
 基于现有 `scanRepo` 增加：
 
@@ -128,7 +128,7 @@ Expected: FAIL，缺少 `inspectTargetProject`。
 - 文件哈希和 Git commit hash。
 - `ProjectIndex` JSON 可序列化输出。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/asset-indexer test && pnpm --filter @d2c/asset-indexer typecheck`
 Expected: PASS。
@@ -145,7 +145,7 @@ git commit -m "feat(indexer): 增强目标仓库组件与令牌索引"
 - Modify: `packages/codegen/src/index.ts`
 - Test: `packages/codegen/src/production.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("generates real page files with stable node ids and source locators", () => {
@@ -161,12 +161,12 @@ it("rejects code plans outside allowed write globs", () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/codegen test -- production.test.ts`
 Expected: FAIL，缺少生产生成 API。
 
-- [ ] **Step 3: 实现最小生成器**
+- [x] **Step 3: 实现最小生成器**
 
 实现：
 
@@ -178,7 +178,7 @@ validateCodePlan(plan, profile): void
 
 生成一个 Route Page、局部 Section Components、CSS Module、Asset Copy Plan 和 `d2c-source-map.json`。结构节点使用 Flow/Flex/Grid，只有标记为 decoration 的节点允许无惩罚 Absolute。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/codegen test && pnpm --filter @d2c/codegen typecheck`
 Expected: PASS。
@@ -199,7 +199,7 @@ git commit -m "feat(codegen): 生成真实活动页代码与源码映射"
 - Test: `packages/production-runtime/src/artifacts.test.ts`
 - Test: `packages/production-runtime/src/workspace.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("writes immutable versioned artifacts under one run directory", async () => {
@@ -214,16 +214,16 @@ it("refuses writes outside allowed globs and the workspace root", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/production-runtime test`
 Expected: FAIL，workspace package/API 不存在。
 
-- [ ] **Step 3: 实现 Artifact 与 Workspace**
+- [x] **Step 3: 实现 Artifact 与 Workspace**
 
 `FileArtifactStore` 使用 `fs.open(..., "wx")` 保证不可覆盖；`RunWorkspace` 通过 `realpath` 和 Profile globs 校验写入路径，只应用 CodePlan 中声明的文件。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/production-runtime test && pnpm --filter @d2c/production-runtime typecheck`
 Expected: PASS。
@@ -241,7 +241,7 @@ git commit -m "feat(runtime): 新增运行产物与隔离工作区"
 - Test: `packages/production-runtime/src/command.test.ts`
 - Test: `packages/production-runtime/src/render.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("captures exit code, duration and bounded output", async () => {
@@ -255,12 +255,12 @@ it("collects screenshot and geometry for stable node ids", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/production-runtime test -- command.test.ts render.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现命令与渲染**
+- [x] **Step 3: 实现命令与渲染**
 
 - 使用 `spawn(executable, args, { shell: false })`。
 - 命令必须与 Profile 数组精确匹配。
@@ -268,7 +268,7 @@ Expected: FAIL。
 - Playwright 固定 viewport/DPR，关闭动画，等待字体、图片和 ready marker。
 - 采集 screenshot、console/runtime errors 和 `[data-d2c-node-id]` computed geometry。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/production-runtime test && pnpm --filter @d2c/production-runtime typecheck`
 Expected: PASS。
@@ -286,7 +286,7 @@ git commit -m "feat(runtime): 接入真实构建命令与页面渲染"
 - Modify: `packages/evaluator/package.json`
 - Test: `packages/evaluator/src/production.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("reports geometry, image, text, asset and engineering metrics from artifacts", async () => {
@@ -303,12 +303,12 @@ it("never passes when build failed", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/evaluator test -- production.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现指标**
+- [x] **Step 3: 实现指标**
 
 - looks-same：Diff ratio、bounds、clusters。
 - Jimp：asset pHash distance。
@@ -317,7 +317,7 @@ Expected: FAIL。
 - Code：组件复用、Token、结构 absolute、硬编码和复杂度。
 - 总分 `0.70 visual + 0.30 engineering`，硬门槛先于分数。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/evaluator test && pnpm --filter @d2c/evaluator typecheck`
 Expected: PASS。
@@ -335,7 +335,7 @@ git commit -m "feat(evaluator): 新增活动页客观评测"
 - Test: `packages/evaluator/src/attribution.test.ts`
 - Test: `packages/production-runtime/src/repair.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("attributes a shared translation to the parent layout source", () => {
@@ -348,12 +348,12 @@ it("rejects patches touching more than five or undeclared files", () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/evaluator test -- attribution.test.ts && pnpm --filter @d2c/production-runtime test -- repair.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现归因和补丁**
+- [x] **Step 3: 实现归因和补丁**
 
 - Diff Cluster 按 IoU/距离合并。
 - 与 DOM BBox、z-index、SourceMap 关联。
@@ -362,7 +362,7 @@ Expected: FAIL。
 - 使用 ts-morph 修改 TSX，CSS patch 使用显式 selector/property。
 - 每轮保留 rollback Artifact，最多 3 轮，连续两轮提升小于 1 分停止。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/evaluator test && pnpm --filter @d2c/production-runtime test`
 Expected: PASS。
@@ -379,7 +379,7 @@ git commit -m "feat(repair): 实现区域归因与定向修复"
 - Modify: `packages/orchestrator/src/index.ts`
 - Test: `packages/orchestrator/src/production.test.ts`
 
-- [ ] **Step 1: 写失败集成测试**
+- [x] **Step 1: 写失败集成测试**
 
 ```ts
 it("uses real artifacts for plan, build, render, eval and repair", async () => {
@@ -392,16 +392,16 @@ it("uses real artifacts for plan, build, render, eval and repair", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/orchestrator test -- production.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现状态机**
+- [x] **Step 3: 实现状态机**
 
 保持 `runReplayWorkflow` 不变，新增 `runProductionWorkflow`，依赖注入 Inspector/Generator/Workspace/Renderer/Evaluator/Repairer；每个状态只能来自 Adapter 的真实结果和 Artifact ID。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/orchestrator test && pnpm --filter @d2c/orchestrator typecheck`
 Expected: PASS。
@@ -418,7 +418,7 @@ git commit -m "feat(orchestrator): 打通活动页生产工作流"
 - Modify: `apps/server/src/vision.ts`
 - Test: `apps/server/src/vision-production.test.ts`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```ts
 it("merges PRD facts above OCR and keeps model uncertainty", async () => {
@@ -428,16 +428,16 @@ it("merges PRD facts above OCR and keeps model uncertainty", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/server test -- vision-production.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现视觉适配器**
+- [x] **Step 3: 实现视觉适配器**
 
 复用现有 Vision Provider 连接，Prompt 输出 ActivitySpec Draft；增加 OCR/asset/provider Evidence 合并、Zod 校验和一次结构化重试。支持可选 `D2C_VISUAL_SIDECAR_URL`，存在时调用 screenshot-to-code 兼容 Sidecar，否则走现有模型 Provider。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/server test -- vision-production.test.ts vision.test.ts`
 Expected: PASS。
@@ -455,7 +455,7 @@ git commit -m "feat(vision): 生成带证据的活动页结构稿"
 - Test: `apps/server/src/production.test.ts`
 - Test: `apps/server/src/app.test.ts`
 
-- [ ] **Step 1: 写失败 API 测试**
+- [x] **Step 1: 写失败 API 测试**
 
 ```ts
 it("creates a production run and returns artifact-backed status", async () => {
@@ -471,12 +471,12 @@ it("rejects target paths outside configured roots", async () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/server test -- production.test.ts app.test.ts`
 Expected: FAIL/404。
 
-- [ ] **Step 3: 实现 API**
+- [x] **Step 3: 实现 API**
 
 ```text
 POST /api/production/runs
@@ -490,7 +490,7 @@ GET  /api/production/runs/:id/artifacts/:artifactId
 
 Run 元数据落在 `runs/<id>/run.json`，启动时可重载；事件使用现有 SSE 模式。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/server test && pnpm --filter @d2c/server typecheck`
 Expected: PASS。
@@ -510,7 +510,7 @@ git commit -m "feat(server): 提供活动页生产运行接口"
 - Modify: `packages/figma-patcher/src/index.ts`
 - Modify: `apps/web/package.json`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 it("converts ActivitySpec edits to typed EditOps", async () => {
@@ -530,19 +530,19 @@ it("exports editable Figma nodes with stable plugin data", () => {
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/web test -- PrototypeEditor.test.tsx && pnpm --filter @d2c/figma-patcher test -- export.test.ts`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现适配器**
+- [x] **Step 3: 实现适配器**
 
 - 引入 `@measured/puck`。
 - ActivitySpec role → Puck Config，实例 → Puck Data。
 - Puck change → 类型化 EditOps。
 - Figma 导出生成 html-to-figma 兼容节点 JSON、assets 和 manifest；保留 `d2cNodeId`。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/web test -- PrototypeEditor.test.tsx && pnpm --filter @d2c/figma-patcher test && pnpm typecheck`
 Expected: PASS。
@@ -562,7 +562,7 @@ git commit -m "feat(design): 接入可编辑原型与 Figma 导出"
 - Modify: `apps/web/src/App.tsx`
 - Modify: `apps/web/src/styles.css`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```tsx
 it("shows real build artifacts, diff regions and targeted patch scope", async () => {
@@ -575,16 +575,16 @@ it("shows real build artifacts, diff regions and targeted patch scope", async ()
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm --filter @d2c/web test -- ProductionWorkbench.test.tsx`
 Expected: FAIL。
 
-- [ ] **Step 3: 实现生产页面**
+- [x] **Step 3: 实现生产页面**
 
 提供输入、ActivitySpec/证据、Puck/Live Preview、Desktop/Mobile、Diff Overlay、Violation、Source Locator、Patch Timeline、组件候选和最终交付。保留现有 Demo/I2D 页，新增“活动页生产”模式，不用一次性重写 App。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run: `pnpm --filter @d2c/web test && pnpm --filter @d2c/web typecheck`
 Expected: PASS。
@@ -606,7 +606,7 @@ git commit -m "feat(web): 新增活动页生产工作台"
 - Modify: `README.md`
 - Modify: `docs/demo-script.md`
 
-- [ ] **Step 1: 写失败 E2E**
+- [x] **Step 1: 写失败 E2E**
 
 ```ts
 test("activity page production loop builds, evaluates, attributes and repairs", async ({ page }) => {
@@ -620,16 +620,16 @@ test("activity page production loop builds, evaluates, attributes and repairs", 
 });
 ```
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `pnpm e2e -- production.spec.ts`
 Expected: FAIL，因为黄金样例和生产模式未完成。
 
-- [ ] **Step 3: 完成 Fixture 与文档**
+- [x] **Step 3: 完成 Fixture 与文档**
 
 黄金样例包含一个可修复的 Hero 间距错误，首次评测产生 `layout` Violation，Repair 只修改 Campaign CSS，复评提升并通过。README 清楚区分 Replay、Vision 和 Production 三种模式及其外部依赖。
 
-- [ ] **Step 4: 完整验证**
+- [x] **Step 4: 完整验证**
 
 Run:
 
@@ -642,7 +642,7 @@ pnpm e2e -- production.spec.ts
 
 Expected: 全部 exit 0；生产 E2E 显示真实 Artifact 和局部修复。
 
-- [ ] **Step 5: 最终提交**
+- [x] **Step 5: 最终提交**
 
 ```bash
 git add examples tests README.md docs/demo-script.md
@@ -651,10 +651,10 @@ git commit -m "test: 增加活动页生产闭环黄金样例"
 
 ## 自检清单
 
-- [ ] 设计文档第 4–26 节均能映射到 Task 1–13。
-- [ ] 生产路径不存在 Fixture 常量评分和伪造 Build 事件。
-- [ ] Replay 模式保持兼容且在 UI 中明确标记。
-- [ ] 所有新行为遵循 RED → GREEN → REFACTOR。
-- [ ] 所有写入和命令都经过 Profile/Workspace 边界校验。
-- [ ] Puck、评测和 Figma 输出共用 ActivitySpec/Node ID。
-- [ ] 开源依赖锁版本并保留许可证说明。
+- [x] 设计文档第 4–26 节均能映射到 Task 1–13。
+- [x] 生产路径不存在 Fixture 常量评分和伪造 Build 事件。
+- [x] Replay 模式保持兼容且在 UI 中明确标记。
+- [x] 所有新行为遵循 RED → GREEN → REFACTOR。
+- [x] 所有写入和命令都经过 Profile/Workspace 边界校验。
+- [x] Puck、评测和 Figma 输出共用 ActivitySpec/Node ID。
+- [x] 开源依赖锁版本并保留许可证说明。
