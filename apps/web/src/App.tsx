@@ -87,6 +87,17 @@ const stateNames: Record<WorkflowState | "READY", string> = {
   SPEC_GENERATED: "设计稿已生成",
   CANVAS_EDITED: "画布已编辑",
   SPEC_EXPORTED: "设计稿已导出",
+  CREATED: "已创建",
+  INPUT_VALIDATED: "输入校验通过",
+  PROJECT_INSPECTED: "仓库已索引",
+  VISUAL_DRAFTED: "视觉草稿完成",
+  SPEC_VALIDATED: "Spec 校验通过",
+  MAPPINGS_RESOLVED: "映射已确认",
+  TYPECHECKED: "类型检查通过",
+  RENDERED: "已渲染",
+  ATTRIBUTED: "已归因",
+  REPAIR_PLANNED: "修复已规划",
+  REPAIR_APPLIED: "修复已应用",
 };
 
 const pipelineStages: Record<Mode, string[]> = {

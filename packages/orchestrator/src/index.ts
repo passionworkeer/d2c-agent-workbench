@@ -12,6 +12,8 @@ import { SDS_REGISTRY_SIZE } from "@d2c/component-matcher";
 import { evaluateArtifact } from "@d2c/evaluator";
 import { generateReactCode } from "@d2c/codegen";
 
+export * from "./production";
+
 type Violation = EvaluationReport["violations"][number];
 
 export interface ReplayWorkflowInput {

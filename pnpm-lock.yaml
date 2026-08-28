@@ -222,6 +222,9 @@ importers:
 
   packages/orchestrator:
     dependencies:
+      '@d2c/asset-indexer':
+        specifier: workspace:*
+        version: link:../asset-indexer
       '@d2c/codegen':
         specifier: workspace:*
         version: link:../codegen
@@ -234,6 +237,9 @@ importers:
       '@d2c/evaluator':
         specifier: workspace:*
         version: link:../evaluator
+      '@d2c/production-runtime':
+        specifier: workspace:*
+        version: link:../production-runtime
     devDependencies:
       '@d2c/figma-importer':
         specifier: workspace:*
