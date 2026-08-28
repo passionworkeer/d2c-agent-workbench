@@ -8,6 +8,8 @@ import {
   type UISpecNode,
 } from "@d2c/contracts";
 
+export * from "./production";
+
 const STRUCTURAL_ROLES = new Set([
   "page",
   "header",
