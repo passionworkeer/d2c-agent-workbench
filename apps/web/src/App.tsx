@@ -49,8 +49,9 @@ import {
   type ProviderSettings,
 } from "./lib/provider";
 import { SettingsPopover } from "./components/SettingsPopover";
+import { ProductionWorkbench } from "./components/ProductionWorkbench";
 
-type Mode = "d2c" | "i2d";
+type Mode = "d2c" | "i2d" | "production";
 
 type ChatMsg = { role: "user" | "agent"; text: string };
 
@@ -103,6 +104,7 @@ const stateNames: Record<WorkflowState | "READY", string> = {
 const pipelineStages: Record<Mode, string[]> = {
   d2c: ["导入", "UISpec", "匹配", "生成", "评测", "修复"],
   i2d: ["输入", "UI 理解", "布局", "组件", "设计稿", "导出"],
+  production: ["输入", "仓库索引", "Spec", "生成构建", "渲染评测", "修复交付"],
 };
 
 // pipeline-rail 的推进不能按事件序号近似（SSE 上传 / 上一步回退 / 聊天追加 CANVAS_EDITED
@@ -123,6 +125,14 @@ const stageStateMap: Record<Mode, WorkflowState[][]> = {
     ["COMPONENTS_DETECTED", "TOKENS_BOUND"],
     ["SPEC_GENERATED"],
     ["CANVAS_EDITED", "SPEC_EXPORTED", "COMPLETED"],
+  ],
+  production: [
+    ["INPUT_VALIDATED"],
+    ["PROJECT_INSPECTED"],
+    ["SPEC_VALIDATED", "MAPPINGS_RESOLVED"],
+    ["CODE_PLANNED", "GENERATED", "TYPECHECKED", "BUILT"],
+    ["RENDERED", "EVALUATED", "ATTRIBUTED"],
+    ["REPAIR_PLANNED", "REPAIR_APPLIED", "COMPLETED", "NEEDS_REVIEW", "FAILED"],
   ],
 };
 
@@ -791,21 +801,26 @@ export default function App() {
       <div className="mode-tabs">
         <button className={mode === "d2c" ? "active" : ""} onClick={() => switchMode("d2c")}>Figma → 代码<small>D2C · 设计稿转生产代码</small></button>
         <button className={mode === "i2d" ? "active" : ""} onClick={() => switchMode("i2d")}>参考图 → 设计稿<small>I2D · 多模态 UI 理解与生成</small></button>
+        <button className={mode === "production" ? "active" : ""} onClick={() => switchMode("production")}>活动页生产<small>PRODUCTION · 真实构建渲染评测修复</small></button>
         <div className="mode-context">
           {mode === "d2c"
             ? `FIXTURE · ${fixture === "product-grid" ? "商品网格" : "表单页"}`
-            : `ENGINE · ${providerSettings.provider === "llm" ? "真实视觉模型 LLM" : "演示 Mock"}`}
+            : mode === "production"
+              ? "PRODUCTION · 黄金样例 · 真实 Artifact"
+              : `ENGINE · ${providerSettings.provider === "llm" ? "真实视觉模型 LLM" : "演示 Mock"}`}
         </div>
       </div>
 
       <section className="hero-strip">
         <div className="hero-title">
-          <span className="kicker">设计 → 证据 → {mode === "d2c" ? "代码" : "设计稿"}</span>
+          <span className="kicker">设计 → 证据 → {mode === "d2c" ? "代码" : mode === "production" ? "生产交付" : "设计稿"}</span>
           <h1>编译设计意图，<em>而不是堆叠像素。</em></h1>
         </div>
         <p>{mode === "d2c"
           ? "把 Figma 结构、生产组件和独立 Eval Agent 汇入一条可追踪、可评测、可修复的 D2C 链路。"
-          : "融合参考图 / Figma 节点树与 Auto Layout 约束，产出结构化、可编辑、可直接进入出码链路的设计稿。"}</p>
+          : mode === "production"
+            ? "以 ActivitySpec v2 为单一事实源：真实代码生成、隔离构建、Playwright 渲染、客观评测与文件级定向修复。"
+            : "融合参考图 / Figma 节点树与 Auto Layout 约束，产出结构化、可编辑、可直接进入出码链路的设计稿。"}</p>
         <div className="pipeline-rail">
           {stages.map((label, index) => (
             <div
@@ -820,6 +835,9 @@ export default function App() {
 
       {error && <div className="error-banner"><span>{error}{uploadedFile && `（${uploadedFile}）`}</span>{canFallback && <button className="button fallback" onClick={startStepDemo}>使用演示数据继续</button>}</div>}
 
+      {mode === "production" ? (
+        <ProductionWorkbench />
+      ) : (
       <section className="workspace-grid">
         {mode === "d2c" ? (
           <>
@@ -1075,6 +1093,7 @@ export default function App() {
           </>
         )}
       </section>
+      )}
       <footer><span>D2C AGENT 工作台 / 本地优先</span><span>UISPEC · SDS · TRACE · EVAL</span></footer>
     </main>
   );
