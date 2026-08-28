@@ -6,6 +6,8 @@ test-results/
 runs/
 *.local
 .gstack/
+.superpowers/
+.worktrees/
 
 # 绝不入仓：本地 LLM key / 任何环境敏感变量
 .env
