@@ -241,6 +241,9 @@ importers:
       '@d2c/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@playwright/test':
+        specifier: ^1.55.0
+        version: 1.62.1
 
   packages/ui-compiler:
     dependencies:
