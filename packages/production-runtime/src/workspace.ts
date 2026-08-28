@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile as writeFsFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile as writeFsFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { TargetProjectProfile } from "@d2c/contracts";
 
@@ -14,6 +14,8 @@ function matchesGlob(path: string, glob: string): boolean {
   const normalized = normalize(path);
   return normalized === prefix || normalized.startsWith(`${prefix}/`);
 }
+
+export const matchesWriteGlob = matchesGlob;
 
 export class RunWorkspace {
   readonly root: string;
@@ -48,6 +50,11 @@ export class RunWorkspace {
     await mkdir(resolve(absolute, ".."), { recursive: true });
     await writeFsFile(absolute, content);
     return absolute;
+  }
+
+  async readFile(path: string): Promise<string> {
+    const absolute = this.resolveWritePath(path);
+    return readFile(absolute, "utf8");
   }
 
   async apply(input: WorkspaceApplyInput): Promise<string[]> {

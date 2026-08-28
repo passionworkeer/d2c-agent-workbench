@@ -9,6 +9,7 @@ import {
 } from "@d2c/contracts";
 
 export * from "./production";
+export * from "./attribution";
 
 const STRUCTURAL_ROLES = new Set([
   "page",

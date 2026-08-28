@@ -13,6 +13,7 @@ export interface NodeGeometry {
   y: number;
   width: number;
   height: number;
+  parentId: string | null;
   visible: boolean;
   overflowX: string;
   overflowY: string;
@@ -74,6 +75,7 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
         const style = getComputedStyle(htmlElement);
         return [htmlElement.dataset.d2cNodeId ?? "", {
           x: box.x, y: box.y, width: box.width, height: box.height,
+          parentId: htmlElement.parentElement?.closest("[data-d2c-node-id]")?.getAttribute("data-d2c-node-id") ?? null,
           visible: style.display !== "none" && style.visibility !== "hidden" && box.width > 0 && box.height > 0,
           overflowX: style.overflowX, overflowY: style.overflowY, position: style.position, zIndex: style.zIndex,
           color: style.color, backgroundColor: style.backgroundColor, fontFamily: style.fontFamily, fontSize: style.fontSize, lineHeight: style.lineHeight,

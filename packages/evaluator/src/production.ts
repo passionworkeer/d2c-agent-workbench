@@ -10,6 +10,7 @@ import {
 } from "@d2c/contracts";
 
 export interface RenderedNode extends Rect {
+  parentId?: string | null;
   visible: boolean;
   overflowX: string;
   overflowY: string;
