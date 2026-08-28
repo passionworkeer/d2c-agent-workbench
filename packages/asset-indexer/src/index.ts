@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
+export * from "./project";
+
 // 企业组件资产库扫描器：把设计系统仓库（React 组件 + Storybook + Code Connect）
 // 扫描成 matcher 可注入的 RegistryEntry 列表，回答「怎么接我们公司设计系统」。
 //
