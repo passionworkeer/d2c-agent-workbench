@@ -6,6 +6,8 @@ import {
   type UISpecNode,
 } from "@d2c/contracts";
 
+export * from "./production";
+
 // 一处样式引用在产物代码中的实际形态。evaluator 唯一扫描面。
 export interface StyleRef {
   nodeId: string;
