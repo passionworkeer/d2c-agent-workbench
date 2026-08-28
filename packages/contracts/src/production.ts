@@ -233,6 +233,15 @@ export const patchPlanSchema = z.object({
   rollbackArtifact: z.string().min(1),
 }).strict();
 
+/** ActivitySpec 域的编辑操作（Puck 原型 / 工作台编辑面板发出，服务端 /edit 消费） */
+export const specEditOpSchema = z.object({
+  kind: z.literal("set-content"),
+  nodeId: z.string().min(1),
+  text: z.string(),
+}).strict();
+
+export const specEditOpsSchema = z.array(specEditOpSchema);
+
 export const productionRunSchema = z.object({
   id: z.string().min(1),
   mode: z.literal("production"),
@@ -255,4 +264,5 @@ export type D2CSourceMap = z.infer<typeof sourceMapSchema>;
 export type ProductionMetrics = z.infer<typeof productionMetricsSchema>;
 export type ProductionViolation = z.infer<typeof productionViolationSchema>;
 export type PatchPlan = z.infer<typeof patchPlanSchema>;
+export type SpecEditOp = z.infer<typeof specEditOpSchema>;
 export type ProductionRun = z.infer<typeof productionRunSchema>;

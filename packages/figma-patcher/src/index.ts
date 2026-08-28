@@ -1,6 +1,8 @@
 import { resolveSelectorNodeIds, type EditOp } from "@d2c/canvas-ops";
 import type { TokenDefinition, UISpec } from "@d2c/contracts";
 
+export * from "./export";
+
 // I2D 设计稿回写 Figma：把对话式画布编辑产生的 EditOp 转成 Figma REST 写 API 的
 // setNodeChanges 结构。selector 解析复用 canvas-ops.resolveSelectorNodeIds，
 // 保证「画布上怎么改、回写 Figma 就改哪」语义一致。
