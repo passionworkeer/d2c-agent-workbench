@@ -25,9 +25,12 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { applyFigmaPatch } from "./figma";
 import { interpretCanvasEdit } from "./llm";
 import { interpretReferenceImage } from "./vision";
+import { registerProductionRoutes, type ProductionRouteOptions } from "./production";
 
 interface BuildAppOptions {
   replayDelayMs?: number;
+  /** 生产模式路由（ActivitySpec → 真实构建渲染评测修复）；缺省用默认数据目录注册 */
+  production?: ProductionRouteOptions;
 }
 
 interface RunRecord {
@@ -108,6 +111,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(multipart, {
     limits: { files: 1, fileSize: 25 * 1024 * 1024 },
   });
+
+  registerProductionRoutes(app, options.production);
 
   function publish(runId: string, event: TraceEvent): void {
     const record = runs.get(runId);

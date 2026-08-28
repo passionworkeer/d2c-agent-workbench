@@ -32,6 +32,9 @@ importers:
       '@d2c/canvas-ops':
         specifier: workspace:*
         version: link:../../packages/canvas-ops
+      '@d2c/codegen':
+        specifier: workspace:*
+        version: link:../../packages/codegen
       '@d2c/component-matcher':
         specifier: workspace:*
         version: link:../../packages/component-matcher
@@ -47,6 +50,9 @@ importers:
       '@d2c/orchestrator':
         specifier: workspace:*
         version: link:../../packages/orchestrator
+      '@d2c/production-runtime':
+        specifier: workspace:*
+        version: link:../../packages/production-runtime
       '@d2c/ui-compiler':
         specifier: workspace:*
         version: link:../../packages/ui-compiler
