@@ -129,6 +129,8 @@ describe("assetCropSchema", () => {
       height: 0.4,
     });
     expect(() => assetCropSchema.parse({ x: 0.9, y: 0, width: 0.2, height: 0.1 })).toThrow();
+    expect(() => assetCropSchema.parse({ x: 0, y: 0, width: 0, height: 0.1 })).toThrow();
+    expect(() => assetCropSchema.parse({ x: 0, y: 0, width: 0.1, height: 0 })).toThrow();
   });
 });
 

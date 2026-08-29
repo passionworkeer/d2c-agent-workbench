@@ -17,8 +17,8 @@ export const rectSchema = z.object({
 export const assetCropSchema = z.object({
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),
-  width: z.number().min(0).max(1),
-  height: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
 }).strict().superRefine((value, context) => {
   if (value.x + value.width > 1) {
     context.addIssue({ code: "custom", path: ["width"], message: "x + width must not exceed 1" });
