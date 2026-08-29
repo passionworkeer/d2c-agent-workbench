@@ -273,6 +273,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       const workflowMappings = record.sourceFile
         ? record.mappings.map((mapping) => (mapping.status === "unmapped" ? mapping : { ...mapping, sourceFile: record.sourceFile }))
         : record.mappings;
+      // 验收门槛以服务端注册表为唯一事实源（随 sampleId 查表），不随 Run 持久化漂移
+      const acceptance = resolveTargetBySampleId(record.sampleId).acceptance;
       for await (const event of runProductionWorkflow({
         runId: record.run.id,
         spec: record.spec,
@@ -286,6 +288,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         assetSourceRoot: record.assetSourceRoot,
         referenceScreenshot: record.referenceScreenshot,
         ...(record.semanticReviewScore !== undefined ? { semanticReviewScore: record.semanticReviewScore } : {}),
+        ...(acceptance ? { acceptance } : {}),
       }, adapters)) {
         await publish(record, event);
       }
@@ -419,7 +422,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
     // 终态已写入内存时，等待同一 run 的落盘链结束；否则客户端紧接着重启服务会把磁盘中的 running 快照改判 failed。
     if (record.run.status !== "running") await (persistChains.get(record.run.id) ?? Promise.resolve()).catch(() => undefined);
-    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}), ...(record.latestSemanticReview ? { latestSemanticReview: record.latestSemanticReview } : {}) };
+    // referenceNodes 是服务端校验过的保真契约：详情响应透传给工作台与 E2E 复核
+    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, referenceNodes: record.referenceNodes, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}), ...(record.latestSemanticReview ? { latestSemanticReview: record.latestSemanticReview } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {

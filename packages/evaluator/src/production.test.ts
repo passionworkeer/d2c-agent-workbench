@@ -54,6 +54,20 @@ describe("evaluateProductionRun", () => {
     expect(report.violations.some((item) => item.severity === "P0" && item.type === "build")).toBe(true);
   });
 
+  it("applies server-declared acceptance thresholds without changing scores", () => {
+    // 门槛降到 1 分只影响 outcome，分数一个字都不动；默认 90/85 行为不变
+    const reference = evaluateProductionRun(baseInput);
+    const relaxed = evaluateProductionRun({ ...baseInput, acceptance: { pass: 1, needsReview: 0 } });
+    expect(relaxed.metrics.finalScore).toBe(reference.metrics.finalScore);
+    expect(relaxed.metrics.visualScore).toBe(reference.metrics.visualScore);
+    if (!reference.violations.some((item) => item.severity === "P0" || item.severity === "P1")) {
+      expect(relaxed.outcome).toBe("passed");
+    }
+    // P1 硬门槛不随验收门槛放松：横向溢出在低门槛下依然不能 passed
+    const overflow = evaluateProductionRun({ ...baseInput, horizontalOverflow: true, acceptance: { pass: 1, needsReview: 0 } });
+    expect(overflow.outcome).not.toBe("passed");
+  });
+
   it("marks mobile horizontal overflow as a P1 responsive violation", () => {
     const report = evaluateProductionRun({ ...baseInput, horizontalOverflow: true });
     expect(report.violations).toContainEqual(expect.objectContaining({ type: "responsive", severity: "P1" }));

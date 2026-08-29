@@ -78,6 +78,8 @@ export interface ProductionWorkflowInput {
   assetEvidence?: Array<{ id: string; pHashDistance: number }>;
   engineeringOverride?: Partial<ProductionEvaluationInput["engineering"]>;
   semanticReviewScore?: number;
+  /** 验收门槛覆盖（默认 90/85）：服务端按样例声明，如真实截图样例 70/62。 */
+  acceptance?: { pass: number; needsReview: number };
   /** spec.assets 相对该服务端可信目录解析。 */
   assetSourceRoot?: string;
   /** spec 补丁在工作区内的落盘路径；不提供则 spec 类补丁报错 */
@@ -325,6 +327,7 @@ export async function* runProductionWorkflow(
       ...(semanticEvidence
         ? { semanticReviewScore: semanticEvidence.score }
         : input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
+      ...(input.acceptance ? { acceptance: input.acceptance } : {}),
     });
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
     yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, {

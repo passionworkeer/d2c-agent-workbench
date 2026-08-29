@@ -14,8 +14,10 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     // 启动 server + web 一起跑，否则 e2e 里真实上传会因后端不可用而落到 demo 路径。
+    // 就绪探测打后端 health 而不是 5173：vite ~1s 就绪、tsx 后端要更久，
+    // 只等 web 会让首个 POST /api/production/runs 在后端监听前发出（500 → 无 run）。
     command: "pnpm dev",
-    url: "http://127.0.0.1:5173",
+    url: "http://127.0.0.1:8787/api/health",
     reuseExistingServer: true,
     timeout: 60_000,
   },
