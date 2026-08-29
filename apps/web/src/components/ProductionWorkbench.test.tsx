@@ -9,17 +9,21 @@ const apiMocks = vi.hoisted(() => ({
   subscribeToProductionRun: vi.fn((_id: string, _onEvent: (event: TraceEvent) => void) => () => undefined),
   getProductionRun: vi.fn(),
   getProductionArtifact: vi.fn(),
+  editProductionRun: vi.fn(),
+  repairProductionRun: vi.fn(),
 }));
 
 vi.mock("../lib/production-api", () => ({
   GOLDEN_SAMPLES: [
-    { id: "campaign", label: "夏日好物节（主视觉页）", payload: { spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page" }, { id: "hero" }, { id: "hero-title" }] }, profile: { repositoryPath: "examples/activity-target" } } },
+    { id: "campaign", label: "夏日好物节（主视觉页）", payload: { spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page", role: "page" }, { id: "hero", role: "section" }, { id: "hero-title", role: "text", content: { text: "夏日好物节 · 全场 5 折" } }] }, profile: { repositoryPath: "examples/activity-target" } } },
     { id: "summer-form", label: "体验官招募（表单页）", payload: { spec: { page: { route: "/campaign/summer-form" }, nodes: [{ id: "page" }] }, profile: { repositoryPath: "examples/activity-target" } } },
   ],
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
   getProductionRun: apiMocks.getProductionRun,
   getProductionArtifact: apiMocks.getProductionArtifact,
+  editProductionRun: apiMocks.editProductionRun,
+  repairProductionRun: apiMocks.repairProductionRun,
 }));
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
@@ -50,6 +54,8 @@ const flowEvents: TraceEvent[] = [
 
 beforeEach(() => {
   apiMocks.createProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
+  apiMocks.editProductionRun.mockReset().mockResolvedValue({ spec: {} });
+  apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
     content: { viewports: [{ name: "desktop", width: 1440, height: 900 }, { name: "mobile", width: 390, height: 844 }] },
@@ -96,5 +102,28 @@ describe("ProductionWorkbench", () => {
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     expect(await screen.findByText(/目标仓库不在允许的根目录内/)).toBeInTheDocument();
+  });
+
+  it("saves prototype edits as typed ops and offers an edit-aware rerun", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
+    await screen.findByText("COMPLETED");
+
+    // Puck 原型编辑：改标题 → 本地待保存 → 保存为类型化 SpecEditOp
+    const input = screen.getByLabelText("hero-title 文本");
+    await user.clear(input);
+    await user.type(input, "新活动标题");
+    expect(screen.getByText(/处未保存编辑/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "保存编辑到 Run" }));
+    expect(apiMocks.editProductionRun).toHaveBeenCalledWith("run-1", [
+      expect.objectContaining({ kind: "set-content", nodeId: "hero-title", text: "新活动标题" }),
+    ]);
+
+    // 保存后提供按编辑重跑（服务端因 specEdited 强制重新生成）
+    await user.click(screen.getByRole("button", { name: "按编辑重跑闭环" }));
+    expect(apiMocks.repairProductionRun).toHaveBeenCalledWith("run-1");
   });
 });

@@ -1,17 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ProductionViolation, TraceEvent } from "@d2c/contracts";
+import type { ActivitySpec, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
 import {
   GOLDEN_SAMPLES,
   createProductionRun,
+  editProductionRun,
   getProductionArtifact,
   getProductionRun,
+  repairProductionRun,
   subscribeToProductionRun,
 } from "../lib/production-api";
+import { PrototypeEditor } from "./PrototypeEditor";
 
 // 生产工作台：真实构建/渲染/评测/修复闭环的可视化。
 // 每条状态都来自服务端事件与 Artifact；违规点击后展示 Region → Node → Source 定位与补丁范围。
 
 const TERMINAL_STATES = new Set(["COMPLETED", "FAILED", "NEEDS_REVIEW"]);
+
+// 与基准 spec 的文本节点差异 → 类型化 set-content ops（保存与待保存计数共用）
+function diffTextOps(spec: ActivitySpec, baseline: ActivitySpec): SpecEditOp[] {
+  const ops: SpecEditOp[] = [];
+  for (const node of spec.nodes) {
+    if (node.role !== "text") continue;
+    const before = baseline.nodes.find((item) => item.id === node.id)?.content?.text;
+    if (node.content?.text !== undefined && node.content.text !== before) {
+      ops.push({ kind: "set-content", nodeId: node.id, text: node.content.text });
+    }
+  }
+  return ops;
+}
 
 export function ProductionWorkbench() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
@@ -23,11 +39,26 @@ export function ProductionWorkbench() {
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number }>>([]);
+  // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
+  const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
+  const [editSaved, setEditSaved] = useState(false);
+  const [savingEdits, setSavingEdits] = useState(false);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
   const unsubscribeRef = useRef<(() => void) | null>(null);
   useEffect(() => () => unsubscribeRef.current?.(), []);
+
+  // 原型编辑：最近保存基准（null = 载入样例原值）
+  const savedSpecRef = useRef<ActivitySpec | null>(null);
+
+  // 切换样例时同步可编辑 spec 并清空编辑状态
+  useEffect(() => {
+    const sample = GOLDEN_SAMPLES.find((item) => item.id === selectedSampleId);
+    setEditableSpec(sample ? sample.payload.spec : null);
+    savedSpecRef.current = null;
+    setEditSaved(false);
+  }, [selectedSampleId]);
 
   const pushEvent = useCallback((event: TraceEvent) => {
     setEvents((current) => [...current, event]);
@@ -49,6 +80,24 @@ export function ProductionWorkbench() {
     }
   }, []);
 
+  function subscribe(id: string) {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = subscribeToProductionRun(id, (event) => {
+      void pushEvent(event);
+      if (TERMINAL_STATES.has(event.state)) {
+        void getProductionRun(id)
+          .then((detail) => {
+            if (detail.violations.length) setViolations(detail.violations);
+            setRunning(false);
+          })
+          .catch(() => setRunning(false));
+      }
+    }, () => {
+      setError("事件流中断，请刷新查看 Run 状态");
+      setRunning(false);
+    });
+  }
+
   async function runLoop() {
     setRunning(true);
     setError(null);
@@ -60,23 +109,63 @@ export function ProductionWorkbench() {
       const { runId: id } = await createProductionRun((selectedSample ?? GOLDEN_SAMPLES[0]!).payload);
       setRunId(id);
       setViewports([]);
-      unsubscribeRef.current?.();
-      unsubscribeRef.current = subscribeToProductionRun(id, (event) => {
-        void pushEvent(event);
-        if (TERMINAL_STATES.has(event.state)) {
-          void getProductionRun(id)
-            .then((detail) => {
-              if (detail.violations.length) setViolations(detail.violations);
-              setRunning(false);
-            })
-            .catch(() => setRunning(false));
-        }
-      }, () => {
-        setError("事件流中断，请刷新查看 Run 状态");
-        setRunning(false);
-      });
+      subscribe(id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "生产闭环启动失败");
+      setRunning(false);
+    }
+  }
+
+  // 原型编辑：本地即时应用 set-content（受控反馈），不逐键打服务端
+  function handleEdit(ops: SpecEditOp[]) {
+    setEditableSpec((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => {
+          const op = ops.find((item) => item.nodeId === node.id);
+          return op ? { ...node, content: { ...(node.content ?? {}), text: op.text } } : node;
+        }),
+      };
+    });
+  }
+
+  // 待保存编辑 = 当前 spec 与「最近保存基准」（或载入样例）的文本节点差异数
+  const editBaseline = savedSpecRef.current ?? (selectedSample ?? GOLDEN_SAMPLES[0]!).payload.spec;
+  const pendingCount = editableSpec && editableSpec !== editBaseline
+    ? diffTextOps(editableSpec, editBaseline).length
+    : 0;
+
+  async function saveEdits() {
+    if (!runId || !editableSpec || pendingCount === 0 || savingEdits) return;
+    setSavingEdits(true);
+    try {
+      const ops = diffTextOps(editableSpec, editBaseline);
+      if (ops.length === 0) return;
+      await editProductionRun(runId, ops);
+      savedSpecRef.current = editableSpec;
+      setEditSaved(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "编辑保存失败");
+    } finally {
+      setSavingEdits(false);
+    }
+  }
+
+  // 按编辑重跑：服务端会因 specEdited 强制重新生成，保证新 spec 与代码一致
+  async function rerunAfterEdit() {
+    if (!runId || running) return;
+    setRunning(true);
+    setError(null);
+    setEvents([]);
+    setSelectedViolation(null);
+    setFinalScore(null);
+    setViewports([]);
+    try {
+      await repairProductionRun(runId);
+      subscribe(runId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "重跑失败");
       setRunning(false);
     }
   }
@@ -121,6 +210,26 @@ export function ProductionWorkbench() {
       )}
 
       {error && <div className="production-error" role="alert">{error}</div>}
+
+      {editableSpec && (
+        <section className="prototype-panel" aria-label="原型编辑">
+          <div className="prototype-panel-head">
+            <h3>Puck 原型编辑 <small>编辑经类型化 SpecEditOp 回写 ActivitySpec，不直接改代码</small></h3>
+            <div className="prototype-panel-actions">
+              {pendingCount > 0 && <span className="edit-pending">{pendingCount} 处未保存编辑</span>}
+              {runId && pendingCount > 0 && (
+                <button className="button secondary" disabled={savingEdits || running} onClick={() => void saveEdits()}>
+                  {savingEdits ? "保存中…" : "保存编辑到 Run"}
+                </button>
+              )}
+              {editSaved && !running && (
+                <button className="button primary" onClick={() => void rerunAfterEdit()}>按编辑重跑闭环</button>
+              )}
+            </div>
+          </div>
+          <PrototypeEditor spec={editableSpec} onEdit={handleEdit} />
+        </section>
+      )}
 
       <div className="production-columns">
         <section className="production-events" aria-label="生产事件流">
