@@ -16,7 +16,9 @@ export const ACTIVITY_TARGET_PROFILE: TargetProjectProfile = {
   assetRoot: "public/campaign",
   styleStrategy: "css-modules",
   commands: {
-    install: ["pnpm", "install"],
+    // --prefer-offline：启动预热已把 pnpm store 填热时跳过 registry 元数据请求，
+    // 演示会场断网也能完成 install（store 冷时自动回退联网，行为不变）
+    install: ["pnpm", "install", "--prefer-offline"],
     typecheck: ["pnpm", "typecheck"],
     build: ["pnpm", "build"],
     dev: ["pnpm", "dev"],

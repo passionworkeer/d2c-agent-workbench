@@ -80,6 +80,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   const persistChains = new Map<string, Promise<void>>();
 
   // 启动重载：把历史 run 的元数据读回内存（只读状态；无工作区，repair 会如实 409）
+  const reloadedRuns: Array<{ id: string; createdAt: string }> = [];
   void (async () => {
     try {
       const runsDirectory = join(dataRoot, "runs");
@@ -112,6 +113,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
             ...(parsed.latestTextEvidence ? { latestTextEvidence: parsed.latestTextEvidence as { expected: string[]; actual: string[] } } : {}),
             ...(parsed.specEdited ? { specEdited: true } : {}),
           });
+          reloadedRuns.push({ id, createdAt: run.createdAt });
         } catch {
           // 单个损坏的 run.json 跳过，不阻塞其余重载
         }
@@ -127,6 +129,16 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         const candidate = resolve(workspacesRoot, entry);
         if (![...referenced].some((root) => resolve(root) === candidate)) {
           await rm(candidate, { recursive: true, force: true }).catch(() => undefined);
+        }
+      }
+      // 磁盘 run 记录同样封顶：内存 records 上限 MAX_RUNS，磁盘无界增长会让 runs/ 越积越多。
+      // 与内存同水位——按 createdAt 淘汰最旧的整目录（元数据 + artifacts 引用 + 渲染证据一并清理）。
+      if (reloadedRuns.length > MAX_RUNS) {
+        const evict = [...reloadedRuns].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, reloadedRuns.length - MAX_RUNS);
+        for (const { id } of evict) {
+          records.delete(id);
+          listeners.delete(id);
+          await rm(join(dataRoot, "runs", id), { recursive: true, force: true }).catch(() => undefined);
         }
       }
     } catch {
@@ -370,12 +382,28 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     },
   );
 
+  // 历史 Run 清单：重启后重载的记录也能列出，工作台可只读回看任意一次闭环的证据链
+  app.get("/api/production/runs", async () => {
+    const runs = [...records.values()]
+      .map((record) => ({
+        id: record.run.id,
+        sampleId: record.sampleId,
+        status: record.run.status,
+        state: record.run.state,
+        iteration: record.run.iteration,
+        finalScore: record.latestEvaluation?.finalScore ?? null,
+        createdAt: record.run.createdAt,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { runs };
+  });
+
   app.get<{ Params: { id: string } }>("/api/production/runs/:id", async (request, reply) => {
     const record = records.get(request.params.id);
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
     // 终态已写入内存时，等待同一 run 的落盘链结束；否则客户端紧接着重启服务会把磁盘中的 running 快照改判 failed。
     if (record.run.status !== "running") await (persistChains.get(record.run.id) ?? Promise.resolve()).catch(() => undefined);
-    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
+    return { ...record.run, sampleId: record.sampleId, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {

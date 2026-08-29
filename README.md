@@ -42,8 +42,9 @@
 - **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。Puck 保存编辑后该面板自动展开，新增「基线（保存前）」列，差异列标「✓ 编辑已应用」，把"设计意图落到了 ActivitySpec"演给观众看。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
 - **工作台横向溢出标注**：mobile / 任一视口的 `documentElement.scrollWidth > clientWidth` 直接在工作台渲染截图上描红边 + 标注「⚠ 横向溢出 → P1」，把「任一视口也是 P1 硬门槛」演给观众看。
-- **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / `semantic-review` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed），并清理重启后成为孤儿的隔离工作区（每个含完整 node_modules，不清会累积到 GB 级）；证据链在 artifacts/ 与 renders/ 持久化，不受清理影响。
-- **启动即预热依赖**：服务端启动后后台把目标仓库播种进 `.data/production/warm/` 跑一次 install 填热 pnpm 全局 store——演示时首个生产闭环不再付冷启动下载，讲解前两条链路的时间刚好够热好。
+- **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `GET /runs`（历史清单）/ `confirm-mapping` / `edit` / `repair` / `semantic-review` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed），并清理重启后成为孤儿的隔离工作区（每个含完整 node_modules，不清会累积到 GB 级）；证据链在 artifacts/ 与 renders/ 持久化，不受清理影响。
+- **历史 Run 回看**：`GET /api/production/runs` 返回全部记录（含重启后重载），工作台「历史 Run」面板点任一条即只读回看——事件流、评测分构成、文本证据、违规与双视口几何整批还原，Run 报告照常可下载；回看态隐藏原型编辑（无工作区引用，修复由服务端如实 409）。磁盘 run 目录按 createdAt 封顶 MAX_RUNS（50）自动淘汰最旧，与内存水位一致。
+- **启动即预热依赖**：服务端启动后后台把目标仓库播种进 `.data/production/warm/` 跑一次 install 填热 pnpm 全局 store——演示时首个生产闭环不再付冷启动下载，讲解前两条链路的时间刚好够热好；install 带 `--prefer-offline`，store 已热时跳过 registry 请求，会场断网也能跑完压轴环节（store 冷时自动回退联网）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
 - **Run 报告下载**：闭环完成后一键下载 `production-run-<id>-report.json`——含完整事件流（每步 Artifact 引用）、终局分数、评测分构成、文本证据、违规清单与双视口逐节点几何，把「每一步可追溯」变成可带走的结构化证据链（与 D2C 模式的报告同一惯例，不含任何密钥）。

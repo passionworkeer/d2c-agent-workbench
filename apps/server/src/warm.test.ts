@@ -42,7 +42,8 @@ describe("warmDependencyCache", () => {
     });
     // 5 个注册样例共享 examples/activity-target：每个仓库只预热一次
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.command).toEqual(["pnpm", "install"]);
+    // --prefer-offline：热 store 跳过 registry 请求，演示断网也能装（冷 store 自动回退联网）
+    expect(calls[0]?.command).toEqual(["pnpm", "install", "--prefer-offline"]);
     expect(warmed).toEqual(["examples/activity-target"]);
     // 预热工作区里能读到播种复制来的 package.json
     const seeded = await readFile(join(dataRoot, "warm", "examples-activity-target", "package.json"), "utf8");

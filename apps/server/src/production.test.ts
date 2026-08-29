@@ -443,4 +443,70 @@ describe("production routes", () => {
     }
     throw new Error("persisted run was not reloaded in time");
   });
+
+  it("lists run history newest-first, including runs reloaded from disk after a restart", async () => {
+    const { app, dataRoot } = await createApp();
+    const first = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    // 拉开 createdAt，确保 newest-first 排序断言不受同毫秒创建影响
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const second = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const firstId = first.json().runId as string;
+    const secondId = second.json().runId as string;
+    await waitTerminal(app, firstId);
+    await waitTerminal(app, secondId);
+
+    // 同一 dataRoot 重建 app（模拟服务重启）：重载完成后历史清单可查，最新在前
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    let runs: Array<{ id?: string; sampleId?: string; status?: string; finalScore?: number | null; createdAt?: string }> = [];
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const response = await restarted.inject({ method: "GET", url: "/api/production/runs" });
+      runs = response.json().runs;
+      if (runs.length === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(runs.map((run) => run.id)).toEqual([secondId, firstId]);
+    expect(runs[1]).toMatchObject({ sampleId: "campaign", status: "completed", finalScore: 92 });
+    expect(typeof runs[1]!.createdAt).toBe("string");
+  });
+
+  it("caps persisted run directories at MAX_RUNS on startup, evicting the oldest by createdAt", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId as string;
+    await waitTerminal(app, runId);
+    // persistRun 异步落盘：等 run.json 写到终态，拷贝出来的快照才有效
+    let base: { run: { id: string; createdAt: string } } | null = null;
+    for (let attempt = 0; attempt < 250; attempt += 1) {
+      try {
+        const disk = JSON.parse(await readFile(join(dataRoot, "runs", runId, "run.json"), "utf8"));
+        if (disk.run.status !== "running") { base = disk; break; }
+      } catch {
+        // 文件尚未出现
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    if (!base) throw new Error("run.json was not persisted in time");
+
+    // 50 个更旧的拷贝 + 1 个真实 run = 51 > MAX_RUNS(50)：最旧的整目录被清
+    for (let index = 0; index < 50; index += 1) {
+      const id = `prod-cp${String(index).padStart(3, "0")}`;
+      const snapshot = { ...base, run: { ...base.run, id, createdAt: new Date(Date.now() - (100 - index) * 60_000).toISOString() } };
+      await mkdir(join(dataRoot, "runs", id), { recursive: true });
+      await writeFile(join(dataRoot, "runs", id, "run.json"), JSON.stringify(snapshot), "utf8");
+    }
+
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    let runs: Array<{ id?: string }> = [];
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const response = await restarted.inject({ method: "GET", url: "/api/production/runs" });
+      runs = response.json().runs;
+      if (runs.length === 50) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(runs).toHaveLength(50);
+    expect(runs.map((run) => run.id)).toContain(runId);
+    // 最旧的 cp000 被整目录清理，其余保留
+    expect(existsSync(join(dataRoot, "runs", "prod-cp000"))).toBe(false);
+    expect(existsSync(join(dataRoot, "runs", "prod-cp049"))).toBe(true);
+  });
 });

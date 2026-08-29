@@ -12,6 +12,8 @@ export interface ProductionRunDetail {
   mode: "production";
   status: "running" | "completed" | "failed" | "needs_review";
   state: string;
+  /** 服务端记录的样例 id：回看历史 run 时报告/面板要如实标注它属于哪个样例 */
+  sampleId?: string;
   iteration: number;
   createdAt: string;
   artifacts: Array<{ id: string; kind: string; path: string; createdAt: string }>;
@@ -22,6 +24,17 @@ export interface ProductionRunDetail {
   latestEvaluation?: ProductionMetrics;
   /** 最近一轮文本证据：spec 中 role=text 的 content.text vs 渲染 DOM 的 textContent */
   latestTextEvidence?: { expected: string[]; actual: string[] };
+}
+
+export interface ProductionRunSummary {
+  id: string;
+  sampleId: string;
+  status: ProductionRunDetail["status"];
+  state: string;
+  iteration: number;
+  /** 最近一轮 finalScore：还没跑到评测的 run 为 null */
+  finalScore: number | null;
+  createdAt: string;
 }
 
 export interface ProductionRunPayload {
@@ -57,6 +70,11 @@ export async function createProductionRun(payload: ProductionRunPayload): Promis
 
 export async function getProductionRun(runId: string): Promise<ProductionRunDetail> {
   return readJson(await fetch(`/api/production/runs/${runId}`));
+}
+
+/** 历史 Run 清单（含重启后重载的记录）：工作台据此只读回看任意一次闭环的证据链 */
+export async function listProductionRuns(): Promise<{ runs: ProductionRunSummary[] }> {
+  return readJson(await fetch("/api/production/runs"));
 }
 
 export function subscribeToProductionRun(

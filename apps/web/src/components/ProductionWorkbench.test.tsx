@@ -12,6 +12,7 @@ const apiMocks = vi.hoisted(() => ({
   editProductionRun: vi.fn(),
   repairProductionRun: vi.fn(),
   requestSemanticReview: vi.fn(),
+  listProductionRuns: vi.fn(),
 }));
 
 vi.mock("../lib/production-api", () => ({
@@ -26,6 +27,7 @@ vi.mock("../lib/production-api", () => ({
   editProductionRun: apiMocks.editProductionRun,
   repairProductionRun: apiMocks.repairProductionRun,
   requestSemanticReview: apiMocks.requestSemanticReview,
+  listProductionRuns: apiMocks.listProductionRuns,
 }));
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
@@ -82,6 +84,7 @@ beforeEach(() => {
   apiMocks.editProductionRun.mockReset().mockResolvedValue({ spec: {} });
   apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.requestSemanticReview.mockReset();
+  apiMocks.listProductionRuns.mockReset().mockResolvedValue({ runs: [] });
   apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
     content: { viewports: [
@@ -145,6 +148,36 @@ describe("ProductionWorkbench", () => {
     expect(shots.querySelectorAll("img").length).toBe(2);
     expect(shots.textContent).toContain("desktop · 1440×900");
     expect(shots.textContent).toContain("mobile · 390×844");
+  });
+
+  it("replays a persisted run read-only from the history list, including runs reloaded after a server restart", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
+    await screen.findByText("COMPLETED");
+
+    // 历史清单出现（含刚完成的 run 与一个重启后重载的旧 run）；切换样例会刷新清单
+    apiMocks.listProductionRuns.mockResolvedValue({ runs: [
+      { id: "run-1", sampleId: "campaign", status: "completed", state: "COMPLETED", iteration: 1, finalScore: 93, createdAt: "2026-08-30T10:00:00.000Z" },
+      { id: "prod-old0001", sampleId: "summer-form", status: "needs_review", state: "NEEDS_REVIEW", iteration: 0, finalScore: 90.6, createdAt: "2026-08-29T09:00:00.000Z" },
+    ] });
+    await user.click(screen.getByRole("button", { name: /体验官招募/ }));
+    const history = await screen.findByTestId("run-history");
+    expect(history.textContent).toContain("历史 Run");
+
+    // 回看重载的旧 run：事件流/评测指标/文本证据从落盘记录整批恢复，标注只读
+    await user.click(screen.getByRole("button", { name: "summer-form · ⚠90.6" }));
+    expect(apiMocks.getProductionRun).toHaveBeenCalledWith("prod-old0001");
+    expect(await screen.findByTestId("eval-breakdown")).toBeInTheDocument();
+    expect(screen.getByTestId("text-evidence")).toBeInTheDocument();
+    expect(screen.getByTestId("production-final-score").textContent).toBe("93");
+    expect(screen.getByTestId("run-history").textContent).toContain("只读回看");
+    // 只读回看不带原型编辑面板（editableSpec 置空，编辑/修复留给新 Run）
+    expect(screen.queryByLabelText("hero-title 文本")).toBeNull();
+    // 报告按钮在 header 动作区：回看态同样可下载带走证据链
+    expect(screen.getByTestId("download-run-report")).toBeEnabled();
   });
 
   it("surfaces the create failure instead of hanging", async () => {

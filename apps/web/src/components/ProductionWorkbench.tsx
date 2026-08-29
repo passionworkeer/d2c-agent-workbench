@@ -7,9 +7,11 @@ import {
   editProductionRun,
   getProductionArtifact,
   getProductionRun,
+  listProductionRuns,
   repairProductionRun,
   requestSemanticReview,
   subscribeToProductionRun,
+  type ProductionRunSummary,
   type SemanticReviewOutcome,
 } from "../lib/production-api";
 import { loadProviderSettings } from "../lib/provider";
@@ -65,11 +67,24 @@ export function ProductionWorkbench() {
   const [semanticReview, setSemanticReview] = useState<SemanticReviewOutcome | null>(null);
   const [semanticReviewBusy, setSemanticReviewBusy] = useState(false);
   const [semanticReviewError, setSemanticReviewError] = useState<string | null>(null);
+  // 历史 Run（含服务端重启后重载的记录）：只读回看任意一次闭环的证据链
+  const [runHistory, setRunHistory] = useState<ProductionRunSummary[]>([]);
+  const [historyView, setHistoryView] = useState(false);
+  // 当前展示 run 的样例 id：报告如实标注（回看历史 run 时不是当前选中的样例）
+  const [reportSampleId, setReportSampleId] = useState<string | null>(null);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
   const unsubscribeRef = useRef<(() => void) | null>(null);
   useEffect(() => () => unsubscribeRef.current?.(), []);
+
+  // 挂载即拉历史 Run（服务端不可达时静默隐藏面板，不阻塞新 run）
+  const refreshHistory = useCallback(() => {
+    void listProductionRuns()
+      .then(({ runs }) => setRunHistory(runs))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => { refreshHistory(); }, [refreshHistory]);
 
   // 原型编辑：最近保存基准（null = 载入样例原值）
   const savedSpecRef = useRef<ActivitySpec | null>(null);
@@ -124,6 +139,7 @@ export function ProductionWorkbench() {
             if (detail.latestEvaluation) setLatestMetrics(detail.latestEvaluation);
             if (detail.latestTextEvidence) setLatestTextEvidence(detail.latestTextEvidence);
             setRunning(false);
+            refreshHistory();
           })
           .catch(() => setRunning(false));
       }
@@ -131,6 +147,41 @@ export function ProductionWorkbench() {
       setError("事件流中断，请刷新查看 Run 状态");
       setRunning(false);
     });
+  }
+
+  // 只读回看历史 Run：事件流/评测指标/文本证据/违规从落盘记录整批恢复，
+  // 截图几何走 artifacts；无工作区引用，编辑与修复按钮保持不可用（服务端 repair 会如实 409）
+  async function viewHistoryRun(id: string) {
+    if (running || id === runId) return;
+    unsubscribeRef.current?.();
+    try {
+      const detail = await getProductionRun(id);
+      setEvents(detail.events);
+      setViolations(detail.violations);
+      setSelectedViolation(null);
+      setLatestMetrics(detail.latestEvaluation ?? null);
+      setLatestTextEvidence(detail.latestTextEvidence ?? null);
+      setReportSampleId(detail.sampleId ?? null);
+      const terminal = [...detail.events].reverse().find((event) => TERMINAL_STATES.has(event.state));
+      setFinalScore(typeof terminal?.data?.finalScore === "number" ? terminal.data.finalScore : null);
+      setSemanticReview(null);
+      setSemanticReviewError(null);
+      setError(null);
+      setEditableSpec(null);
+      setEditSaved(false);
+      savedSpecRef.current = null;
+      setRunId(id);
+      setHistoryView(true);
+      setViewports([]);
+      const rendered = [...detail.events].reverse().find((event) => event.state === "RENDERED" && typeof event.data?.artifactId === "string");
+      if (rendered && typeof rendered.data?.artifactId === "string") {
+        const { content } = await getProductionArtifact(id, rendered.data.artifactId);
+        const found = (content as { viewports?: Array<{ name: string; width: number; height: number; horizontalOverflow?: boolean; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
+        if (found.length) setViewports(found.map((v) => ({ name: v.name, width: v.width, height: v.height, horizontalOverflow: Boolean(v.horizontalOverflow), nodes: v.nodes ?? {} })));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "历史 Run 加载失败");
+    }
   }
 
   // 切换样例：清空上一轮展示状态（事件/违规/截图/分数/证据指标），编辑面板由 useEffect 重置
@@ -146,6 +197,9 @@ export function ProductionWorkbench() {
     setError(null);
     setLatestMetrics(null);
     setLatestTextEvidence(null);
+    setHistoryView(false);
+    setReportSampleId(null);
+    refreshHistory();
   }
 
   async function runLoop() {
@@ -159,6 +213,7 @@ export function ProductionWorkbench() {
     setLatestTextEvidence(null);
     setSemanticReview(null);
     setSemanticReviewError(null);
+    setHistoryView(false);
     try {
       const sample = selectedSample ?? GOLDEN_SAMPLES[0]!;
       const submittedSpec = editableSpec ?? sample.payload.spec;
@@ -166,6 +221,7 @@ export function ProductionWorkbench() {
       savedSpecRef.current = submittedSpec;
       setEditSaved(false);
       setRunId(id);
+      setReportSampleId(sample.id);
       setViewports([]);
       subscribe(id);
     } catch (cause) {
@@ -253,6 +309,7 @@ export function ProductionWorkbench() {
     setLatestTextEvidence(null);
     setSemanticReview(null);
     setSemanticReviewError(null);
+    setHistoryView(false);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
@@ -297,6 +354,26 @@ export function ProductionWorkbench() {
           <button className="button primary" disabled={!sampleLoaded || running} onClick={() => void runLoop()}>
             {running ? "生产闭环执行中…" : "运行生产闭环"}
           </button>
+          {runId && !running && (
+            <button
+              className="button secondary"
+              data-testid="download-run-report"
+              onClick={() => {
+                // 完整证据链报告：事件流 + 分数 + 证据 + 违规 + 视口几何，全部来自真实执行；
+                // 放在 header（不依赖原型编辑面板）——只读回看历史 run 时同样可下载带走
+                downloadJson({
+                  runId,
+                  sampleId: reportSampleId,
+                  finalScore,
+                  metrics: latestMetrics,
+                  textEvidence: latestTextEvidence,
+                  violations,
+                  viewports,
+                  events: events.map(({ state, title, data, timestamp }) => ({ state, title, data, timestamp })),
+                }, `production-run-${runId}-report.json`);
+              }}
+            >下载 Run 报告</button>
+          )}
         </div>
       </header>
 
@@ -318,6 +395,23 @@ export function ProductionWorkbench() {
       )}
 
       {error && <div className="production-error" role="alert">{error}</div>}
+
+      {runHistory.length > 0 && !running && (
+        <div className="run-history" data-testid="run-history">
+          <span className="run-history-label">历史 Run（落盘可回看{historyView ? " · 当前为只读回看，点「运行生产闭环」开新 Run" : ""}）：</span>
+          {runHistory.slice(0, 8).map((item) => (
+            <button
+              key={item.id}
+              className={`sample-chip ${item.id === runId ? "active" : ""}`}
+              disabled={running}
+              title={`${item.id} · ${new Date(item.createdAt).toLocaleString()}`}
+              onClick={() => void viewHistoryRun(item.id)}
+            >
+              {item.sampleId} · {item.status === "completed" ? `✓${item.finalScore ?? "—"}` : item.status === "needs_review" ? `⚠${item.finalScore ?? "—"}` : item.status === "running" ? "执行中" : "失败"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {latestMetrics && (
         <section className="eval-breakdown" aria-label="评测分构成" data-testid="eval-breakdown">
@@ -462,21 +556,6 @@ export function ProductionWorkbench() {
                 const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
                 downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}), `${editableSpec.page.id}-figma-import.json`);
               }}>下载 Figma 导入包</button>
-              {runId && !running && (
-                <button className="button secondary" onClick={() => {
-                  // 完整证据链报告：事件流 + 分数 + 证据 + 违规 + 视口几何，全部来自真实执行
-                  downloadJson({
-                    runId,
-                    sampleId: selectedSampleId,
-                    finalScore,
-                    metrics: latestMetrics,
-                    textEvidence: latestTextEvidence,
-                    violations,
-                    viewports,
-                    events: events.map(({ state, title, data, timestamp }) => ({ state, title, data, timestamp })),
-                  }, `production-run-${runId}-report.json`);
-                }}>下载 Run 报告</button>
-              )}
             </div>
           </div>
           <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />
