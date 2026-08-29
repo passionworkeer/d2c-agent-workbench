@@ -170,7 +170,7 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           ]}
         />
 
-        <div style={box(12, 94, 366, 42)} className={pageStyles.searchPill}>
+        <div data-d2c-node-id="commerce-search" style={box(12, 94, 366, 42)} className={pageStyles.searchPill}>
           <svg viewBox="0 0 20 20" className={pageStyles.searchIcon} aria-hidden="true">
             <circle cx="9" cy="9" r="6.4" fill="none" stroke="#9c9ca6" strokeWidth="1.8" />
             <line x1="13.8" y1="13.8" x2="18" y2="18" stroke="#9c9ca6" strokeWidth="1.8" strokeLinecap="round" />
@@ -187,7 +187,7 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           </button>
         </div>
 
-        <div style={box(0, 142, 390, 59)} className={pageStyles.quickActions}>
+        <div data-d2c-node-id="quick-actions" style={box(0, 142, 390, 59)} className={pageStyles.quickActions}>
           {QUICK_ACTIONS.map((action) => (
             <button key={action.id} type="button" className={pageStyles.quickActionItem} style={{ left: action.x }}>
               {action.icon}
@@ -196,7 +196,7 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           ))}
         </div>
 
-        <div style={box(0, 208, 390, 67)}>
+        <div data-d2c-node-id="promo-banner" style={box(0, 208, 390, 67)}>
           <ArtworkSlice nodeId="banner-art" atlasUrl={atlasUrl} crop={ATLAS_CROPS.banner} alt="快手818宠粉节粉红渐变 Banner" style={box(0, 0, 390, 67)} />
           <span data-d2c-node-id="banner-title" style={box(12, 8, 100, 18)} className={pageStyles.bannerTitle}>快手818宠粉节</span>
           <span data-d2c-node-id="banner-line-auction" style={box(12, 30, 120, 12)} className={pageStyles.bannerLine}>手机金豆 1元起拍 ›</span>
@@ -205,7 +205,7 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           <span data-d2c-node-id="banner-price" style={box(310, 20, 68, 22)} className={pageStyles.bannerPrice}>¥59.9</span>
         </div>
 
-        <div style={box(0, 276, 390, 548)} className={pageStyles.productGrid}>
+        <div data-d2c-node-id="product-grid" style={box(0, 276, 390, 548)} className={pageStyles.productGrid}>
           {PRODUCTS.map((product) => (
             <ProductCard
               key={product.id}

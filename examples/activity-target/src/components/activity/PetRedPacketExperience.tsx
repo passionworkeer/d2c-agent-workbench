@@ -125,7 +125,7 @@ export function PetRedPacketExperience({ atlasUrl, ...root }: { atlasUrl: string
           prize={{ id: "level-milestone-prize", label: "88元" }}
         />
 
-        <section style={box(0, 234, 390, 369)}>
+        <section data-d2c-node-id="pet-stage" style={box(0, 234, 390, 369)}>
           <ArtworkSlice nodeId="pet-stage-art" atlasUrl={atlasUrl} crop={STAGE_ART_CROP} alt="穿香蕉服饰的宠物比比拉布站在红色圆台上" style={box(0, 1, 390, 288)} />
           <span data-d2c-node-id="pet-name" style={box(174, 298, 42, 11)} className={pageStyles.petName}>比比拉布</span>
           <span data-d2c-node-id="pet-level-bubble" style={box(125, 298, 22, 14)} className={pageStyles.petLevelBubble}>Lv.1</span>
@@ -142,7 +142,7 @@ export function PetRedPacketExperience({ atlasUrl, ...root }: { atlasUrl: string
             <span data-d2c-node-id="pet-blindbox-cash" style={box(8, 38, 48, 18)} className={pageStyles.petBlindboxCash}>赢现金</span>
           </button>
 
-          <div style={box(8, 326, 374, 36)}>
+          <div data-d2c-node-id="feed-action" style={box(8, 326, 374, 36)}>
             <div style={box(0, 6, 86, 32)} className={pageStyles.petPk}>
               <span data-d2c-node-id="pet-pk-title" style={box(14, 2, 58, 12)}>再赢88元</span>
               <button type="button" data-d2c-node-id="pet-pk-action" style={box(14, 16, 58, 18)} className={pageStyles.petPkAction} onClick={() => setToast("宠物 PK（本地演示）")}>
@@ -169,7 +169,7 @@ export function PetRedPacketExperience({ atlasUrl, ...root }: { atlasUrl: string
           </div>
         </section>
 
-        <section style={box(0, 604, 390, 156)} className={pageStyles.petTaskSection}>
+        <section data-d2c-node-id="pet-task-section" style={box(0, 604, 390, 156)} className={pageStyles.petTaskSection}>
           <span data-d2c-node-id="pet-task-title" style={box(15, 8, 110, 15)} className={pageStyles.petTaskTitle}>做任务赚食物能量</span>
           <button type="button" data-d2c-node-id="pet-task-link" style={box(301, 10, 52, 12)} className={pageStyles.petTaskLink} onClick={() => setToast("全部任务（本地演示）")}>
             全部 ›

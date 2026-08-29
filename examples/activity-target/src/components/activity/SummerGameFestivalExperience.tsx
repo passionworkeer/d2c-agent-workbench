@@ -39,7 +39,7 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
   return (
     <div data-activity-canvas-root="" {...root}>
       <MobileActivityShell height={823} pageBackground="#17181f" canvasBackgroundColor="#1c1038">
-        <section style={box(0, 0, 390, 294)}>
+        <section data-d2c-node-id="festival-hero" style={box(0, 0, 390, 294)}>
           <ArtworkSlice nodeId="festival-hero-art" atlasUrl={atlasUrl} crop={HERO_ART_CROP} alt="夏日游戏节夜晚瀑布魔法场景主视觉" style={box(0, 0, 390, 294)} />
           <ArtworkSlice nodeId="festival-hero-title" atlasUrl={atlasUrl} crop={HERO_TITLE_CROP} alt="快手 · 夏日游音节立体金字标题" style={box(12, 117, 164, 107)} fit="contain" />
           <span data-d2c-node-id="festival-hero-date" style={box(16, 96, 64, 16)} className={pageStyles.heroDate}>7.1-8.31</span>
@@ -54,13 +54,13 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
           </button>
         </section>
 
-        <div style={box(0, 272, 390, 38)} className={pageStyles.collabHeader}>
+        <div data-d2c-node-id="collab-header" style={box(0, 272, 390, 38)} className={pageStyles.collabHeader}>
           <span data-d2c-node-id="collab-title" style={box(12, 9, 180, 20)} className={pageStyles.collabTitle}>超自然行动组 · 福利专场</span>
           <span data-d2c-node-id="collab-countdown" style={box(200, 10, 88, 18)} className={pageStyles.collabCountdown}>50 : 41 : 12</span>
           <span data-d2c-node-id="collab-calendar" style={box(318, 11, 62, 16)} className={pageStyles.collabCalendar}>专场日历 ›</span>
         </div>
 
-        <section style={box(8, 318, 374, 116)} className={pageStyles.taskListCard}>
+        <section data-d2c-node-id="task-list" style={box(8, 318, 374, 116)} className={pageStyles.taskListCard}>
           <TaskCard
             nodeId="task-install"
             style={box(8, 8, 358, 50)}
@@ -83,7 +83,7 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
           />
         </section>
 
-        <section style={box(8, 438, 374, 72)} className={pageStyles.benefitPanel}>
+        <section data-d2c-node-id="benefit-panel" style={box(8, 438, 374, 72)} className={pageStyles.benefitPanel}>
           <span data-d2c-node-id="benefit-title" style={box(8, 6, 170, 16)} className={pageStyles.benefitTitle}>超自然行动组专属福利</span>
           <button type="button" data-d2c-node-id="benefit-exchange" style={box(314, 7, 52, 14)} className={pageStyles.benefitExchange} onClick={() => setToast("兑换中心（本地演示）")}>
             立即兑换 ›
@@ -100,7 +100,7 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
           ))}
         </section>
 
-        <section style={box(8, 514, 374, 66)} className={pageStyles.rewardCards}>
+        <section data-d2c-node-id="reward-cards" style={box(8, 514, 374, 66)} className={pageStyles.rewardCards}>
           <div style={box(8, 8, 174, 50)} className={pageStyles.rewardCardRed}>
             <span data-d2c-node-id="reward-cash-title" style={box(10, 8, 70, 16)} className={pageStyles.rewardCardTitle}>现金红包</span>
             <span data-d2c-node-id="reward-cash-sub" style={box(10, 28, 90, 12)} className={pageStyles.rewardCardSub}>兑换可得现金</span>
@@ -114,7 +114,7 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
           </div>
         </section>
 
-        <section style={box(8, 586, 374, 158)} className={pageStyles.dailyTasksCard}>
+        <section data-d2c-node-id="daily-tasks" style={box(8, 586, 374, 158)} className={pageStyles.dailyTasksCard}>
           <span data-d2c-node-id="daily-tasks-title" style={box(8, 6, 110, 18)} className={pageStyles.dailyTitle}>做任务赢星钻</span>
           <span data-d2c-node-id="daily-tasks-note" style={box(202, 10, 164, 12)} className={pageStyles.dailyNote}>任务每日24:00刷新，部分奖励可能延迟</span>
           <span data-d2c-node-id="daily-tasks-mine" style={box(25, 85, 72, 14)} className={pageStyles.dailyMineTab}>我的任务</span>
@@ -139,7 +139,7 @@ export function SummerGameFestivalExperience({ atlasUrl, ...root }: { atlasUrl: 
           onClick={() => setToast("进入直播间（本地演示）")}
         />
 
-        <div style={box(0, 761, 390, 62)} className={pageStyles.activityTabs}>
+        <div data-d2c-node-id="activity-tabs" style={box(0, 761, 390, 62)} className={pageStyles.activityTabs}>
           <button type="button" data-d2c-node-id="tab-tasks" className={pageStyles.activityTabActive} style={box(24, 13, 160, 36)}>
             做任务得星钻
           </button>
