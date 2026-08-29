@@ -1,0 +1,20 @@
+{
+  "name": "@d2c/figma-importer-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/code.ts --bundle --format=iife --target=es2020 --outfile=dist/code.js && node scripts/copy-static.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@d2c/contracts": "workspace:*",
+    "@d2c/figma-patcher": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "esbuild": "^0.25.0",
+    "vitest": "^3.2.4"
+  }
+}

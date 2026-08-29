@@ -1,0 +1,12 @@
+{
+  "name": "D2C 活动页导入",
+  "id": "d2c-activity-importer",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [],
+    "reasoning": "离线导入本地 JSON 导入包：不访问任何网络，不读取任何令牌或凭证"
+  }
+}
