@@ -693,8 +693,10 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .render-shots h4 { margin: 0 0 8px; font-size: 12px; }
 .render-shot-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .render-shot-row figure { margin: 0; text-align: center; }
+.render-shot-row figure.overflow img { border-color: #d8341f; box-shadow: 0 0 0 2px rgba(216, 52, 31, .15); }
 .render-shot-row img { display: block; border: 1px solid #e3e5de; border-radius: 6px; background: #fcfcfa; }
 .render-shot-row figcaption { margin-top: 4px; color: #6a6f66; font-size: 11px; font-variant-numeric: tabular-nums; }
+.render-shot-overflow { color: #a43b19; font-weight: 600; margin-left: 4px; }
 
 .prototype-panel { margin-top: 16px; background: #fcfcfa; border: 1px solid #e3e5de; border-radius: 11px; padding: 12px 16px; }
 .prototype-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }

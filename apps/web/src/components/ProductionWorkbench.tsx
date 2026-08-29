@@ -49,7 +49,7 @@ export function ProductionWorkbench() {
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number; nodes: Record<string, RenderNodeEvidence> }>>([]);
+  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number; horizontalOverflow: boolean; nodes: Record<string, RenderNodeEvidence> }>>([]);
   // 最近一轮评测指标：让工作台可视化「证据构成」——审计修复后可看到 perceptualDiff 缺为 null 而非 100
   const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
   // 最近一轮文本证据（spec 文本 vs 渲染文本）：让 textConsistency 的 100 分附带逐项对比
@@ -92,13 +92,13 @@ export function ProductionWorkbench() {
       const text = (event.data as { text?: { expected: string[]; actual: string[] } }).text;
       setLatestTextEvidence(text ?? null);
     }
-    // 渲染完成后拉取视口清单（含逐节点几何），用于违规选中时在截图上叠加定位框
+    // 渲染完成后拉取视口清单（含逐节点几何 + 横向溢出检测），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
       void getProductionArtifact(event.runId, artifactId)
         .then(({ content }) => {
-          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
-          if (rendered.length) setViewports(rendered.map((v) => ({ name: v.name, width: v.width, height: v.height, nodes: v.nodes ?? {} })));
+          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; horizontalOverflow?: boolean; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
+          if (rendered.length) setViewports(rendered.map((v) => ({ name: v.name, width: v.width, height: v.height, horizontalOverflow: Boolean(v.horizontalOverflow), nodes: v.nodes ?? {} })));
         })
         .catch(() => undefined);
     }
@@ -467,13 +467,16 @@ export function ProductionWorkbench() {
               <h4>渲染结果 · Playwright 实拍</h4>
               <div className="render-shot-row">
                 {viewports.map((viewport) => (
-                  <figure key={viewport.name}>
+                  <figure key={viewport.name} className={viewport.horizontalOverflow ? "overflow" : undefined} data-testid={`render-shot-${viewport.name}`}>
                     <img
                       src={`/api/production/runs/${runId}/renders/${viewport.name}`}
                       alt={`${viewport.name} ${viewport.width}×${viewport.height} 截图`}
                       width={viewport.width >= 1024 ? 280 : 130}
                     />
-                    <figcaption>{viewport.name} · {viewport.width}×{viewport.height}</figcaption>
+                    <figcaption>
+                      {viewport.name} · {viewport.width}×{viewport.height}
+                      {viewport.horizontalOverflow && <span className="render-shot-overflow" data-testid={`render-shot-overflow-${viewport.name}`}> ⚠ 横向溢出 → P1</span>}
+                    </figcaption>
                   </figure>
                 ))}
               </div>

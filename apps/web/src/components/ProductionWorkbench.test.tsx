@@ -250,4 +250,26 @@ describe("ProductionWorkbench", () => {
     // 缩放到 displayWidth=280（hero 占满 1440×500 → 280×97.2）
     expect(rect.style.width).toBe("280px");
   });
+
+  it("surfaces horizontal overflow on the rendered viewport so 任一视口 → P1 硬门槛 is visible to the demo audience", async () => {
+    apiMocks.getProductionArtifact.mockReset().mockResolvedValueOnce({
+      artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
+      content: { viewports: [
+        { name: "desktop", width: 1440, height: 900, horizontalOverflow: false, nodes: {} },
+        { name: "mobile", width: 390, height: 844, horizontalOverflow: true, nodes: {} },
+      ] },
+    });
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // mobile 视口带红色描边 + 标注
+    const mobileShot = await screen.findByTestId("render-shot-mobile");
+    expect(mobileShot.classList.contains("overflow")).toBe(true);
+    expect(screen.getByTestId("render-shot-overflow-mobile").textContent).toContain("横向溢出");
+    // desktop 视口不带标记
+    const desktopShot = screen.getByTestId("render-shot-desktop");
+    expect(desktopShot.classList.contains("overflow")).toBe(false);
+    expect(screen.queryByTestId("render-shot-overflow-desktop")).toBeNull();
+  });
 });
