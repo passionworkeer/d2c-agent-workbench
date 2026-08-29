@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, SemanticReviewEvidence } from "@d2c/contracts";
 import { buildFigmaImportBundle } from "@d2c/figma-patcher";
 import {
   GOLDEN_SAMPLES,
@@ -54,6 +54,8 @@ export function ProductionWorkbench() {
   const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
   // 最近一轮文本证据（spec 文本 vs 渲染文本）：让 textConsistency 的 100 分附带逐项对比
   const [latestTextEvidence, setLatestTextEvidence] = useState<{ expected: string[]; actual: string[] } | null>(null);
+  // 最近一轮语义评审证据：provider 区分「MiniMax 实时评审」与「黄金基准回退」，子分与 issues 展开可查
+  const [latestSemanticReview, setLatestSemanticReview] = useState<SemanticReviewEvidence | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
@@ -92,6 +94,11 @@ export function ProductionWorkbench() {
       const text = (event.data as { text?: { expected: string[]; actual: string[] } }).text;
       setLatestTextEvidence(text ?? null);
     }
+    // 语义评审证据同步：provider 由服务端强制，前端只展示不回传
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "semanticReview" in event.data) {
+      const evidence = (event.data as { semanticReview?: SemanticReviewEvidence }).semanticReview;
+      setLatestSemanticReview(evidence ?? null);
+    }
     // 渲染完成后拉取视口清单（含逐节点几何 + 横向溢出检测），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
@@ -114,6 +121,7 @@ export function ProductionWorkbench() {
             if (detail.violations.length) setViolations(detail.violations);
             if (detail.latestEvaluation) setLatestMetrics(detail.latestEvaluation);
             if (detail.latestTextEvidence) setLatestTextEvidence(detail.latestTextEvidence);
+            if (detail.latestSemanticReview) setLatestSemanticReview(detail.latestSemanticReview);
             setRunning(false);
           })
           .catch(() => setRunning(false));
@@ -326,11 +334,48 @@ export function ProductionWorkbench() {
               <tr>
                 <td>semanticReview（VLM 语义评审）</td>
                 <td>{latestMetrics.visual.semanticReview === null ? "—" : latestMetrics.visual.semanticReview.toFixed(1)}</td>
-                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"}>{latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）" : "缺服务端语义评审 → evidence:semantic-review-missing 触发 P1"}</td>
+                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"} data-testid="semantic-review-source">
+                  {latestSemanticReview?.provider === "minimax" ? "有证据（MiniMax 实时评审）"
+                    : latestSemanticReview?.provider === "registered-fallback" ? "有证据（黄金基准回退）"
+                    : latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）"
+                    : "缺服务端语义评审 → evidence:semantic-review-missing 触发 P1"}
+                </td>
                 <td></td><td></td>
               </tr>
             </tbody>
           </table>
+          {latestSemanticReview && (
+            <details className="semantic-review-evidence" data-testid="semantic-review-evidence">
+              <summary>
+                语义评审证据（{latestSemanticReview.provider === "minimax" ? "MiniMax 实时评审" : "黄金基准回退"} · 综合 {latestSemanticReview.score.toFixed(0)}）
+              </summary>
+              <p className="semantic-review-summary">{latestSemanticReview.summary}</p>
+              <table className="semantic-review-table">
+                <thead>
+                  <tr><th>维度</th><th>布局结构</th><th>文案内容</th><th>视觉风格</th><th>任务链路</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>分</td>
+                    <td>{latestSemanticReview.layout.toFixed(0)}</td>
+                    <td>{latestSemanticReview.content.toFixed(0)}</td>
+                    <td>{latestSemanticReview.visualTone.toFixed(0)}</td>
+                    <td>{latestSemanticReview.taskClarity.toFixed(0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {latestSemanticReview.issues.length > 0 && (
+                <ul className="semantic-review-issues">
+                  {latestSemanticReview.issues.map((issue, index) => (
+                    <li key={index} className={`issue-${issue.severity.toLowerCase()}`}>
+                      <span className="issue-severity">{issue.severity}</span> {issue.title}
+                      {issue.region && <small className="issue-region">（区域 {issue.region.x},{issue.region.y} {issue.region.width}×{issue.region.height}）</small>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          )}
           {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
             <details className="text-evidence" data-testid="text-evidence">
               <summary>文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）</summary>

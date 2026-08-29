@@ -1,4 +1,4 @@
-import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, ComponentMapping, Rect, SemanticReviewEvidence } from "@d2c/contracts";
 // 三张真实移动活动页：examples/activity-pages 下 fixture 是单一事实源，?raw 内联进前端包
 import commerceFeedSpecJson from "../../../../examples/activity-pages/commerce-feed/activity-spec.json?raw";
 import gameFestivalSpecJson from "../../../../examples/activity-pages/summer-game-festival/activity-spec.json?raw";
@@ -22,6 +22,8 @@ export interface ProductionRunDetail {
   latestEvaluation?: ProductionMetrics;
   /** 最近一轮文本证据：spec 中 role=text 的 content.text vs 渲染 DOM 的 textContent */
   latestTextEvidence?: { expected: string[]; actual: string[] };
+  /** 最近一轮语义评审证据：MiniMax 实时评审或服务端注册基准回退（provider 标注来源） */
+  latestSemanticReview?: SemanticReviewEvidence;
 }
 
 export interface ProductionRunPayload {

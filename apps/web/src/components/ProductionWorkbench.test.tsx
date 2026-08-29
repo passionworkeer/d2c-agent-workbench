@@ -59,6 +59,12 @@ const evaluationMetrics = {
   finalScore: 93.4,
 };
 
+// 语义评审证据：演示环境未配 MiniMax key → 服务端注册基准分回退（provider 如实标注）
+const fallbackSemanticReview = {
+  score: 95, layout: 95, content: 95, visualTone: 95, taskClarity: 95,
+  summary: "MiniMax 实时评审不可用（未配置或调用失败），回退服务端注册基准分", issues: [], provider: "registered-fallback" as const,
+};
+
 const flowEvents: TraceEvent[] = [
   event("INPUT_VALIDATED", "输入校验通过"),
   event("PROJECT_INSPECTED", "目标仓库索引完成", { artifactId: "artifact-1" }),
@@ -68,7 +74,7 @@ const flowEvents: TraceEvent[] = [
   event("TYPECHECKED", "类型检查通过", { artifactId: "artifact-5" }),
   event("BUILT", "真实构建通过", { artifactId: "artifact-6", exitCode: 0 }),
   event("RENDERED", "第 1 轮渲染完成", { artifactId: "artifact-7" }),
-  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics, text: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] } }),
+  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics, text: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] }, semanticReview: fallbackSemanticReview }),
   event("ATTRIBUTED", "第 1 轮错误归因完成", { artifactId: "artifact-9", violations: [violation] }),
   event("REPAIR_PLANNED", "第 1 轮定向修复已规划", { artifactId: "artifact-10", allowedFiles: ["src/pages/CampaignPage.tsx", "src/pages/CampaignPage.module.css"] }),
   event("REPAIR_APPLIED", "第 1 轮修复已应用", { artifactId: "artifact-11" }),
@@ -89,7 +95,7 @@ beforeEach(() => {
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
     artifacts: flowEvents.filter((item) => item.data?.artifactId).map((item, index) => ({ id: `artifact-${index}`, kind: "event", path: "runs/run-1/x.json", createdAt: item.timestamp })),
-    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics, latestTextEvidence: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] },
+    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics, latestTextEvidence: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] }, latestSemanticReview: fallbackSemanticReview,
   });
   apiMocks.subscribeToProductionRun.mockReset().mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
     for (const item of flowEvents) onEvent(item);
@@ -217,7 +223,7 @@ describe("ProductionWorkbench", () => {
     // 缺证据的两项必须显式标 "缺"，不能默认 100 蒙混
     expect(breakdown.textContent).toContain("缺参考截图");
     expect(breakdown.textContent).toContain("依赖 perceptualDiff");
-    expect(breakdown.textContent).toContain("服务端黄金基准");
+    expect(breakdown.textContent).toContain("黄金基准回退");
     // 有证据的视觉指标仍展示具体分
     expect(breakdown.textContent).toContain("92.4");
   });
@@ -232,6 +238,47 @@ describe("ProductionWorkbench", () => {
     expect(evidence.textContent).toContain("夏日好物节 · 全场 5 折");
     expect(evidence.querySelectorAll("tbody tr").length).toBe(1);
     expect(evidence.querySelector("tbody tr")?.classList.contains("ok")).toBe(true);
+  });
+
+  it("labels semantic review evidence as golden-baseline fallback and shows its summary", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 共享 mock 未装配 MiniMax → 证据列如实标注回退来源
+    expect((await screen.findByTestId("semantic-review-source")).textContent).toContain("黄金基准回退");
+    const panel = await screen.findByTestId("semantic-review-evidence");
+    expect(panel.textContent).toContain("回退服务端注册基准分");
+    expect(panel.textContent).toContain("任务链路");
+  });
+
+  it("labels real MiniMax review evidence and expands sub-scores and issues", async () => {
+    const minimaxEvidence = {
+      score: 91, layout: 92, content: 95, visualTone: 90, taskClarity: 88,
+      summary: "实现与参考高度一致", issues: [{ title: "按钮圆角略大于参考", severity: "P3" as const, region: { x: 20, y: 800, width: 350, height: 48 } }], provider: "minimax" as const,
+    };
+    apiMocks.subscribeToProductionRun.mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
+      for (const item of flowEvents) {
+        onEvent(item.state === "EVALUATED" ? { ...item, data: { ...item.data, semanticReview: minimaxEvidence } } : item);
+      }
+      return () => undefined;
+    });
+    // 终态后组件拉 detail 覆盖 state：detail 也返回 minimax 证据，避免被共享 fallback mock 冲掉
+    apiMocks.getProductionRun.mockReset().mockResolvedValue({
+      id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
+      artifacts: [], violations: [], events: flowEvents, latestSemanticReview: minimaxEvidence,
+    });
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 证据列标注 MiniMax 实时评审；展开面板给出四维子分与问题清单（含区域坐标）
+    expect((await screen.findByTestId("semantic-review-source")).textContent).toContain("MiniMax 实时评审");
+    const panel = await screen.findByTestId("semantic-review-evidence");
+    expect(panel.textContent).toContain("实现与参考高度一致");
+    expect(panel.textContent).toContain("任务链路");
+    expect(panel.textContent).toContain("按钮圆角略大于参考");
+    expect(panel.textContent).toContain("350×48");
   });
 
   it("draws a Region overlay on the screenshot when a violation with nodes is selected", async () => {

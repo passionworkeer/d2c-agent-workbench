@@ -1,18 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, extname, join, relative, resolve, sep } from "node:path";
 import {
   activitySpecSchema,
   componentMappingSchema,
   productionMetricsSchema,
   productionRunSchema,
   rectSchema,
+  semanticReviewEvidenceSchema,
   traceEventSchema,
   type ActivitySpec,
   type ComponentMapping,
   type ProductionMetrics,
   type ProductionRun,
+  type SemanticReviewEvidence,
   type TargetProjectProfile,
   type TraceEvent,
 } from "@d2c/contracts";
@@ -26,6 +28,8 @@ import type { GeneratedProductionOutput } from "@d2c/codegen";
 import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
 import { resolveTargetBySampleId } from "./profiles";
+import { loadModelConfig } from "./model-config";
+import { reviewActivitySemantics } from "./semantic-review";
 
 export interface ProductionRouteOptions {
   /** 运行数据（runs/、workspaces/、artifacts/、renders/）落盘根目录 */
@@ -63,6 +67,8 @@ export interface ProductionRunRecord {
   latestEvaluation?: ProductionMetrics;
   /** 最近一轮文本证据（spec.text vs 渲染 DOM.textContent）：让工作台能展示逐项对比 */
   latestTextEvidence?: { expected: string[]; actual: string[] };
+  /** 最近一轮语义评审证据（MiniMax 实时或注册回退）；不含任何模型凭证 */
+  latestSemanticReview?: SemanticReviewEvidence;
 }
 
 type RunListener = (event: TraceEvent) => void;
@@ -75,6 +81,22 @@ const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 function isInside(root: string, candidate: string): boolean {
   const rel = relative(resolve(root), resolve(candidate));
   return rel !== "" && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+// 截图文件 → base64 data URL（按扩展名定 mime；仅服务端内存使用，不落盘不外发）
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+};
+
+async function fileToDataUrl(path: string): Promise<string> {
+  const mime = IMAGE_MIME_BY_EXT[extname(path).toLowerCase()];
+  if (!mime) throw new Error(`不支持的截图格式：${extname(path) || path}`);
+  const buffer = await readFile(path);
+  return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
 export function registerProductionRoutes(app: FastifyInstance, options: ProductionRouteOptions = {}): void {
@@ -116,6 +138,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
           ...(parsed.sourceFile ? { sourceFile: parsed.sourceFile } : {}),
             ...(parsed.latestEvaluation ? { latestEvaluation: productionMetricsSchema.parse(parsed.latestEvaluation) } : {}),
             ...(parsed.latestTextEvidence ? { latestTextEvidence: parsed.latestTextEvidence as { expected: string[]; actual: string[] } } : {}),
+            ...(parsed.latestSemanticReview ? { latestSemanticReview: semanticReviewEvidenceSchema.parse(parsed.latestSemanticReview) } : {}),
             ...(parsed.specEdited ? { specEdited: true } : {}),
           });
         } catch {
@@ -145,6 +168,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       sourceFile: record.sourceFile,
       latestEvaluation: record.latestEvaluation,
       latestTextEvidence: record.latestTextEvidence,
+      latestSemanticReview: record.latestSemanticReview,
       specEdited: record.specEdited,
     }, null, 2)}\n`;
     const previous = persistChains.get(record.run.id) ?? Promise.resolve();
@@ -186,6 +210,11 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         record.latestTextEvidence = text as { expected: string[]; actual: string[] };
       }
     }
+    // 语义评审证据透传：schema 校验后入库（provider 已由服务端强制，不含模型凭证）
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "semanticReview" in event.data) {
+      const parsed = semanticReviewEvidenceSchema.safeParse((event.data as { semanticReview?: unknown }).semanticReview);
+      if (parsed.success) record.latestSemanticReview = parsed.data;
+    }
     for (const listener of listeners.get(record.run.id) ?? []) listener(event);
     await persistRun(record);
   }
@@ -210,6 +239,20 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
     });
     const adapters = { ...defaults, ...options.adapters } as ProductionWorkflowAdapters;
+    // MiniMax 实时语义评审：服务端装配凭证（环境变量 / .env），双图 data URL 只在请求生命周期存在。
+    // 适配器抛错由工作流回退注册基准分；凭证不落入 Run / Artifact / 响应。
+    const modelConfig = loadModelConfig();
+    if (modelConfig.apiKey && !adapters.semanticReview) {
+      adapters.semanticReview = async ({ referenceScreenshot, currentScreenshot }) => {
+        const [referenceDataUrl, renderDataUrl] = await Promise.all([
+          fileToDataUrl(referenceScreenshot),
+          fileToDataUrl(currentScreenshot),
+        ]);
+        const result = await reviewActivitySemantics({ config: modelConfig, referenceDataUrl, renderDataUrl, timeoutMs: 60_000 });
+        if (!result.ok) throw new Error(`MiniMax 语义评审不可用（${result.code}）`);
+        return result.evidence;
+      };
+    }
     // spec 被编辑过后不能复用旧生成物（新 spec 与旧代码会错位），走完整重新生成
     if (reuseGenerated && record.generated && !record.specEdited) {
       // 修复迭代：复用已生成的 plan/sourceMap 且不重写文件，保留上一轮修复成果
@@ -376,7 +419,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
     // 终态已写入内存时，等待同一 run 的落盘链结束；否则客户端紧接着重启服务会把磁盘中的 running 快照改判 failed。
     if (record.run.status !== "running") await (persistChains.get(record.run.id) ?? Promise.resolve()).catch(() => undefined);
-    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
+    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}), ...(record.latestSemanticReview ? { latestSemanticReview: record.latestSemanticReview } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {

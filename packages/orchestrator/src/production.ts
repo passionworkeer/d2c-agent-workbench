@@ -9,6 +9,7 @@ import {
   type PatchPlan,
   type ProductionViolation,
   type Rect,
+  type SemanticReviewEvidence,
   type TargetProjectProfile,
   type TraceEvent,
 } from "@d2c/contracts";
@@ -51,6 +52,8 @@ export interface ProductionWorkflowAdapters {
   build: () => Promise<CommandResult>;
   render: (input: RenderPageInput) => Promise<RenderResult>;
   compareImages?: (reference: string, current: string) => Promise<ImageComparison>;
+  /** 真实 VLM 双图语义评审（服务端装配 MiniMax 凭证）；失败由工作流回退注册基准分 */
+  semanticReview?: (input: { referenceScreenshot: string; currentScreenshot: string; spec: ActivitySpec }) => Promise<SemanticReviewEvidence>;
   evaluate: (input: ProductionEvaluationInput) => ProductionEvaluationReport | Promise<ProductionEvaluationReport>;
   attribute: typeof attributeDiffClusters;
   planRepair: (input: RepairPlanningInput) => Promise<PatchPlan>;
@@ -282,6 +285,33 @@ export async function* runProductionWorkflow(
     const comparison: ImageComparison = input.referenceScreenshot && adapters.compareImages
       ? await adapters.compareImages(input.referenceScreenshot, canonical?.screenshotPath ?? "")
       : { equal: false, differentPixels: 0, totalPixels: 0, diffClusters: [] };
+    // 语义评审证据：优先真实 VLM 适配器（MiniMax 双图实时评审）；
+    // 失败或未装配时回退服务端注册基准分并明确标注 registered-fallback。
+    // 两者都没有才让评测保持缺证据（evidence:semantic-review-missing P1）。
+    let semanticEvidence: SemanticReviewEvidence | undefined;
+    if (input.referenceScreenshot && canonical?.screenshotPath && adapters.semanticReview) {
+      try {
+        semanticEvidence = await adapters.semanticReview({
+          referenceScreenshot: input.referenceScreenshot,
+          currentScreenshot: canonical.screenshotPath,
+          spec,
+        });
+      } catch {
+        semanticEvidence = undefined; // 落入注册回退；模型错误细节（含端点/密钥片段）不上抛
+      }
+    }
+    if (!semanticEvidence && input.semanticReviewScore !== undefined) {
+      semanticEvidence = {
+        score: input.semanticReviewScore,
+        layout: input.semanticReviewScore,
+        content: input.semanticReviewScore,
+        visualTone: input.semanticReviewScore,
+        taskClarity: input.semanticReviewScore,
+        summary: "MiniMax 实时评审不可用（未配置或调用失败），回退服务端注册基准分",
+        issues: [],
+        provider: "registered-fallback",
+      };
+    }
     const evaluation = await evaluate({
       build: { exitCode: latestBuild.exitCode, runtimeErrors: render.runtimeErrors },
       referenceNodes: input.referenceNodes,
@@ -292,10 +322,16 @@ export async function* runProductionWorkflow(
       assets: input.assetEvidence ?? derivedAssets,
       engineering: { ...deriveEngineering(spec, generated.plan), ...input.engineeringOverride },
       sourceMap: generated.sourceMap,
-      ...(input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
+      ...(semanticEvidence
+        ? { semanticReviewScore: semanticEvidence.score }
+        : input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
     });
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
-    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore, metrics: evaluation.metrics, text: textEvidence });
+    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, {
+      artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore,
+      metrics: evaluation.metrics, text: textEvidence,
+      ...(semanticEvidence ? { semanticReview: semanticEvidence } : {}),
+    });
 
     const attributed = attribute(comparison.diffClusters, (canonical?.nodes ?? {}) as Parameters<typeof attribute>[1], generated.sourceMap);
     const violations = mergeViolations([evaluation.violations, attributed]);

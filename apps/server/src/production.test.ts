@@ -226,6 +226,63 @@ describe("production routes", () => {
     expect(detail.latestTextEvidence.actual).toContain("夏日好物节");
   });
 
+  it("persists semantic review evidence (registered fallback) and survives restart", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-sem-evidence-"));
+    roots.push(dataRoot);
+    const app = buildApp({ production: { dataRoot, adapters } });
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    // 测试适配器未装配 MiniMax → 服务端注册基准分回退，provider 明确标注来源
+    expect(detail.latestSemanticReview).toMatchObject({ provider: "registered-fallback", score: 95 });
+    // persistRun 异步落盘：等 run.json 到终态再模拟重启，避免读到中途快照
+    for (let attempt = 0; attempt < 250; attempt += 1) {
+      try {
+        const disk = JSON.parse(await readFile(join(dataRoot, "runs", runId, "run.json"), "utf8"));
+        if (disk.run.status !== "running") {
+          expect(disk.latestSemanticReview).toMatchObject({ provider: "registered-fallback", score: 95 });
+          break;
+        }
+      } catch {
+        // 文件尚未出现
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    // 重启（同一 dataRoot 新实例）后证据仍在 run.json；reload 异步，轮询到 200 再断言
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const response = await restarted.inject({ method: "GET", url: `/api/production/runs/${runId}` });
+      if (response.statusCode === 200) {
+        expect(response.json().latestSemanticReview).toMatchObject({ provider: "registered-fallback", score: 95 });
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error("persisted run was not reloaded in time");
+  });
+
+  it("labels real MiniMax review evidence when the server adapter is configured", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-sem-live-"));
+    roots.push(dataRoot);
+    const app = buildApp({
+      production: {
+        dataRoot,
+        adapters: {
+          ...adapters,
+          semanticReview: async () => ({
+            score: 91, layout: 92, content: 93, visualTone: 90, taskClarity: 88,
+            summary: "实现与参考高度一致", issues: [], provider: "minimax",
+          }),
+        },
+      },
+    });
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    expect(detail.latestSemanticReview).toMatchObject({ provider: "minimax", score: 91 });
+    expect(detail.latestSemanticReview.summary).toBe("实现与参考高度一致");
+  });
+
   it("rejects unknown sampleIds instead of trusting client-supplied commands", async () => {
     const { app } = await createApp();
     const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, sampleId: "no-such-target" } });
