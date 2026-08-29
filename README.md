@@ -36,12 +36,14 @@
 - **Profile / 命令服务端注册**：`apps/server/src/profiles.ts` 按 `sampleId` 解析固定 Profile（commands、repositoryPath、allowedWriteGlobs 全部硬编码），客户端**不可**注入 commands——这是默认安全姿态；mappings / referenceNodes 在 POST 时经 Zod 严格校验后入库。
 - **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 先按参数数组精确匹配服务端白名单，再由 `spawn` 执行；Windows 为兼容 `.CMD` 垫片启用 shell，其它平台关闭 shell。命令与 preview 子进程都只继承最小化 env 白名单（PATH / Node / HOME 等），超时终止完整进程树，输出限幅。
 - **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；**任一视口**（desktop / mobile）横向溢出 → P1 硬门槛，build 失败是 P0 硬门槛，任何分数不可覆盖。
-- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；黄金样例由服务端注册 `reference.png` 和仅用于本地演示的 semanticReview=95 可信基准，公共请求不能覆盖。真实 VLM 仍需在服务端适配器中接入。
+- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；闭环内 semanticReview 由服务端注册黄金基准 95（公共请求不能覆盖），**闭环外**可一键拉真视觉模型复核（见下）。
+- **闭环外 VLM 语义复核**：`POST /api/production/runs/:id/semantic-review` 让真视觉模型对比参考图与渲染截图，产出分数 + 逐条差异观察；key 走 `X-LLM-Key` 头仅本次请求生命周期，复核结果不写 run.json / 事件流 / 下载报告。工作台把「VLM 实测」与闭环黄金基准**并列展示但不计入 finalScore**——闭环评分保持无 key 也可复现，这是可部署工程的取舍：客观指标作门槛，智能评审作复核证据。
 - **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
 - **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。Puck 保存编辑后该面板自动展开，新增「基线（保存前）」列，差异列标「✓ 编辑已应用」，把"设计意图落到了 ActivitySpec"演给观众看。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
 - **工作台横向溢出标注**：mobile / 任一视口的 `documentElement.scrollWidth > clientWidth` 直接在工作台渲染截图上描红边 + 标注「⚠ 横向溢出 → P1」，把「任一视口也是 P1 硬门槛」演给观众看。
-- **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
+- **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / `semantic-review` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed），并清理重启后成为孤儿的隔离工作区（每个含完整 node_modules，不清会累积到 GB 级）；证据链在 artifacts/ 与 renders/ 持久化，不受清理影响。
+- **启动即预热依赖**：服务端启动后后台把目标仓库播种进 `.data/production/warm/` 跑一次 install 填热 pnpm 全局 store——演示时首个生产闭环不再付冷启动下载，讲解前两条链路的时间刚好够热好。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
 - **Run 报告下载**：闭环完成后一键下载 `production-run-<id>-report.json`——含完整事件流（每步 Artifact 引用）、终局分数、评测分构成、文本证据、违规清单与双视口逐节点几何，把「每一步可追溯」变成可带走的结构化证据链（与 D2C 模式的报告同一惯例，不含任何密钥）。
@@ -178,7 +180,7 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 | `packages/component-matcher` | SDS 候选召回、排序、证据和置信度 |
 | `packages/codegen` | 真实 DFS 出码 + StyleRef 发射 + 类型化修复（tokenize / restore-value / define-token / snap-to-declared） |
 | `packages/evaluator` | 证据驱动评测：5 项视觉指标各产出 `*Available` 布尔，缺证据归一化权重，杜绝无声 100 |
-| `packages/orchestrator` | PRODUCTION 闭环状态机：INPUT_VALIDATED → PROJECT_INSPECTED → SPEC_VALIDATED → CODE_PLANNED → GENERATED → TYPECHECKED → BUILT → RENDERED → EVALUATED → ATTRIBUTED → REPAIR_PLANNED/APPLIED，多轮迭代 + 修复后失败自动 restoreRollback |
+| `packages/orchestrator` | PRODUCTION 闭环状态机：INPUT_VALIDATED → PROJECT_INSPECTED → SPEC_VALIDATED → MAPPINGS_RESOLVED → CODE_PLANNED → PREPARING（播种+依赖安装）→ GENERATED → TYPECHECKED → BUILT → RENDERED → EVALUATED → ATTRIBUTED → REPAIR_PLANNED/APPLIED，多轮迭代 + 修复后失败自动 restoreRollback |
 | `packages/production-runtime` | 隔离工作区（seedWorkspaceFrom）、白名单命令执行（runAllowedCommand + 最小 env）、Playwright 渲染、回滚快照与定向修复（applyPatchPlan） |
 | `packages/canvas-ops` | 对话式画布编辑：`parseIntent` 中文规则 + `applyEditOps` 纯函数（set-prop / set-style / set-text / set-layout） |
 | `packages/asset-indexer` | 企业组件资产库扫描器：设计系统仓库（React + Storybook + Code Connect）→ matcher 可注入的 registry |

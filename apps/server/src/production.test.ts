@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { activitySpecSchema, type ActivitySpec, type TargetProjectProfile } from "@d2c/contracts";
@@ -224,6 +225,24 @@ describe("production routes", () => {
     // 黄金样例 hero-title.content.text = "夏日好物节"；渲染产物 texts 同名条目 "夏日好物节"
     expect(detail.latestTextEvidence.expected).toContain("夏日好物节");
     expect(detail.latestTextEvidence.actual).toContain("夏日好物节");
+  });
+
+  it("prunes orphan workspace directories at startup to reclaim disk", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-prod-ws-"));
+    roots.push(dataRoot);
+    // 重启遗留：工作区目录（含 node_modules 标记）+ warm 预热目录（不在清理范围）
+    const orphan = join(dataRoot, "workspaces", "prod-orphan");
+    const warm = join(dataRoot, "warm", "examples-activity-target");
+    await mkdir(orphan, { recursive: true });
+    await mkdir(warm, { recursive: true });
+    await writeFile(join(orphan, "node_modules", ".marker"), "x", { flag: "wx" }).catch(() => mkdir(join(orphan, "node_modules"), { recursive: true }));
+    buildApp({ production: { dataRoot, adapters } });
+    // 启动清理是异步的：轮询直到孤儿目录被清掉
+    for (let attempt = 0; attempt < 100 && existsSync(orphan); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(existsSync(orphan)).toBe(false);
+    expect(existsSync(warm)).toBe(true);
   });
 
   it("serves on-demand VLM semantic review via X-LLM-Key without persisting it", async () => {

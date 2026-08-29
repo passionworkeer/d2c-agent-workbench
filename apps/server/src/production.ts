@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -114,6 +114,19 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
           });
         } catch {
           // 单个损坏的 run.json 跳过，不阻塞其余重载
+        }
+      }
+      // 启动清理：run 重启后记录只读（无工作区引用），磁盘上的工作区目录全是孤儿，
+      // 每个含完整 node_modules（约 18MB+，多次 run 会累积到 GB 级）。证据链持久化在
+      // artifacts/ 与 renders/，清工作区不影响任何查询；正在执行的 run 在 records 里
+      // 携带 workspace 引用，天然被豁免。warm/ 预热目录不在此列。
+      const workspacesRoot = join(dataRoot, "workspaces");
+      const referenced = new Set([...records.values()].filter((record) => record.workspace).map((record) => record.workspace!.root));
+      const workspaceEntries = await readdir(workspacesRoot).catch(() => [] as string[]);
+      for (const entry of workspaceEntries) {
+        const candidate = resolve(workspacesRoot, entry);
+        if (![...referenced].some((root) => resolve(root) === candidate)) {
+          await rm(candidate, { recursive: true, force: true }).catch(() => undefined);
         }
       }
     } catch {
