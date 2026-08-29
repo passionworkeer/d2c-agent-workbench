@@ -22,6 +22,42 @@ function sameCommand(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((part, index) => part === right[index]);
 }
 
+/**
+ * 透传给子进程的环境白名单：不继承 process.env，避免把仓库父进程的密钥/Token/代理等
+ * 通过 shell 漏给 pnpm/npm 脚本。PATH / NODE_PATH / HOME 类是工具链必需的，必须保留。
+ */
+const FORWARDED_ENV_KEYS = [
+  "PATH",
+  "Path",
+  "PATHEXT",
+  "NODE_PATH",
+  "NODE_OPTIONS",
+  "NODE_EXTRA_CA_CERTS",
+  "HOME",
+  "USERPROFILE",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "SYSTEMROOT",
+  "SystemRoot",
+  "WINDIR",
+  "COMSPEC",
+];
+
+export function buildMinimalEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of FORWARDED_ENV_KEYS) {
+    const value = process.env[key];
+    if (typeof value === "string") env[key] = value;
+  }
+  return { ...env, ...extra };
+}
+
 export async function runAllowedCommand(command: string[], options: CommandOptions): Promise<CommandResult> {
   if (command.length === 0 || !options.allowedCommands.some((allowed) => sameCommand(command, allowed))) {
     throw new Error(`command is not in the explicit allowlist: ${command.join(" ")}`);
@@ -33,7 +69,8 @@ export async function runAllowedCommand(command: string[], options: CommandOptio
   return new Promise<CommandResult>((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: options.cwd,
-      env: options.env ?? process.env,
+      // 默认按白名单裁剪环境变量；调用方显式提供 options.env 时按其值（用于测试隔离环境）
+      env: options.env ?? buildMinimalEnv(),
       // Windows 的 pnpm/npm 是 .CMD 垫片，无 shell 无法直接执行；
       // 命令必须先通过 allowlist 精确匹配（见上），参数不含用户输入，此处 shell 不会引入注入面。
       shell: process.platform === "win32",

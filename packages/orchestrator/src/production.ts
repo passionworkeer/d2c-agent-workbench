@@ -25,6 +25,7 @@ import {
 import {
   applyPatchPlan,
   planTargetedRepair,
+  restoreRollback,
   runAllowedCommand,
   renderPage,
   seedWorkspaceFrom,
@@ -190,7 +191,7 @@ export async function* runProductionWorkflow(
     yield event("GENERATED", "工作区已播种目标仓库", `复制 ${seeded.length} 个顶层条目并安装依赖`, { artifactId: prepareArtifact.id, entries: seeded });
   }
 
-  await input.workspace.apply({ files: generated.files });
+  await input.workspace.apply({ files: generated.files, assets: generated.plan.assets });
   const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files) });
   yield event("GENERATED", "真实代码已写入工作区", `${Object.keys(generated.files).length} 个文件落盘`, { artifactId: manifestArtifact.id, files: Object.keys(generated.files) });
 
@@ -222,14 +223,20 @@ export async function* runProductionWorkflow(
     yield event("RENDERED", `第 ${round} 轮渲染完成`, `${render.viewports.length} 个视口 · 截图与几何已采集`, { artifactId: renderArtifact.id });
 
     const canonical = render.viewports.find((viewport) => viewport.width === spec.page.canonicalViewport.width) ?? render.viewports[0];
+    // Mobile 视口联合：任一视口横向溢出 → 评测按 overflow 计入 P1 硬门槛，不能单看 canonical 蒙混过关
+    const anyHorizontalOverflow = render.viewports.some((viewport) => viewport.horizontalOverflow);
+    // renderedNodes 用 canonical 为主、其它视口填补：评测关心真实节点几何，不限视口
+    const mergedNodes: Record<string, RenderedNode> = {};
+    for (const viewport of render.viewports) Object.assign(mergedNodes, viewport.nodes);
+    const renderedNodes = (canonical?.nodes ? { ...mergedNodes, ...canonical.nodes } : mergedNodes) as Record<string, RenderedNode>;
     const comparison: ImageComparison = input.referenceScreenshot && adapters.compareImages
       ? await adapters.compareImages(input.referenceScreenshot, canonical?.screenshotPath ?? "")
       : { equal: false, differentPixels: 0, totalPixels: 0, diffClusters: [] };
     const evaluation = await evaluate({
       build: { exitCode: latestBuild.exitCode, runtimeErrors: render.runtimeErrors },
       referenceNodes: input.referenceNodes,
-      renderedNodes: (canonical?.nodes ?? {}) as Record<string, RenderedNode>,
-      horizontalOverflow: canonical?.horizontalOverflow ?? false,
+      renderedNodes,
+      horizontalOverflow: anyHorizontalOverflow,
       image: comparison,
       text: input.textEvidence ?? { expected: [], actual: [] },
       assets: input.assetEvidence ?? [],
@@ -263,7 +270,7 @@ export async function* runProductionWorkflow(
 
     if (lastResult.evaluation.outcome === "passed") break;
     if (!shouldContinueRepair(scores, adapters.maxRounds ?? 3)) break;
-    const repairable = lastResult.violations.filter((violation) => violation.type === "layout" || violation.type === "responsive");
+    const repairable = lastResult.violations.filter((violation) => violation.type === "layout");
     if (!repairable.length) break;
 
     const patchPlan = await planRepair({
@@ -276,15 +283,19 @@ export async function* runProductionWorkflow(
     const patchArtifact = await input.artifacts.writeJson("repair", `patch-plan-${round}`, patchPlan);
     yield event("REPAIR_PLANNED", `第 ${round} 轮定向修复已规划`, `${patchPlan.operations.length} 个操作 · 仅触碰 ${patchPlan.allowedFiles.length} 个文件`, { artifactId: patchArtifact.id, allowedFiles: patchPlan.allowedFiles });
 
-    await applyRepair(patchPlan, input.workspace, input.artifacts, input.specWorkspacePath ? { specPath: input.specWorkspacePath } : undefined);
+    const repairApplyResult = await applyRepair(patchPlan, input.workspace, input.artifacts, input.specWorkspacePath ? { specPath: input.specWorkspacePath } : undefined);
+    // 末位元素（若有）是 rollback 快照的绝对路径；保留以便修复后失败时自动回滚
+    const rollbackPath = repairApplyResult.at(-1);
     const appliedArtifact = await input.artifacts.writeJson("repair", `applied-${round}`, { files: patchPlan.allowedFiles });
     yield event("REPAIR_APPLIED", `第 ${round} 轮修复已应用`, "回滚快照与补丁均已存档", { artifactId: appliedArtifact.id, files: patchPlan.allowedFiles });
 
     const typecheckAgain = await adapters.typecheck();
     const typecheckArtifactAgain = await input.artifacts.writeJson("command", `typecheck-${round}`, typecheckAgain);
     if (typecheckAgain.exitCode !== 0) {
+      // 修复后类型失败 → 撤回本轮变更，保持工作区可用
+      if (rollbackPath) { try { await restoreRollback(rollbackPath, input.workspace); } catch { /* 路径缺失时继续上报失败 */ } }
       yield event("TYPECHECKED", "修复后类型检查失败", typecheckAgain.stderr.slice(0, 200), { artifactId: typecheckArtifactAgain.id, exitCode: typecheckAgain.exitCode });
-      yield event("FAILED", "生产闭环失败", "修复引入类型错误，已保留回滚快照", { exitCode: typecheckAgain.exitCode });
+      yield event("FAILED", "生产闭环失败", "修复引入类型错误，已自动回滚到修复前快照", { exitCode: typecheckAgain.exitCode });
       return;
     }
     yield event("TYPECHECKED", "修复后类型检查通过", `耗时 ${typecheckAgain.durationMs}ms`, { artifactId: typecheckArtifactAgain.id });
@@ -292,8 +303,9 @@ export async function* runProductionWorkflow(
     const buildAgain = await adapters.build();
     const buildArtifactAgain = await input.artifacts.writeJson("command", `build-${round}`, buildAgain);
     if (buildAgain.exitCode !== 0) {
+      if (rollbackPath) { try { await restoreRollback(rollbackPath, input.workspace); } catch { /* 同上 */ } }
       yield event("BUILT", "修复后构建失败", buildAgain.stderr.slice(0, 200), { artifactId: buildArtifactAgain.id, exitCode: buildAgain.exitCode });
-      yield event("FAILED", "生产闭环失败", "修复引入构建错误，已保留回滚快照", { exitCode: buildAgain.exitCode });
+      yield event("FAILED", "生产闭环失败", "修复引入构建错误，已自动回滚到修复前快照", { exitCode: buildAgain.exitCode });
       return;
     }
     yield event("BUILT", "修复后构建通过", `exitCode 0 · 耗时 ${buildAgain.durationMs}ms`, { artifactId: buildArtifactAgain.id, exitCode: 0 });

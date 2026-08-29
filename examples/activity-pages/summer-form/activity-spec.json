@@ -91,7 +91,7 @@
         },
         "rationale": "表单主区块"
       },
-      "responsive": [],
+      "responsive": [{ "viewport": "mobile", "rule": "resize", "value": 390 }],
       "visual": {
         "opacity": 1
       },

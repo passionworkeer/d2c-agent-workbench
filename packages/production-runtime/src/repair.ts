@@ -198,10 +198,12 @@ export async function applyPatchPlan(plan: PatchPlan, workspace: RunWorkspace, s
     throw new Error("specPath option is required for spec operations");
   }
   const touched = [...new Set(plan.operations.flatMap((operation) => operation.kind === "spec" ? [specPath ?? ""] : [operation.file]))];
+  let rollbackArtifactAbsolutePath: string | undefined;
   if (store) {
     const contents: Record<string, string> = {};
     for (const file of touched) contents[file] = Buffer.from(await workspace.readFile(file), "utf8").toString("base64");
-    await store.writeJson("rollback", `round-${plan.round}`, { files: contents });
+    const record = await store.writeJson("rollback", `round-${plan.round}`, { files: contents });
+    rollbackArtifactAbsolutePath = record.absolutePath;
   }
   const written: string[] = [];
   for (const operation of plan.operations) {
@@ -215,6 +217,8 @@ export async function applyPatchPlan(plan: PatchPlan, workspace: RunWorkspace, s
       written.push(...await workspace.apply({ files: {}, assets: [{ source: operation.source, target: operation.file }] }));
     }
   }
+  // 末位追加 rollback 文件绝对路径（约定：调用方按返回长度判断是否拿到）；空数组会让恢复路径变成 undefined
+  if (rollbackArtifactAbsolutePath) written.push(rollbackArtifactAbsolutePath);
   return written;
 }
 

@@ -43,7 +43,14 @@ const renderFake: RenderResult = {
 const passedReport = {
   outcome: "passed" as const,
   metrics: {
-    visual: { layoutGeometry: 96, perceptualDiff: 100, textConsistency: 100, colorEffects: 98, assetConsistency: 100, semanticReview: 92 },
+    visual: {
+      layoutGeometry: 96,
+      perceptualDiff: 100, perceptualDiffAvailable: true,
+      textConsistency: 100, textConsistencyAvailable: true,
+      colorEffects: 98, colorEffectsAvailable: true,
+      assetConsistency: 100, assetConsistencyAvailable: true,
+      semanticReview: 92, semanticReviewAvailable: true,
+    },
     engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 95 },
     visualScore: 93, engineeringScore: 91, finalScore: 92,
   },
@@ -119,13 +126,32 @@ describe("production routes", () => {
     expect(badViewport.statusCode).toBe(400);
   });
 
-  it("rejects target paths outside configured roots", async () => {
+  it("rejects unknown sampleIds instead of trusting client-supplied commands", async () => {
     const { app } = await createApp();
-    const outsideRoot = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, profile: { ...profile, repositoryPath: "packages/contracts" } } });
-    expect(outsideRoot.statusCode).toBe(400);
-    expect(outsideRoot.json().code).toBe("TARGET_ROOT_FORBIDDEN");
-    const traversal = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, profile: { ...profile, repositoryPath: "../outside" } } });
-    expect(traversal.statusCode).toBe(400);
+    const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, sampleId: "no-such-target" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("SAMPLE_ID_UNKNOWN");
+  });
+
+  it("ignores client-supplied profile in favor of the server-registered one", async () => {
+    const { app } = await createApp();
+    // 客户端尝试把 repositoryPath 改成 packages/contracts —— 服务端忽略、强制用注册仓库
+    const tampered = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, profile: { ...profile, repositoryPath: "packages/contracts" } } });
+    expect(tampered.statusCode).toBe(202);
+    const runId = tampered.json().runId;
+    const detail = await waitTerminal(app, runId);
+    // 成功跑到 COMPLETED 说明注册仓库被采用；若仍按 packages/contracts 跑会被 workspace 边界拒绝
+    expect(detail.status).toBe("completed");
+  });
+
+  it("rejects malformed mappings and referenceNodes with INPUT_INVALID", async () => {
+    const { app } = await createApp();
+    const badMapping = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, mappings: [{ nodeId: "hero" }] } });
+    expect(badMapping.statusCode).toBe(400);
+    expect(badMapping.json().code).toBe("INPUT_INVALID");
+    const badRef = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, referenceNodes: { hero: { x: 0, y: 0 } } } });
+    expect(badRef.statusCode).toBe(400);
+    expect(badRef.json().code).toBe("INPUT_INVALID");
   });
 
   it("confirms mappings and applies spec edits to the stored run", async () => {

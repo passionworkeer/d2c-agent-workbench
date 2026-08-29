@@ -9,7 +9,7 @@ import {
   type ProductionViolation,
   type TargetProjectProfile,
 } from "@d2c/contracts";
-import type { ProductionEvaluationReport } from "@d2c/evaluator";
+import type { ProductionEvaluationInput, ProductionEvaluationReport } from "@d2c/evaluator";
 import { FileArtifactStore, RunWorkspace, type CommandResult, type RenderResult } from "@d2c/production-runtime";
 import { afterEach, describe, expect, it } from "vitest";
 import { runProductionWorkflow } from "./index";
@@ -55,7 +55,14 @@ const spec: ActivitySpec = activitySpecSchema.parse({
 });
 
 const metrics = (finalScore: number) => productionMetricsSchema.parse({
-  visual: { layoutGeometry: 92, perceptualDiff: 95, textConsistency: 100, colorEffects: 94, assetConsistency: 100, semanticReview: 90 },
+  visual: {
+    layoutGeometry: 92,
+    perceptualDiff: 95, perceptualDiffAvailable: true,
+    textConsistency: 100, textConsistencyAvailable: true,
+    colorEffects: 94, colorEffectsAvailable: true,
+    assetConsistency: 100, assetConsistencyAvailable: true,
+    semanticReview: 90, semanticReviewAvailable: true,
+  },
   engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 85 },
   visualScore: finalScore, engineeringScore: finalScore, finalScore,
 });
@@ -150,5 +157,51 @@ describe("runProductionWorkflow", () => {
     expect(states).not.toContain("RENDERED");
     expect(events.at(-1)?.state).toBe("FAILED");
     expect(events.at(-1)?.data?.exitCode).toBe(1);
+  });
+
+  it("treats any-viewport horizontal overflow as a hard P1 trigger for the evaluator", async () => {
+    const { workspace, artifacts } = await setup();
+    // canonical 干净、mobile 横向溢出：评测 input.horizontalOverflow 必须为 true
+    const renderWithMobileOverflow: RenderResult = {
+      url: "http://127.0.0.1/campaign/summer", runtimeErrors: [],
+      viewports: [
+        renderFake(0).viewports[0]!,
+        { name: "mobile", width: 390, height: 844, screenshotPath: "renders/mobile.png", horizontalOverflow: true, nodes: {} },
+      ],
+    };
+    const seenHorizontal: boolean[] = [];
+    const events = await collect(runProductionWorkflow({ ...baseInput, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => commandOk("build"),
+      render: async () => renderWithMobileOverflow,
+      evaluate: async (input) => {
+        seenHorizontal.push(input.horizontalOverflow);
+        return { outcome: input.horizontalOverflow ? "needs_review" : "passed", metrics: metrics(95), violations: [] };
+      },
+      attribute: () => [],
+    }));
+    expect(seenHorizontal[0]).toBe(true);
+    // needs_review 不是 passed → 不应走到 COMPLETED
+    expect(events.some((event) => event.state === "COMPLETED")).toBe(false);
+  });
+
+  it("rolls back workspace files when a post-repair build fails", async () => {
+    const { workspace, artifacts } = await setup();
+    // 首轮 build 走通，render 出 P1 → 触发修复；修复后 typecheck 走通但 build 故意 fail，期望回滚。
+    let buildCalls = 0;
+    const events = await collect(runProductionWorkflow({ ...baseInput, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => (++buildCalls === 1 ? commandOk("build") : commandFail("build")),
+      render: async () => renderFake(12),
+      evaluate: async () => ({ outcome: "needs_review", metrics: metrics(86), violations: [layoutViolation] }),
+      attribute: () => [layoutViolation],
+    }));
+    // buildCalls: 1=初始 build ok，2=修复后 build fail → 走到 FAILED 分支触发 restoreRollback
+    expect(buildCalls).toBeGreaterThanOrEqual(2);
+    expect(events.at(-1)?.state).toBe("FAILED");
+    // 失败 detail 明确告知自动回滚
+    expect(events.at(-1)?.detail).toContain("已自动回滚");
   });
 });

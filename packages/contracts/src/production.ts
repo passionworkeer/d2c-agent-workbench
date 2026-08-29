@@ -195,8 +195,27 @@ export const sourceMapSchema = z.object({
   }).strict()),
 }).strict();
 
+/**
+ * 客观评测指标。
+ * 视觉与语义类指标（perceptualDiff/textConsistency/assetConsistency/semanticReview）均来自外部证据
+ * （参考截图 / PRD 文本 / 资产 pHash / VLM 评分）。无证据时分数标记为 null 并通过 `*Available: false` 告知调用方：
+ * 评测器会从重算权重中剔除该项，且 outcome 不能为 passed。layoutGeometry / engineering 指标始终来自真实产物，
+ * 故不带 available 字段。
+ */
 export const productionMetricsSchema = z.object({
-  visual: z.object({ layoutGeometry: z.number().min(0).max(100), perceptualDiff: z.number().min(0).max(100), textConsistency: z.number().min(0).max(100), colorEffects: z.number().min(0).max(100), assetConsistency: z.number().min(0).max(100), semanticReview: z.number().min(0).max(100) }).strict(),
+  visual: z.object({
+    layoutGeometry: z.number().min(0).max(100),
+    perceptualDiff: z.number().min(0).max(100).nullable(),
+    perceptualDiffAvailable: z.boolean(),
+    textConsistency: z.number().min(0).max(100).nullable(),
+    textConsistencyAvailable: z.boolean(),
+    colorEffects: z.number().min(0).max(100).nullable(),
+    colorEffectsAvailable: z.boolean(),
+    assetConsistency: z.number().min(0).max(100).nullable(),
+    assetConsistencyAvailable: z.boolean(),
+    semanticReview: z.number().min(0).max(100).nullable(),
+    semanticReviewAvailable: z.boolean(),
+  }).strict(),
   engineering: z.object({ buildSuccess: z.number().min(0).max(100), componentReuse: z.number().min(0).max(100), tokenUsage: z.number().min(0).max(100), structuralAbsoluteRatio: z.number().min(0).max(100), hardcodeRatio: z.number().min(0).max(100), responsiveBehavior: z.number().min(0).max(100), semanticHtml: z.number().min(0).max(100), accessibility: z.number().min(0).max(100), codeComplexity: z.number().min(0).max(100) }).strict(),
   visualScore: z.number().min(0).max(100),
   engineeringScore: z.number().min(0).max(100),

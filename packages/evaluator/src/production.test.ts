@@ -51,4 +51,40 @@ describe("evaluateProductionRun", () => {
     expect(report.violations).toContainEqual(expect.objectContaining({ type: "responsive", severity: "P1" }));
     expect(report.outcome).not.toBe("passed");
   });
+
+  it("does not silently award 100 when no perceptual evidence is available", () => {
+    // 关键：删掉 image 后 perceptualDiff 必须为 null + available=false，并产出 P2 提示违规
+    const { image: _omitted, ...rest } = baseInput;
+    const report = evaluateProductionRun({ ...rest, image: { differentPixels: 0, totalPixels: 0, diffClusters: [] } });
+    expect(report.metrics.visual.perceptualDiff).toBeNull();
+    expect(report.metrics.visual.perceptualDiffAvailable).toBe(false);
+    expect(report.metrics.visual.colorEffects).toBeNull();
+    expect(report.violations.some((item) => item.id === "evidence:perceptual-diff-missing" && item.severity === "P2")).toBe(true);
+    // P2 不阻塞 passed；只要分数足够高、无 P0/P1 仍能 passed
+  });
+
+  it("does not silently award 100 when no text evidence is available", () => {
+    const report = evaluateProductionRun({ ...baseInput, text: { expected: [], actual: [] } });
+    expect(report.metrics.visual.textConsistency).toBeNull();
+    expect(report.metrics.visual.textConsistencyAvailable).toBe(false);
+  });
+
+  it("flags missing semantic review as P1 evidence gap and never passes", () => {
+    // 不传 semanticReviewScore 字段 → available=false，P1 违规阻止 passed
+    const { semanticReviewScore: _omitted, ...rest } = baseInput as { semanticReviewScore?: number } & typeof baseInput;
+    const report = evaluateProductionRun(rest);
+    expect(report.metrics.visual.semanticReview).toBeNull();
+    expect(report.metrics.visual.semanticReviewAvailable).toBe(false);
+    expect(report.violations.some((item) => item.id === "evidence:semantic-review-missing" && item.severity === "P1")).toBe(true);
+    expect(report.outcome).not.toBe("passed");
+  });
+
+  it("renormalises visual weights to exclude unavailable evidence", () => {
+    // 只保留 layoutGeometry + asset 证据：总分不会因缺 perceptual/text/semantic 而被填 100
+    const { image: _img, text: _text, semanticReviewScore: _sr, ...rest } = baseInput as { image?: unknown; text?: unknown; semanticReviewScore?: number } & typeof baseInput;
+    const report = evaluateProductionRun({ ...rest, text: { expected: [], actual: [] }, image: { differentPixels: 0, totalPixels: 0, diffClusters: [] } });
+    const availableWeight = .30 + .10; // layoutGeometry + asset
+    const expected = report.metrics.visual.layoutGeometry * (.30 / availableWeight) + (report.metrics.visual.assetConsistency ?? 0) * (.10 / availableWeight);
+    expect(report.metrics.visualScore).toBeCloseTo(expected, 1);
+  });
 });

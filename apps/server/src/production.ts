@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   activitySpecSchema,
+  componentMappingSchema,
   productionRunSchema,
+  rectSchema,
   targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
@@ -22,6 +24,7 @@ import {
 import type { GeneratedProductionOutput } from "@d2c/codegen";
 import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
+import { ACTIVITY_TARGET_PROFILE, resolveProfileBySampleId } from "./profiles";
 
 export interface ProductionRouteOptions {
   /** 运行数据（runs/、workspaces/、artifacts/、renders/）落盘根目录 */
@@ -185,31 +188,69 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     }
   }
 
-  app.post<{ Body: { spec?: unknown; profile?: unknown; mappings?: unknown; referenceNodes?: unknown; semanticReviewScore?: unknown } }>(
+  app.post<{ Body: { spec?: unknown; profile?: unknown; mappings?: unknown; referenceNodes?: unknown; semanticReviewScore?: unknown; sampleId?: unknown } }>(
     "/api/production/runs",
     async (request, reply) => {
       const specResult = activitySpecSchema.safeParse(request.body?.spec);
       if (!specResult.success) {
         return reply.code(400).send({ code: "INPUT_INVALID", message: `spec 不符合 ActivitySpec v2 schema：${specResult.error.issues[0]?.message ?? ""}` });
       }
-      const profileResult = targetProjectProfileSchema.safeParse(request.body?.profile);
-      if (!profileResult.success) {
-        return reply.code(400).send({ code: "INPUT_INVALID", message: `profile 不符合 schema：${profileResult.error.issues[0]?.message ?? ""}` });
+      // sampleId 决定目标仓库 Profile；客户端不能传 commands / repositoryPath / allowedWriteGlobs
+      // （白名单在 src/profiles.ts 注册），未注册 sampleId 直接 400。
+      const sampleId = typeof request.body?.sampleId === "string" && request.body.sampleId.trim() ? request.body.sampleId : "activity-target";
+      let profile: TargetProjectProfile;
+      try {
+        profile = resolveProfileBySampleId(sampleId);
+      } catch (cause) {
+        return reply.code(400).send({ code: "SAMPLE_ID_UNKNOWN", message: cause instanceof Error ? cause.message : "未知 sampleId" });
       }
-      const profile = profileResult.data;
-      const repositoryRoot = resolve(repoRoot, profile.repositoryPath);
-      if (!allowedTargetRoots.some((root) => isInside(root, repositoryRoot))) {
-        return reply.code(400).send({ code: "TARGET_ROOT_FORBIDDEN", message: `repositoryPath 必须位于允许的目标根目录内：${profile.repositoryPath}` });
+      // 防回归：注册 profile 自身必须位于允许的目标根（注册时一次校验，运行期不再依赖客户端）
+      if (!allowedTargetRoots.some((root) => isInside(root, resolve(repoRoot, profile.repositoryPath)))) {
+        return reply.code(500).send({ code: "REGISTERED_ROOT_FORBIDDEN", message: `注册的 profile.repositoryPath 越界：${profile.repositoryPath}` });
       }
-      const mappingsResult = (request.body?.mappings ?? []) as ComponentMapping[];
+      // 兼容旧 body.profile：服务端忽略其值，但若客户端显式提供必须能 parse（提示字段被忽略）
+      if (request.body?.profile !== undefined) {
+        const legacy = targetProjectProfileSchema.safeParse(request.body.profile);
+        if (!legacy.success) {
+          return reply.code(400).send({ code: "INPUT_INVALID", message: `profile 字段已废弃并由服务端注册，提交的值需可解析为 TargetProjectProfile：${legacy.error.issues[0]?.message ?? ""}` });
+        }
+      }
+      // 强校验 mappings / referenceNodes，杜绝裸 unknown 进入 record
+      const mappingsRaw = request.body?.mappings;
+      const mappings: ComponentMapping[] = [];
+      if (mappingsRaw !== undefined && mappingsRaw !== null) {
+        if (!Array.isArray(mappingsRaw)) {
+          return reply.code(400).send({ code: "INPUT_INVALID", message: "mappings 必须是数组" });
+        }
+        for (const [index, item] of mappingsRaw.entries()) {
+          const parsed = componentMappingSchema.safeParse(item);
+          if (!parsed.success) {
+            return reply.code(400).send({ code: "INPUT_INVALID", message: `mappings[${index}] 不符合 schema：${parsed.error.issues[0]?.message ?? ""}` });
+          }
+          mappings.push(parsed.data);
+        }
+      }
+      let referenceNodes: ProductionRunRecord["referenceNodes"] = {};
+      if (request.body?.referenceNodes !== undefined && request.body?.referenceNodes !== null) {
+        if (typeof request.body.referenceNodes !== "object") {
+          return reply.code(400).send({ code: "INPUT_INVALID", message: "referenceNodes 必须是对象" });
+        }
+        for (const [nodeId, value] of Object.entries(request.body.referenceNodes as Record<string, unknown>)) {
+          const parsed = rectSchema.safeParse(value);
+          if (!parsed.success) {
+            return reply.code(400).send({ code: "INPUT_INVALID", message: `referenceNodes[${nodeId}] 不符合 rect schema：${parsed.error.issues[0]?.message ?? ""}` });
+          }
+          referenceNodes[nodeId] = parsed.data;
+        }
+      }
       const id = `prod-${randomUUID().slice(0, 8)}`;
       const run = productionRunSchema.parse({
         id, mode: "production", state: "CREATED", status: "running",
         createdAt: new Date().toISOString(), iteration: 0, artifacts: [], violations: [],
       });
       const record: ProductionRunRecord = {
-        run, events: [], spec: specResult.data, profile, mappings: mappingsResult,
-        referenceNodes: (request.body?.referenceNodes ?? {}) as ProductionRunRecord["referenceNodes"],
+        run, events: [], spec: specResult.data, profile, mappings,
+        referenceNodes,
         ...(typeof request.body?.semanticReviewScore === "number" && Number.isFinite(request.body.semanticReviewScore)
           ? { semanticReviewScore: Math.max(0, Math.min(100, request.body.semanticReviewScore)) }
           : {}),

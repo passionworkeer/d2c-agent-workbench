@@ -32,7 +32,7 @@
       "name": "主视觉",
       "sourceBox": { "x": 0, "y": 0, "width": 1440, "height": 500 },
       "layout": { "mode": "flex", "direction": "column", "width": { "mode": "fill" }, "height": { "mode": "fixed", "value": 500 }, "rationale": "首屏区块" },
-      "responsive": [],
+      "responsive": [{ "viewport": "mobile", "rule": "resize", "value": 390 }],
       "visual": { "opacity": 1 },
       "tokenRefs": ["color/accent"],
       "evidence": [{ "type": "user", "sourceId": "golden", "observation": "黄金样例主视觉", "confidence": 1 }],

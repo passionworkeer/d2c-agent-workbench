@@ -113,16 +113,34 @@ function makeViolation(input: Omit<ProductionViolation, "evidence" | "confidence
 
 export function evaluateProductionRun(input: ProductionEvaluationInput): ProductionEvaluationReport {
   const geometry = geometryScore(input.referenceNodes, input.renderedNodes);
-  const perceptualDiff = clamp(100 * (1 - ratio(input.image.differentPixels, input.image.totalPixels, 0)));
-  const textConsistency = textScore(input.text.expected, input.text.actual);
-  const assetConsistency = input.assets.length ? clamp(100 * (1 - input.assets.reduce((sum, asset) => sum + asset.pHashDistance, 0) / input.assets.length)) : 100;
+  // 证据可用性：每项指标从「真实产物」推导。无证据时分数记 null 并标记 unavailable，
+  // re-weight 时剔除该项归一化，避免无证据项以默认值偷换 100 假装通过。
+  const perceptualAvailable = input.image.totalPixels > 0;
+  const textAvailable = input.text.expected.length > 0;
+  const assetAvailable = input.assets.length > 0;
+  const semanticAvailable = input.semanticReviewScore !== undefined;
+  const perceptualDiff = perceptualAvailable
+    ? clamp(100 * (1 - ratio(input.image.differentPixels, input.image.totalPixels, 0)))
+    : null;
+  const textConsistency = textAvailable ? textScore(input.text.expected, input.text.actual) : null;
+  const assetConsistency = assetAvailable
+    ? clamp(100 * (1 - input.assets.reduce((sum, asset) => sum + asset.pHashDistance, 0) / input.assets.length))
+    : null;
+  const semanticReview = semanticAvailable ? clamp(input.semanticReviewScore ?? 90) : null;
+  // colorEffects 来自 perceptualDiff + layoutGeometry；perceptual 缺证据时该指标亦缺
+  const colorEffects = perceptualAvailable ? clamp(((perceptualDiff ?? 0) + geometry.score) / 2) : null;
   const visual = {
     layoutGeometry: geometry.score,
     perceptualDiff,
+    perceptualDiffAvailable: perceptualAvailable,
     textConsistency,
-    colorEffects: clamp((perceptualDiff + geometry.score) / 2),
+    textConsistencyAvailable: textAvailable,
+    colorEffects,
+    colorEffectsAvailable: perceptualAvailable,
     assetConsistency,
-    semanticReview: clamp(input.semanticReviewScore ?? 90),
+    assetConsistencyAvailable: assetAvailable,
+    semanticReview,
+    semanticReviewAvailable: semanticAvailable,
   };
   const engineering = {
     buildSuccess: input.build.exitCode === 0 && input.build.runtimeErrors.length === 0 ? 100 : 0,
@@ -135,7 +153,17 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
     accessibility: clamp(input.engineering.accessibleNodeRatio * 100),
     codeComplexity: clamp(input.engineering.complexityScore),
   };
-  const visualScore = clamp(visual.layoutGeometry * .30 + visual.perceptualDiff * .25 + visual.textConsistency * .15 + visual.colorEffects * .10 + visual.assetConsistency * .10 + visual.semanticReview * .10);
+  // 视觉分数：layoutGeometry 始终有证据，其余按 available 归一化权重
+  const visualWeights: Array<{ score: number; weight: number }> = [{ score: visual.layoutGeometry, weight: .30 }];
+  if (visual.perceptualDiffAvailable && visual.perceptualDiff !== null) visualWeights.push({ score: visual.perceptualDiff, weight: .25 });
+  if (visual.textConsistencyAvailable && visual.textConsistency !== null) visualWeights.push({ score: visual.textConsistency, weight: .15 });
+  if (visual.colorEffectsAvailable && visual.colorEffects !== null) visualWeights.push({ score: visual.colorEffects, weight: .10 });
+  if (visual.assetConsistencyAvailable && visual.assetConsistency !== null) visualWeights.push({ score: visual.assetConsistency, weight: .10 });
+  if (visual.semanticReviewAvailable && visual.semanticReview !== null) visualWeights.push({ score: visual.semanticReview, weight: .10 });
+  const visualTotalWeight = visualWeights.reduce((sum, item) => sum + item.weight, 0);
+  const visualScore = visualTotalWeight > 0
+    ? clamp(visualWeights.reduce((sum, item) => sum + item.score * (item.weight / visualTotalWeight), 0))
+    : 0;
   const engineeringValues = Object.values(engineering);
   const engineeringScore = clamp(engineeringValues.reduce((sum, value) => sum + value, 0) / engineeringValues.length);
   const finalScore = clamp(visualScore * .70 + engineeringScore * .30);
@@ -148,8 +176,11 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
     suggestedAction: "修正父容器布局、间距或尺寸约束", confidence: .95,
   }));
   if (input.horizontalOverflow) violations.push(makeViolation({ id: "responsive:horizontal-overflow", severity: "P1", type: "responsive", nodeIds: Object.keys(input.renderedNodes), sourceLocators: input.sourceMap.locators, expected: { horizontalOverflow: false }, actual: { horizontalOverflow: true }, suggestedAction: "修正移动端宽度、换行或溢出规则" }));
-  if (textConsistency < 100) violations.push(makeViolation({ id: "text:consistency", severity: "P1", type: "text", nodeIds: [], sourceLocators: [], expected: input.text.expected, actual: input.text.actual, suggestedAction: "以 PRD 文本为准修正内容和换行" }));
-  if (assetConsistency < 90) violations.push(makeViolation({ id: "asset:phash", severity: "P2", type: "asset", nodeIds: [], sourceLocators: [], expected: { pHashDistance: 0 }, actual: input.assets, suggestedAction: "替换素材或修正裁切位置" }));
+  // 缺关键证据自身就是一个严重违规：评测没真证据就不能宣告通过
+  if (!perceptualAvailable) violations.push(makeViolation({ id: "evidence:perceptual-diff-missing", severity: "P2", type: "build", nodeIds: [], sourceLocators: [], expected: { referenceScreenshot: "provided" }, actual: { referenceScreenshot: "missing" }, suggestedAction: "提供参考截图并接入 compareImages 适配器" }));
+  if (!semanticAvailable) violations.push(makeViolation({ id: "evidence:semantic-review-missing", severity: "P1", type: "build", nodeIds: [], sourceLocators: [], expected: { semanticReviewScore: "provided" }, actual: { semanticReviewScore: "missing" }, suggestedAction: "接入 VLM 语义评审并经 POST body 注入 semanticReviewScore" }));
+  if (textAvailable && textConsistency !== null && textConsistency < 100) violations.push(makeViolation({ id: "text:consistency", severity: "P1", type: "text", nodeIds: [], sourceLocators: [], expected: input.text.expected, actual: input.text.actual, suggestedAction: "以 PRD 文本为准修正内容和换行" }));
+  if (assetAvailable && assetConsistency !== null && assetConsistency < 90) violations.push(makeViolation({ id: "asset:phash", severity: "P2", type: "asset", nodeIds: [], sourceLocators: [], expected: { pHashDistance: 0 }, actual: input.assets, suggestedAction: "替换素材或修正裁切位置" }));
   const hasP0 = violations.some((item) => item.severity === "P0");
   const hasP1 = violations.some((item) => item.severity === "P1");
   const outcome = hasP0 ? "failed" : finalScore >= 90 && !hasP1 ? "passed" : finalScore >= 85 ? "needs_review" : "failed";
