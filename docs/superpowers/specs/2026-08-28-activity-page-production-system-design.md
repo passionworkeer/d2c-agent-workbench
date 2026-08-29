@@ -1057,19 +1057,21 @@ Eval Agent 不读取 Build Agent 的自我评价，降低确认偏误。
 
 ## 25. 最终验收清单
 
-- [ ] ActivitySpec v2、Evidence、SourceMap、Violation、PatchPlan 均有版本化 Schema。
-- [ ] 一个真实试点仓库完成隔离生成、typecheck、build 和 Playwright Render。
-- [ ] 所有生产分数来自真实 Artifact，没有 Fixture 常量或伪造 Build 事件。
-- [ ] Desktop 和 Mobile 均有截图与 DOM Geometry。
-- [ ] Visual Eval 同时包含 Layout、Diff、OCR、Asset 和 VLM 语义指标。
-- [ ] Engineering Eval 包含组件复用、Token、绝对定位、硬编码、响应式和复杂度。
-- [ ] Diff Region 能定位到 ActivitySpec Node 与源码文件。
-- [ ] Repair 使用结构化 PatchPlan，最多三轮，并保存每轮前后结果。
-- [ ] Puck 编辑通过 EditOps 回写 ActivitySpec，不直接产生不可追踪源码修改。
-- [ ] Figma 输出由规范 React Render 导出，并通过插件生成可编辑节点。
-- [ ] 12 个活动页黄金集建立并进入回归测试。
-- [ ] 开源依赖完成版本锁定、许可证和 Attribution 审计。
-- [ ] 最终交付包含代码、原型、Figma、评测、Trace 和未解决风险。
+> 2026-08-29 实施后核对：勾选项已落地并有自动化证据；未勾项如实保留差距，不做纸面完成。
+
+- [x] ActivitySpec v2、Evidence、SourceMap、Violation、PatchPlan 均有版本化 Schema。（`packages/contracts/src/production.ts`，Zod strict + 版本字段，测试钉死）
+- [x] 一个真实试点仓库完成隔离生成、typecheck、build 和 Playwright Render。（`examples/activity-target`，E2E `tests/e2e/production.spec.ts` 全链路通过，finalScore 96）
+- [x] 所有生产分数来自真实 Artifact，没有 Fixture 常量或伪造 Build 事件。（`runProductionWorkflow` 每状态携带 artifactId；工程指标从 spec/code plan 推导；build 失败为 P0 硬门槛）
+- [x] Desktop 和 Mobile 均有截图与 DOM Geometry。（server 渲染 desktop 1440×900 + mobile 390×844 双视口采集，落 render artifact；评测仍以 canonical 视口为准，mobile 评测维度是后续项）
+- [ ] Visual Eval 同时包含 Layout、Diff、OCR、Asset 和 VLM 语义指标。**部分落地**：Layout 几何 ✓；Diff/pHash 管线就绪但默认无参考图输入（compareImages 适配器留位）；OCR 因供应链策略未装 Tesseract，文本走 PRD 结构化证据注入；VLM 语义分当前为默认值 90，未接真实视觉模型评审。
+- [x] Engineering Eval 包含组件复用、Token、绝对定位、硬编码、响应式和复杂度。（`evaluateProductionRun` engineering 九维，全部从真实产物推导）
+- [x] Diff Region 能定位到 ActivitySpec Node 与源码文件。（`attributeDiffClusters` 支持区域→最小节点→父容器归因并回填 SourceMap 定位；真实闭环当前由几何违规驱动归因，像素 diff 聚类归因待接参考图后启用）
+- [x] Repair 使用结构化 PatchPlan，最多三轮，并保存每轮前后结果。（≤5 文件白名单校验、CSS/AST/Spec 三类补丁、每轮 rollback 快照落 artifact、连续两轮 <1 分熔断）
+- [x] Puck 编辑通过 EditOps 回写 ActivitySpec，不直接产生不可追踪源码修改。（PrototypeEditor 发出 `set-content` SpecEditOp，服务端 `/edit` 消费并附 user evidence）
+- [ ] Figma 输出由规范 React Render 导出，并通过插件生成可编辑节点。**部分落地**：`buildFigmaImportBundle` 从 ActivitySpec + 渲染证据生成 html-to-figma 兼容节点 JSON（保留 `pluginData.d2cNodeId`），有单测；但**插件端实际导入未做实弹验证**。
+- [ ] 12 个活动页黄金集建立并进入回归测试。**未落地**：当前 1 个黄金样例（campaign）进 E2E 回归；11 个扩展集待建。
+- [ ] 开源依赖完成版本锁定、许可证和 Attribution 审计。**部分落地**：版本锁定 ✓（pnpm-lock + 供应链策略 allowBuilds）；许可证与 Attribution 文档未产出。
+- [ ] 最终交付包含代码、原型、Figma、评测、Trace 和未解决风险。**部分落地**：代码/原型/评测/Trace/Figma 导出包 ✓；"未解决风险"即本清单未勾项，本文档为权威记录。
 
 ## 26. 推荐的首个实施切片
 

@@ -110,13 +110,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const replayDelayMs = options.replayDelayMs ?? 260;
 
   // 诊断：未处理路由异常落盘（logger:false 时 fastify 默认静默，E2E 排障需要现场）
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: Error, request, reply) => {
     try {
       appendFileSync(join(process.cwd(), ".data", "server-errors.log"), `${new Date().toISOString()} ${request.method} ${request.url} :: ${error.stack ?? error.message}\n`);
     } catch {
       // 日志失败不影响响应
     }
-    reply.code(500).send({ code: "INTERNAL", message: error instanceof Error ? error.message : "服务器内部错误" });
+    reply.code(500).send({ code: "INTERNAL", message: error.message || "服务器内部错误" });
   });
 
   void app.register(multipart, {

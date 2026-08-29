@@ -89,7 +89,11 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     if (!record.workspace || !record.artifactStore) return;
     const renderInput: ProductionWorkflowInput["render"] = {
       url: record.profile.previewUrl,
-      viewports: [{ name: "desktop", width: record.spec.page.canonicalViewport.width, height: record.spec.page.canonicalViewport.height }],
+      viewports: [
+        { name: "desktop", width: record.spec.page.canonicalViewport.width, height: record.spec.page.canonicalViewport.height },
+        // Mobile 采集：截图 + 几何 + 溢出检测落 Artifact；评测仍以 canonical 视口为准
+        { name: "mobile", width: 390, height: 844 },
+      ],
       outputDir: join(dataRoot, "renders", record.run.id),
       server: { cwd: record.workspace.root },
     };

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **完成状态与设计验收的关系（2026-08-29）**：本计划 13 个任务已全部实现并有测试/E2E 证据（下方全部勾选）。但计划是设计文档的实施切片，**小于**设计目标全集；设计侧未落地的项（12 个黄金集、真实 VLM 语义分、Figma 插件实弹验证、许可证审计等）见设计文档第 25 节「最终验收清单」的逐项标注，那里是权威状态。
+
 **Goal:** 把现有 D2C Demo 升级为能从参考图/PRD/资产生成真实 React 页面、完成隔离构建渲染、客观评测、错误归因和局部修复，并提供可编辑原型与 Figma 导出的团队可用 MVP。
 
 **Architecture:** 继续使用现有 TypeScript Monorepo，以 `ActivitySpec v2` 为唯一事实源；新增 `production-runtime` 包承载 Artifact、Workspace、Build、Render、Eval 和 Patch 的系统边界。现有 UISpec/Replay 保持兼容，生产 Orchestrator 使用真实执行结果，Web 通过独立生产模式接入。
