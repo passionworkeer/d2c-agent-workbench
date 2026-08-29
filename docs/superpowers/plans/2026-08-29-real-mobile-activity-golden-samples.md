@@ -823,7 +823,7 @@ git commit -m "feat(production): 完成真实移动活动页高保真演示链�
 
 Before committing, inspect `git status --short` and ensure the four pre-existing untracked personal files are not staged.
 
-- [ ] **Step 6: Push**
+- [x] **Step 6: Push**
 
 Run: `git push origin master`
 
