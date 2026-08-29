@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -62,10 +62,37 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   const records = new Map<string, ProductionRunRecord>();
   const listeners = new Map<string, Set<RunListener>>();
 
+  // 启动重载：把历史 run 的元数据读回内存（只读状态；无工作区，repair 会如实 409）
+  void (async () => {
+    try {
+      const runsDirectory = join(dataRoot, "runs");
+      const ids = await readdir(runsDirectory).catch(() => [] as string[]);
+      for (const id of ids) {
+        try {
+          const parsed = JSON.parse(await readFile(join(runsDirectory, id, "run.json"), "utf8")) as { run?: unknown; mappings?: ComponentMapping[]; spec?: unknown; profile?: unknown; referenceNodes?: ProductionRunRecord["referenceNodes"] };
+          if (!parsed.run || records.has(id)) continue;
+          const run = productionRunSchema.parse(parsed.run);
+          records.set(id, {
+            run, events: [],
+            spec: parsed.spec as ActivitySpec,
+            profile: parsed.profile as TargetProjectProfile,
+            mappings: parsed.mappings ?? [],
+            referenceNodes: parsed.referenceNodes ?? {},
+          });
+        } catch {
+          // 单个损坏的 run.json 跳过，不阻塞其余重载
+        }
+      }
+    } catch {
+      // 重载失败不影响新 run 的创建
+    }
+  })();
+
   async function persistRun(record: ProductionRunRecord): Promise<void> {
     const directory = join(dataRoot, "runs", record.run.id);
     await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, "run.json"), `${JSON.stringify({ run: record.run, mappings: record.mappings }, null, 2)}\n`, "utf8");
+    // 全量持久化：重启后重载需要 spec/profile/mappings/referenceNodes 才能查状态与重新编辑
+    await writeFile(join(directory, "run.json"), `${JSON.stringify({ run: record.run, spec: record.spec, profile: record.profile, mappings: record.mappings, referenceNodes: record.referenceNodes }, null, 2)}\n`, "utf8");
   }
 
   const productionStates = new Set<string>(productionRunSchema.shape.state.options);

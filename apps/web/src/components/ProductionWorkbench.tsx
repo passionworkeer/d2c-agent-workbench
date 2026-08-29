@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductionViolation, TraceEvent } from "@d2c/contracts";
 import {
   GOLDEN_PRODUCTION_SAMPLE,
@@ -20,6 +20,9 @@ export function ProductionWorkbench() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
+  // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => unsubscribeRef.current?.(), []);
 
   const pushEvent = useCallback((event: TraceEvent) => {
     setEvents((current) => [...current, event]);
@@ -40,7 +43,8 @@ export function ProductionWorkbench() {
     setFinalScore(null);
     try {
       const { runId } = await createProductionRun(GOLDEN_PRODUCTION_SAMPLE);
-      subscribeToProductionRun(runId, (event) => {
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = subscribeToProductionRun(runId, (event) => {
         void pushEvent(event);
         if (TERMINAL_STATES.has(event.state)) {
           void getProductionRun(runId)

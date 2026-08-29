@@ -137,4 +137,28 @@ describe("production routes", () => {
     expect(edited.statusCode).toBe(200);
     expect(edited.json().spec.nodes.find((node: { id: string }) => node.id === "hero-title")?.content?.text).toBe("夏日好物节 · 全场 5 折");
   });
+
+  it("reloads persisted runs on startup for status queries", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    await waitTerminal(app, runId);
+
+    // 同一 dataRoot 重建 app（模拟服务重启）：元数据可查，但无工作区不可修复
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const response = await restarted.inject({ method: "GET", url: `/api/production/runs/${runId}` });
+      if (response.statusCode === 200) {
+        const body = response.json();
+        expect(body.mode).toBe("production");
+        expect(body.status).toBe("completed");
+        expect(body.state).toBe("COMPLETED");
+        const repair = await restarted.inject({ method: "POST", url: `/api/production/runs/${runId}/repair` });
+        expect(repair.statusCode).toBe(409);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error("persisted run was not reloaded in time");
+  });
 });

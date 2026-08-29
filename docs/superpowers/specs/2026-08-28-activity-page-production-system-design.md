@@ -1070,7 +1070,7 @@ Eval Agent 不读取 Build Agent 的自我评价，降低确认偏误。
 - [x] Puck 编辑通过 EditOps 回写 ActivitySpec，不直接产生不可追踪源码修改。（PrototypeEditor 发出 `set-content` SpecEditOp，服务端 `/edit` 消费并附 user evidence）
 - [ ] Figma 输出由规范 React Render 导出，并通过插件生成可编辑节点。**部分落地**：`buildFigmaImportBundle` 从 ActivitySpec + 渲染证据生成 html-to-figma 兼容节点 JSON（保留 `pluginData.d2cNodeId`），有单测；但**插件端实际导入未做实弹验证**。
 - [ ] 12 个活动页黄金集建立并进入回归测试。**未落地**：当前 1 个黄金样例（campaign）进 E2E 回归；11 个扩展集待建。
-- [ ] 开源依赖完成版本锁定、许可证和 Attribution 审计。**部分落地**：版本锁定 ✓（pnpm-lock + 供应链策略 allowBuilds）；许可证与 Attribution 文档未产出。
+- [x] 开源依赖完成版本锁定、许可证和 Attribution 审计。（pnpm-lock 双层锁定 + allowBuilds 供应链白名单；`docs/licenses.md` 全量生产依赖审计：全部宽松许可证，无 copyleft）
 - [ ] 最终交付包含代码、原型、Figma、评测、Trace 和未解决风险。**部分落地**：代码/原型/评测/Trace/Figma 导出包 ✓；"未解决风险"即本清单未勾项，本文档为权威记录。
 
 ## 26. 推荐的首个实施切片
