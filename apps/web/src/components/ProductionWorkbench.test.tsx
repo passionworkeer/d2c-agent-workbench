@@ -126,4 +126,22 @@ describe("ProductionWorkbench", () => {
     await user.click(screen.getByRole("button", { name: "按编辑重跑闭环" }));
     expect(apiMocks.repairProductionRun).toHaveBeenCalledWith("run-1");
   });
+
+  it("keeps the sample switcher available after a completed run and resets state on switch", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+
+    // 跑完后切换入口仍在（banner 不因事件出现而消失）
+    const chip = screen.getByRole("button", { name: /体验官招募/ });
+    expect(chip).toBeEnabled();
+    await user.click(chip);
+    expect(screen.queryByText("COMPLETED")).not.toBeInTheDocument();
+    expect(screen.getByTestId("production-sample").textContent).toContain("体验官招募");
+    // 新样例可直接再跑
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
+  });
 });

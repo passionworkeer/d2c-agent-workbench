@@ -98,6 +98,19 @@ export function ProductionWorkbench() {
     });
   }
 
+  // 切换样例：清空上一轮展示状态（事件/违规/截图/分数），编辑面板由 useEffect 重置
+  function switchSample(sampleId: string) {
+    if (sampleId === selectedSampleId || running) return;
+    setSelectedSampleId(sampleId);
+    setEvents([]);
+    setViolations([]);
+    setSelectedViolation(null);
+    setFinalScore(null);
+    setViewports([]);
+    setRunId(null);
+    setError(null);
+  }
+
   async function runLoop() {
     setRunning(true);
     setError(null);
@@ -192,7 +205,7 @@ export function ProductionWorkbench() {
         </div>
       </header>
 
-      {sampleLoaded && events.length === 0 && (
+      {sampleLoaded && (
         <div className="production-sample" data-testid="production-sample">
           <span>
             黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
@@ -201,7 +214,7 @@ export function ProductionWorkbench() {
           <span className="sample-switcher">
             换个页面：
             {GOLDEN_SAMPLES.map((sample) => (
-              <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => setSelectedSampleId(sample.id)}>
+              <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => switchSample(sample.id)}>
                 {sample.label}
               </button>
             ))}
