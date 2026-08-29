@@ -33,10 +33,13 @@
 
 - **真实代码生成**：`packages/codegen` 生成真正的 TSX + CSS Module（带 `data-d2c-node-id` / `data-d2c-ready` 稳定标记）与 `d2c-source-map.json`，而不是 JSX 字符串。
 - **隔离工作区**：目标仓库骨架（`examples/activity-target`）被复制进 `.data/production/workspaces/<runId>`，忽略 `node_modules/.git/dist`；所有写入都在 Profile `allowedWriteGlobs` 边界内，产物用 `wx` 一次性写入不可覆盖。
-- **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 在白名单内以 `spawn(shell:false)` 执行，超时杀进程树，输出限幅。
-- **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；build 失败是 P0 硬门槛，任何分数不可覆盖。
-- **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，最多 3 轮、连续两轮提升 <1 分即停。
-- **服务端 API**：`POST /api/production/runs`（目标仓库必须在允许根目录内）→ SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载。
+- **Profile / 命令服务端注册**：`apps/server/src/profiles.ts` 按 `sampleId` 解析固定 Profile（commands、repositoryPath、allowedWriteGlobs 全部硬编码），客户端**不可**注入 commands——这是默认安全姿态；mappings / referenceNodes 在 POST 时经 Zod 严格校验后入库。
+- **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 在白名单内以 `spawn(shell:false)` 执行，子进程只继承最小化 env 白名单（PATH / Node / HOME 等），超时杀进程树，输出限幅。
+- **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；**任一视口**（desktop / mobile）横向溢出 → P1 硬门槛，build 失败是 P0 硬门槛，任何分数不可覆盖。
+- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审缺为 P1 阻塞 passed（黄金样例默认注入 95 让 demo 可达 passed；真实 VLM 接入后由调用方覆盖）。
+- **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
+- **工作台评测分构成**：EVALUATED 事件透传 `metrics`，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），让 demo 观众看到「为什么是这个分」。
+- **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（编辑发出类型化 SpecEditOp）；`buildFigmaImportBundle` 产出 html-to-figma 兼容节点 JSON，保留 `pluginData.d2cNodeId`。
 
@@ -55,7 +58,7 @@ pnpm dev          # 同时启动前端 5173 与 API 8787
 
 1. **D2C（秒开）**：点「运行完整演示」→ 72→94 评测修复闭环，浏览器内确定性管线，零外部依赖
 2. **I2D**：切「参考图 → 设计稿」→ 自动播放 → （可选）填 key 接真视觉模型
-3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 96 分；切换第二个样例（表单页）再跑 → 94.9 分、修复文件不同（评分非硬编码）
+3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 93+ 分，工作台「评测分构成」面板显示每个证据项的可用性与具体分；切换第二个样例（表单页）再跑 → 不同分数与不同修复文件（评分非硬编码）
 
 完整话术见 `docs/demo-script.md`（含 3 分钟版七个亮点）。
 
@@ -171,8 +174,9 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 | `packages/ui-compiler` | Auto Layout、Sizing、Token 到 UISpec |
 | `packages/component-matcher` | SDS 候选召回、排序、证据和置信度 |
 | `packages/codegen` | 真实 DFS 出码 + StyleRef 发射 + 类型化修复（tokenize / restore-value / define-token / snap-to-declared） |
-| `packages/evaluator` | 六维加权评测、Violation DFS 序确定归因、修复对比 |
-| `packages/orchestrator` | Build / Eval / Repair 状态机、Replay 与 toolCalls |
+| `packages/evaluator` | 证据驱动评测：5 项视觉指标各产出 `*Available` 布尔，缺证据归一化权重，杜绝无声 100 |
+| `packages/orchestrator` | PRODUCTION 闭环状态机：INPUT_VALIDATED → PROJECT_INSPECTED → SPEC_VALIDATED → CODE_PLANNED → GENERATED → TYPECHECKED → BUILT → RENDERED → EVALUATED → ATTRIBUTED → REPAIR_PLANNED/APPLIED，多轮迭代 + 修复后失败自动 restoreRollback |
+| `packages/production-runtime` | 隔离工作区（seedWorkspaceFrom）、白名单命令执行（runAllowedCommand + 最小 env）、Playwright 渲染、回滚快照与定向修复（applyPatchPlan） |
 | `packages/canvas-ops` | 对话式画布编辑：`parseIntent` 中文规则 + `applyEditOps` 纯函数（set-prop / set-style / set-text / set-layout） |
 | `packages/asset-indexer` | 企业组件资产库扫描器：设计系统仓库（React + Storybook + Code Connect）→ matcher 可注入的 registry |
 | `packages/figma-patcher` | EditOp → Figma setNodeChanges：token 解字面量、GRID 降级记录、selector 复用 canvas-ops 语义 |
@@ -191,6 +195,8 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 - 使用 Zod 验证全部跨模块数据，不直接信任 Figma 或 Agent 输出。
 - Demo 只读取内置 SDS 资产，不执行上传内容中的代码。
 - 真实代码仓库接入将使用独立 Workspace、命令允许列表和 Artifact 边界。
+- **PRODUCTION 服务端注册**：客户端只允许传 `sampleId`，目标 Profile（commands / repositoryPath / allowedWriteGlobs）从 `apps/server/src/profiles.ts` 解析，**绝不**接受客户端注入的命令数组；POST 时 mappings / referenceNodes 经 Zod 严格校验后入库，非法输入直接 400。
+- **PRODUCTION 命令子进程 env 白名单**：仅继承 PATH / Node / HOME 等必要键，敏感环境变量不泄漏给目标仓库命令。
 - LLM key 仅存浏览器 localStorage（设置面板），代理通过 `X-LLM-Key` 请求头转发，仓库 / 日志 / 下载报告均不含 key。
 - Figma PAT 与 LLM key 同模式：仅存 localStorage，代理通过 `X-Figma-Token` 请求头转发，仓库 / 日志 / 下载报告 / 响应体均不含 PAT（测试钉死）。
 
