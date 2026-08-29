@@ -315,6 +315,32 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     return reply.code(202).send({ runId: record.run.id });
   });
 
+  // 渲染截图：按视口名读取（白名单校验，无用户可控路径），供工作台展示真实渲染结果
+  app.get<{ Params: { id: string; viewport: string } }>(
+    "/api/production/runs/:id/renders/:viewport",
+    async (request, reply) => {
+      const record = records.get(request.params.id);
+      if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
+      const viewport = request.params.viewport;
+      if (!/^[a-z0-9-]{1,32}$/.test(viewport)) {
+        return reply.code(400).send({ code: "INPUT_INVALID", message: "非法视口名" });
+      }
+      const rendersRoot = resolve(dataRoot, "renders");
+      const absolute = resolve(rendersRoot, record.run.id, `${viewport}.png`);
+      if (!isInside(rendersRoot, absolute)) {
+        return reply.code(400).send({ code: "PATH_FORBIDDEN", message: "截图路径越界" });
+      }
+      try {
+        const png = await readFile(absolute);
+        reply.header("content-type", "image/png");
+        reply.header("cache-control", "no-store");
+        return reply.send(png);
+      } catch {
+        return reply.code(404).send({ code: "RENDER_NOT_FOUND", message: "该视口暂无截图（run 可能未渲染或已重启）" });
+      }
+    },
+  );
+
   app.get<{ Params: { id: string; artifactId: string } }>(
     "/api/production/runs/:id/artifacts/:artifactId",
     async (request, reply) => {

@@ -8,16 +8,19 @@ const apiMocks = vi.hoisted(() => ({
   createProductionRun: vi.fn(),
   subscribeToProductionRun: vi.fn((_id: string, _onEvent: (event: TraceEvent) => void) => () => undefined),
   getProductionRun: vi.fn(),
+  getProductionArtifact: vi.fn(),
 }));
 
 vi.mock("../lib/production-api", () => ({
-  GOLDEN_PRODUCTION_SAMPLE: {
-    spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page" }, { id: "hero" }, { id: "hero-title" }] },
-    profile: { repositoryPath: "examples/activity-target" },
-  },
+  GOLDEN_SAMPLES: [
+    { id: "campaign", label: "夏日好物节（主视觉页）", payload: { spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page" }, { id: "hero" }, { id: "hero-title" }] }, profile: { repositoryPath: "examples/activity-target" } } },
+    { id: "summer-form", label: "体验官招募（表单页）", payload: { spec: { page: { route: "/campaign/summer-form" }, nodes: [{ id: "page" }] }, profile: { repositoryPath: "examples/activity-target" } } },
+  ],
+  GOLDEN_PRODUCTION_SAMPLE: { spec: { page: { route: "/campaign/summer" }, nodes: [] }, profile: { repositoryPath: "examples/activity-target" } },
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
   getProductionRun: apiMocks.getProductionRun,
+  getProductionArtifact: apiMocks.getProductionArtifact,
 }));
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
@@ -48,6 +51,10 @@ const flowEvents: TraceEvent[] = [
 
 beforeEach(() => {
   apiMocks.createProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
+  apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
+    artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
+    content: { viewports: [{ name: "desktop", width: 1440, height: 900 }, { name: "mobile", width: 390, height: 844 }] },
+  });
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
     artifacts: flowEvents.filter((item) => item.data?.artifactId).map((item, index) => ({ id: `artifact-${index}`, kind: "event", path: "runs/run-1/x.json", createdAt: item.timestamp })),
@@ -75,6 +82,12 @@ describe("ProductionWorkbench", () => {
     expect(screen.getAllByText("src/pages/CampaignPage.tsx").length).toBeGreaterThan(0);
     expect(screen.getByText("仅修改 2 个文件")).toBeInTheDocument();
     expect(screen.getByTestId("production-final-score").textContent).toMatch(/9\d/);
+
+    // 双视口 Playwright 实拍截图展示
+    const shots = await screen.findByTestId("render-shots");
+    expect(shots.querySelectorAll("img").length).toBe(2);
+    expect(shots.textContent).toContain("desktop · 1440×900");
+    expect(shots.textContent).toContain("mobile · 390×844");
   });
 
   it("surfaces the create failure instead of hanging", async () => {

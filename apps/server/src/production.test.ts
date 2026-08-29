@@ -112,6 +112,8 @@ describe("production routes", () => {
     expect(response.json().content).toBeTruthy();
     const missing = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/artifact-notexists` });
     expect(missing.statusCode).toBe(404);
+    const badViewport = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/renders/${encodeURIComponent("../secret")}` });
+    expect(badViewport.statusCode).toBe(400);
   });
 
   it("rejects target paths outside configured roots", async () => {

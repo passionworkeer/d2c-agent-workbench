@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductionViolation, TraceEvent } from "@d2c/contracts";
 import {
-  GOLDEN_PRODUCTION_SAMPLE,
+  GOLDEN_SAMPLES,
   createProductionRun,
+  getProductionArtifact,
   getProductionRun,
   subscribeToProductionRun,
 } from "../lib/production-api";
@@ -16,10 +17,14 @@ export function ProductionWorkbench() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [violations, setViolations] = useState<ProductionViolation[]>([]);
   const [selectedViolation, setSelectedViolation] = useState<ProductionViolation | null>(null);
-  const [sampleLoaded, setSampleLoaded] = useState(false);
+  const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number }>>([]);
+  const sampleLoaded = selectedSampleId !== null;
+  const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
   const unsubscribeRef = useRef<(() => void) | null>(null);
   useEffect(() => () => unsubscribeRef.current?.(), []);
@@ -32,6 +37,16 @@ export function ProductionWorkbench() {
     if (event.state === "COMPLETED" && typeof event.data?.finalScore === "number") {
       setFinalScore(event.data.finalScore as number);
     }
+    // 渲染完成后拉取视口清单，展示真实 Playwright 截图
+    if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
+      const artifactId = event.data.artifactId;
+      void getProductionArtifact(event.runId, artifactId)
+        .then(({ content }) => {
+          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number }> }).viewports ?? [];
+          if (rendered.length) setViewports(rendered);
+        })
+        .catch(() => undefined);
+    }
   }, []);
 
   async function runLoop() {
@@ -42,12 +57,14 @@ export function ProductionWorkbench() {
     setSelectedViolation(null);
     setFinalScore(null);
     try {
-      const { runId } = await createProductionRun(GOLDEN_PRODUCTION_SAMPLE);
+      const { runId: id } = await createProductionRun((selectedSample ?? GOLDEN_SAMPLES[0]!).payload);
+      setRunId(id);
+      setViewports([]);
       unsubscribeRef.current?.();
-      unsubscribeRef.current = subscribeToProductionRun(runId, (event) => {
+      unsubscribeRef.current = subscribeToProductionRun(id, (event) => {
         void pushEvent(event);
         if (TERMINAL_STATES.has(event.state)) {
-          void getProductionRun(runId)
+          void getProductionRun(id)
             .then((detail) => {
               if (detail.violations.length) setViolations(detail.violations);
               setRunning(false);
@@ -79,7 +96,7 @@ export function ProductionWorkbench() {
           {finalScore !== null && (
             <span className="production-score" data-testid="production-final-score">{finalScore}</span>
           )}
-          <button className="button secondary" disabled={sampleLoaded || running} onClick={() => setSampleLoaded(true)}>载入黄金样例</button>
+          <button className="button secondary" disabled={sampleLoaded || running} onClick={() => setSelectedSampleId(GOLDEN_SAMPLES[0]!.id)}>载入黄金样例</button>
           <button className="button primary" disabled={!sampleLoaded || running} onClick={() => void runLoop()}>
             {running ? "生产闭环执行中…" : "运行生产闭环"}
           </button>
@@ -88,8 +105,18 @@ export function ProductionWorkbench() {
 
       {sampleLoaded && events.length === 0 && (
         <div className="production-sample" data-testid="production-sample">
-          黄金样例已载入：{GOLDEN_PRODUCTION_SAMPLE.spec.page.route} · {GOLDEN_PRODUCTION_SAMPLE.spec.nodes.length} 个节点 ·
-          目标仓库 {GOLDEN_PRODUCTION_SAMPLE.profile.repositoryPath}（含一处可修复的 Hero 间距问题）
+          <span>
+            黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
+            目标仓库 {selectedSample?.payload.profile.repositoryPath}（含一处可修复的基线间距问题）
+          </span>
+          <span className="sample-switcher">
+            换个页面：
+            {GOLDEN_SAMPLES.map((sample) => (
+              <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => setSelectedSampleId(sample.id)}>
+                {sample.label}
+              </button>
+            ))}
+          </span>
         </div>
       )}
 
@@ -152,6 +179,24 @@ export function ProductionWorkbench() {
               <ul>
                 {repairFiles.map((file) => <li key={file}><code>{file}</code></li>)}
               </ul>
+            </div>
+          )}
+
+          {runId && viewports.length > 0 && (
+            <div className="render-shots" data-testid="render-shots">
+              <h4>渲染结果 · Playwright 实拍</h4>
+              <div className="render-shot-row">
+                {viewports.map((viewport) => (
+                  <figure key={viewport.name}>
+                    <img
+                      src={`/api/production/runs/${runId}/renders/${viewport.name}`}
+                      alt={`${viewport.name} ${viewport.width}×${viewport.height} 截图`}
+                      width={viewport.width >= 1024 ? 280 : 130}
+                    />
+                    <figcaption>{viewport.name} · {viewport.width}×{viewport.height}</figcaption>
+                  </figure>
+                ))}
+              </div>
             </div>
           )}
         </section>
