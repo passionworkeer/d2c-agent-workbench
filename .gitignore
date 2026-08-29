@@ -16,3 +16,5 @@ runs/
 
 # 生产运行本地数据（run 元数据 / 工作区 / 产物 / 截图）
 .data/
+examples/activity-target/node_modules/
+examples/activity-target/dist/
