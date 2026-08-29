@@ -263,6 +263,52 @@ describe("production routes", () => {
     expect(response.json().code).toBe("MAPPING_FORBIDDEN");
   });
 
+  it("still rejects unregistered components for real screenshot samples", async () => {
+    const { app } = await createApp();
+    const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: {
+      ...payload, sampleId: "commerce-feed",
+      mappings: [{ nodeId: "page", figmaComponent: "Root", codeComponent: "Injected", importPath: "@/unknown", props: {}, confidence: 1, status: "accepted", evidence: [] }],
+    } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("MAPPING_FORBIDDEN");
+  });
+
+  it("attaches the registered sourceFile to trusted mappings only inside the workflow copy", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-sourced-"));
+    roots.push(dataRoot);
+    const seenMappings: Array<Record<string, unknown>> = [];
+    const app = buildApp({
+      production: {
+        dataRoot,
+        adapters: {
+          ...adapters,
+          generate: async (_spec: unknown, _profile: unknown, mappings) => {
+            seenMappings.push(...(mappings as unknown as Array<Record<string, unknown>>));
+            return {
+              plan: { route: "/commerce/feed", files: [{ path: "src/pages/campaign/CommerceFeedPage.tsx", action: "create" as const, purpose: "页面", nodeIds: ["page"] }], reusedComponents: [], localComponents: [], assets: [], styleStrategy: "css-modules", risks: [] },
+              files: { "src/pages/campaign/CommerceFeedPage.tsx": "export function CommerceFeedPage() { return null; }" },
+              sourceMap: { version: "1.0" as const, locators: [] },
+            };
+          },
+        },
+      },
+    });
+    const trusted = { nodeId: "page", figmaComponent: "CommerceFeedRoot", codeComponent: "CommerceFeedExperience", importPath: "@/components/activity/CommerceFeedExperience", props: { atlasUrl: "/commerce-feed/reference.jpg" }, confidence: 1, status: "accepted" as const, evidence: ["黄金样例"] };
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload: {
+      ...payload, sampleId: "commerce-feed", mappings: [trusted, { ...trusted, nodeId: "hero", status: "unmapped" as const }],
+    } });
+    expect(created.statusCode).toBe(202);
+    const detail = await waitTerminal(app, created.json().runId);
+    // 工作流收到服务端增强副本：可信映射带注册 sourceFile；unmapped 不增强
+    expect(seenMappings.length).toBeGreaterThanOrEqual(1);
+    expect(seenMappings.find((mapping) => mapping.status === "accepted")?.sourceFile).toBe("src/components/activity/CommerceFeedExperience.tsx");
+    expect(seenMappings.find((mapping) => mapping.status === "unmapped")?.sourceFile).toBeUndefined();
+    // record 本体与 GET 响应保持客户端原样，sourceFile 不外泄
+    const exposed = (detail.mappings as Array<Record<string, unknown>>).find((mapping) => mapping.status === "accepted");
+    expect(exposed?.codeComponent).toBe("CommerceFeedExperience");
+    expect(exposed?.sourceFile).toBeUndefined();
+  });
+
   it("applies spec edits to the stored run", async () => {
     const { app } = await createApp();
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });

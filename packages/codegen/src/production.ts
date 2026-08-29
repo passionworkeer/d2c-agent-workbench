@@ -15,6 +15,15 @@ export interface GeneratedProductionOutput {
   sourceMap: D2CSourceMap;
 }
 
+/**
+ * 服务端注册表增强过的可信映射：携带映射组件在目标仓库中的源码文件，
+ * 供 composite source locator 归因（映射子树的全部后代节点指向该文件）。
+ * sourceFile 只由服务端在白名单校验通过后附加；客户端 schema 非 strict 会剥离未知键，无法注入。
+ */
+export interface SourcedComponentMapping extends ComponentMapping {
+  sourceFile?: string;
+}
+
 const normalizePath = (value: string) => value.replaceAll("\\", "/").replace(/^\.\//, "");
 const className = (id: string) => id.replace(/[^A-Za-z0-9_-]/g, "-");
 const COMPONENT_IDENTIFIER = /^[A-Z_$][A-Za-z0-9_$]*$/;
@@ -116,7 +125,7 @@ function renderNode(node: ActivityNode, nodes: Map<string, ActivityNode>, assetU
   return `${indent}<${tag} ${attributes}>\n${children.map((child) => renderNode(child, nodes, assetUrls, mappings, depth + 1)).join("\n")}\n${indent}</${tag}>`;
 }
 
-export function generateProductionPage(spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]): GeneratedProductionOutput {
+export function generateProductionPage(spec: ActivitySpec, profile: TargetProjectProfile, mappings: SourcedComponentMapping[]): GeneratedProductionOutput {
   for (const mapping of mappings) {
     if (!COMPONENT_IDENTIFIER.test(mapping.codeComponent)) throw new Error(`invalid codeComponent: ${mapping.codeComponent}`);
     if (!IMPORT_PATH.test(mapping.importPath)) throw new Error(`invalid importPath: ${mapping.importPath}`);
@@ -132,11 +141,20 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
     const relativeAssetPath = normalizePath(asset.path);
     const target = `${normalizePath(profile.assetRoot).replace(/\/$/, "")}/${relativeAssetPath}`;
     assetUrls.set(asset.id, `/${normalizePath(profile.assetRoot).replace(/^public\//, "").replace(/\/$/, "")}/${relativeAssetPath}`);
-    return { source: normalizePath(asset.path), target };
+    return { source: relativeAssetPath, target };
   });
-  if (new Set(assets.map((asset) => asset.target.toLowerCase())).size !== assets.length) {
-    throw new Error("duplicate asset target after normalization");
+  // 多个裁切资产可指向同一物理素材（真实截图样例的整图图集）：同 source 同 target 只拷贝一次；
+  // 仅不同 source 落到同一 target 才是真正的冲突
+  const assetByTarget = new Map<string, { source: string; target: string }>();
+  for (const asset of assets) {
+    const key = asset.target.toLowerCase();
+    const existing = assetByTarget.get(key);
+    if (existing && existing.source.toLowerCase() !== asset.source.toLowerCase()) {
+      throw new Error("duplicate asset target after normalization");
+    }
+    if (!existing) assetByTarget.set(key, asset);
   }
+  const uniqueAssets = [...assetByTarget.values()];
   const nodes = new Map(spec.nodes.map((node) => [node.id, node]));
   const mappingByNode = new Map(mappings.map((mapping) => [mapping.nodeId, mapping]));
   const imports = [...new Map(mappings.filter((mapping) => mapping.status !== "unmapped").map((mapping) => [mapping.codeComponent, mapping.importPath]))]
@@ -144,10 +162,34 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
   const body = spec.nodes.filter((node) => !node.parentId).map((node) => renderNode(node, nodes, assetUrls, mappingByNode, 2, true)).join("\n");
   const code = `import styles from "./${name}.module.css";${imports ? `\n${imports}` : ""}\n\nexport function ${name}() {\n  return (\n${body}\n  );\n}\n\nexport default ${name};\n`;
   const css = `:global(*), :global(*::before), :global(*::after) {\n  box-sizing: border-box;\n}\n\n:global(body) {\n  margin: 0;\n}\n\n:global(p) {\n  margin: 0;\n}\n\n${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
-  const sourceMap = sourceMapSchema.parse({ version: "1.0", locators: spec.nodes.map((node) => ({
-    nodeId: node.id, file: tsxPath, componentName: name, styleFile: cssPath, styleSelector: `.${className(node.id)}`,
-    ...(node.content?.assetId ? { assetPaths: assets.filter((asset) => asset.source === spec.assets.find((item) => item.id === node.content?.assetId)?.path).map((asset) => asset.target) } : {}),
-  })) });
+  // composite source locator：被可信映射组件替换的子树，全部后代节点沿 parentId 链
+  // 继承注册的组件源码文件——归因指向真实组件实现而非生成的包装文件。
+  const compositeSource = new Map<string, { file: string; componentName: string }>();
+  for (const mapping of mappings) {
+    if (mapping.status !== "unmapped" && mapping.sourceFile) {
+      compositeSource.set(mapping.nodeId, { file: mapping.sourceFile, componentName: mapping.codeComponent });
+    }
+  }
+  const inheritedSource = (node: ActivityNode): { file: string; componentName: string } | undefined => {
+    let current: ActivityNode | undefined = node;
+    while (current) {
+      const hit = compositeSource.get(current.id);
+      if (hit) return hit;
+      current = current.parentId ? nodes.get(current.parentId) : undefined;
+    }
+    return undefined;
+  };
+  const sourceMap = sourceMapSchema.parse({ version: "1.0", locators: spec.nodes.map((node) => {
+    const composite = inheritedSource(node);
+    return {
+      nodeId: node.id,
+      file: composite?.file ?? tsxPath,
+      componentName: composite?.componentName ?? name,
+      // 组件子树的样式在组件实现内，不落在生成的 CSS module 里
+      ...(composite ? {} : { styleFile: cssPath, styleSelector: `.${className(node.id)}` }),
+      ...(node.content?.assetId ? { assetPaths: uniqueAssets.filter((asset) => asset.source === spec.assets.find((item) => item.id === node.content?.assetId)?.path).map((asset) => asset.target) } : {}),
+    };
+  }) });
   const plan = codePlanSchema.parse({
     route: spec.page.route,
     files: [
@@ -156,7 +198,7 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
       { path: sourceMapPath, action: "create", purpose: "节点到源码映射", nodeIds: spec.nodes.map((node) => node.id) },
     ],
     reusedComponents: spec.nodes.flatMap((node) => node.component ? [node.component] : []),
-    localComponents: [], assets, styleStrategy: profile.styleStrategy, risks: spec.unresolved.map((item) => item.reason),
+    localComponents: [], assets: uniqueAssets, styleStrategy: profile.styleStrategy, risks: spec.unresolved.map((item) => item.reason),
   });
   validateCodePlan(plan, profile);
   return { plan, files: { [tsxPath]: code, [cssPath]: css, [sourceMapPath]: `${JSON.stringify(sourceMap, null, 2)}\n` }, sourceMap };

@@ -5,7 +5,6 @@ import {
   targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
-  type ComponentMapping,
   type PatchPlan,
   type ProductionViolation,
   type Rect,
@@ -13,7 +12,7 @@ import {
   type TraceEvent,
 } from "@d2c/contracts";
 import { inspectTargetProject, type ProjectIndex } from "@d2c/asset-indexer";
-import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput } from "@d2c/codegen";
+import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput, type SourcedComponentMapping } from "@d2c/codegen";
 import {
   attributeDiffClusters,
   compareImageArtifacts,
@@ -45,7 +44,7 @@ export interface ProductionWorkflowAdapters {
   inspect: (input: { root: string; profile: TargetProjectProfile }) => Promise<ProjectIndex>;
   /** 写入生成代码前播种工作区（复制目标仓库骨架并安装依赖）；返回写入的顶层条目 */
   prepare?: (input: { workspace: RunWorkspace; repositoryRoot: string; profile: TargetProjectProfile }) => Promise<string[]>;
-  generate: (spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]) => GeneratedProductionOutput | Promise<GeneratedProductionOutput>;
+  generate: (spec: ActivitySpec, profile: TargetProjectProfile, mappings: SourcedComponentMapping[]) => GeneratedProductionOutput | Promise<GeneratedProductionOutput>;
   typecheck: () => Promise<CommandResult>;
   build: () => Promise<CommandResult>;
   render: (input: RenderPageInput) => Promise<RenderResult>;
@@ -61,7 +60,8 @@ export interface ProductionWorkflowInput {
   runId: string;
   spec: ActivitySpec;
   profile: TargetProjectProfile;
-  mappings: ComponentMapping[];
+  /** 组件映射；真实样例由服务端附加 sourceFile（可信注册组件的源码文件）用于归因 */
+  mappings: SourcedComponentMapping[];
   repositoryRoot: string;
   workspace: RunWorkspace;
   artifacts: FileArtifactStore;
@@ -174,7 +174,7 @@ export async function* runProductionWorkflow(
   adapters: Omit<ProductionWorkflowAdapters, "generate" | "evaluate" | "attribute" | "planRepair" | "applyRepair">
     & Partial<Pick<ProductionWorkflowAdapters, "generate" | "evaluate" | "attribute" | "planRepair" | "applyRepair">>,
 ): AsyncGenerator<TraceEvent> {
-  const generate = adapters.generate ?? ((spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]) => generateProductionPage(spec, profile, mappings));
+  const generate = adapters.generate ?? ((spec: ActivitySpec, profile: TargetProjectProfile, mappings: SourcedComponentMapping[]) => generateProductionPage(spec, profile, mappings));
   const evaluate = adapters.evaluate ?? ((evaluation: ProductionEvaluationInput) => evaluateProductionRun(evaluation));
   const attribute = adapters.attribute ?? ((clusters: Parameters<typeof attributeDiffClusters>[0], geometry: Parameters<typeof attributeDiffClusters>[1], sourceMap: Parameters<typeof attributeDiffClusters>[2]) => attributeDiffClusters(clusters, geometry, sourceMap));
   const planRepair = adapters.planRepair ?? ((repairInput: RepairPlanningInput) => planTargetedRepair(repairInput));

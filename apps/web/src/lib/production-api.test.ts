@@ -1,4 +1,4 @@
-import { activitySpecSchema, assetCropSchema } from "@d2c/contracts";
+import { activitySpecSchema, assetCropSchema, type ActivitySpec } from "@d2c/contracts";
 import { describe, expect, it } from "vitest";
 import campaignSpecJson from "../../../../examples/activity-pages/campaign/activity-spec.json?raw";
 import campaignProfileJson from "../../../../examples/activity-pages/campaign/target-profile.json?raw";
@@ -22,6 +22,13 @@ const realFixtureSource: Record<(typeof REAL_PAGE_FIXTURES)[number], { spec: str
   "commerce-feed": { spec: commerceFeedSpecJson, profile: commerceFeedProfileJson, manifest: commerceFeedManifestJson },
   "summer-game-festival": { spec: gameFestivalSpecJson, profile: gameFestivalProfileJson, manifest: gameFestivalManifestJson },
   "pet-red-packet": { spec: petRedPacketSpecJson, profile: petRedPacketProfileJson, manifest: petRedPacketManifestJson },
+};
+
+/** 根节点可信映射的期望组件对与素材图集 URL（与服务端 profiles.ts 注册表对齐） */
+const REAL_PAGE_ROOT_MAPPINGS: Record<(typeof REAL_PAGE_FIXTURES)[number], { component: string; atlasUrl: string }> = {
+  "commerce-feed": { component: "CommerceFeedExperience", atlasUrl: "/commerce-feed/reference.jpg" },
+  "summer-game-festival": { component: "SummerGameFestivalExperience", atlasUrl: "/game-festival/reference.jpg" },
+  "pet-red-packet": { component: "PetRedPacketExperience", atlasUrl: "/pet-red-packet/reference.jpg" },
 };
 
 describe("GOLDEN_SAMPLES", () => {
@@ -129,6 +136,23 @@ describe("真实移动活动页黄金样例（三张截图混合重建）", () =
       expect(sample, `${fixtureId}: 未注册进 GOLDEN_SAMPLES`).toBeTruthy();
       expect(JSON.parse(source.spec), `${fixtureId}: examples spec 与内嵌样例漂移`).toEqual(sample!.payload.spec);
       expect(JSON.parse(source.profile).repositoryPath, `${fixtureId}: profile 目标仓库漂移`).toBe(sample!.targetRepository);
+    });
+
+    it(`${fixtureId}: 携带根节点可信映射且与目标组件对齐（不携带服务端 sourceFile）`, () => {
+      const expected = REAL_PAGE_ROOT_MAPPINGS[fixtureId]!;
+      const sample = GOLDEN_SAMPLES.find((item) => item.id === fixtureId);
+      const accepted = (sample!.payload.mappings ?? []).filter((mapping) => mapping.status === "accepted");
+      expect(accepted, `${fixtureId}: 应恰好一条可信映射`).toHaveLength(1);
+      const mapping = accepted[0]!;
+      const spec = JSON.parse(source.spec) as ActivitySpec;
+      const rootIds = spec.nodes.filter((node: { parentId?: string }) => !node.parentId).map((node: { id: string }) => node.id);
+      expect(rootIds, `${fixtureId}: 根节点应为 page`).toEqual(["page"]);
+      expect(mapping.nodeId).toBe("page");
+      expect(mapping.codeComponent).toBe(expected.component);
+      expect(mapping.importPath).toBe(`@/components/activity/${expected.component}`);
+      expect(mapping.props.atlasUrl).toBe(expected.atlasUrl);
+      expect(mapping.evidence.length).toBeGreaterThan(0);
+      expect((mapping as Record<string, unknown>).sourceFile, `${fixtureId}: 客户端映射不得携带服务端专用字段`).toBeUndefined();
     });
   }
 });

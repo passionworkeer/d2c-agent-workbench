@@ -73,6 +73,34 @@ describe("generateProductionPage", () => {
     ]);
   });
 
+  it("attributes mapped subtrees to the trusted component source file", () => {
+    const output = generateProductionPage(spec, profile, [{
+      nodeId: "page", figmaComponent: "CampaignRoot", codeComponent: "CampaignExperience",
+      importPath: "@/components/activity/CampaignExperience", props: { atlasUrl: "/campaign/reference.jpg" },
+      confidence: 1, status: "accepted", evidence: [],
+      sourceFile: "src/components/activity/CampaignExperience.tsx",
+    }]);
+    const code = output.files["src/pages/campaign/CampaignPage.tsx"] ?? "";
+    expect(code).toContain('import { CampaignExperience } from "@/components/activity/CampaignExperience"');
+    expect(code).toContain("<CampaignExperience");
+    const byNode = new Map(output.sourceMap.locators.map((locator) => [locator.nodeId, locator]));
+    // composite 归因：根映射的子树沿 parentId 链全部指向注册组件源文件，不再指向生成的 CSS
+    for (const id of ["page", "hero", "hero-title", "hero-image"]) {
+      expect(byNode.get(id)?.file).toBe("src/components/activity/CampaignExperience.tsx");
+      expect(byNode.get(id)?.componentName).toBe("CampaignExperience");
+      expect(byNode.get(id)?.styleFile).toBeUndefined();
+      expect(byNode.get(id)?.styleSelector).toBeUndefined();
+    }
+    // 无 sourceFile 的普通映射维持既有归因（生成文件 + 生成样式）
+    const plain = generateProductionPage(spec, profile, [{
+      nodeId: "page", figmaComponent: "CampaignRoot", codeComponent: "CampaignExperience",
+      importPath: "@/components/activity/CampaignExperience", props: {}, confidence: 1, status: "accepted", evidence: [],
+    }]);
+    const plainHero = plain.sourceMap.locators.find((locator) => locator.nodeId === "hero");
+    expect(plainHero?.file).toBe("src/pages/campaign/CampaignPage.tsx");
+    expect(plainHero?.styleFile).toBe("src/pages/campaign/CampaignPage.module.css");
+  });
+
   it("rejects mapping identifiers that could inject source code", () => {
     expect(() => generateProductionPage(spec, profile, [{
       nodeId: "hero",

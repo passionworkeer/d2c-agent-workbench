@@ -35,6 +35,12 @@ export interface ProductionTargetRegistration {
   referenceScreenshot: string;
   /** 仅用于本地黄金样例的可信基准评审；公共请求不能注入分数。 */
   semanticReviewScore: number;
+  /**
+   * 服务端专用：可信根映射对应的目标仓库源码文件。
+   * composite source locator 用它做归因（映射子树全部节点指向该文件）；
+   * 仅在服务端 allowlist 校验通过后附加，客户端 mapping 无法携带。
+   */
+  sourceFile?: string;
   /** 目标仓库允许复用的组件集合。当前试点仓库没有设计系统组件，因此为空。 */
   allowedMappings: Array<Pick<ComponentMapping, "codeComponent" | "importPath">>;
 }
@@ -47,10 +53,32 @@ const target = (fixture: string): ProductionTargetRegistration => ({
   allowedMappings: [],
 });
 
+/** 真实手机截图样例：根节点映射到目标仓库中手工实现的可信页面组件。 */
+const realPageTarget = (fixture: string, options: {
+  assetDir: string;
+  route: string;
+  component: string;
+}): ProductionTargetRegistration => ({
+  profile: {
+    ...ACTIVITY_TARGET_PROFILE,
+    assetRoot: `public/${options.assetDir}`,
+    previewUrl: `http://127.0.0.1:4173${options.route}`,
+    allowedWriteGlobs: [...ACTIVITY_TARGET_PROFILE.allowedWriteGlobs, `public/${options.assetDir}/**`],
+  },
+  assetSourceRoot: `examples/activity-pages/${fixture}`,
+  referenceScreenshot: `examples/activity-pages/${fixture}/reference.jpg`,
+  semanticReviewScore: 95,
+  sourceFile: `src/components/activity/${options.component}.tsx`,
+  allowedMappings: [{ codeComponent: options.component, importPath: `@/components/activity/${options.component}` }],
+});
+
 /** 用 sampleId 查表：执行配置、证据与组件白名单全部由服务端持有。 */
 const PROFILE_REGISTRY: Record<string, ProductionTargetRegistration> = {
   campaign: target("campaign"),
   "summer-form": target("summer-form"),
+  "commerce-feed": realPageTarget("commerce-feed", { assetDir: "commerce-feed", route: "/commerce/feed", component: "CommerceFeedExperience" }),
+  "summer-game-festival": realPageTarget("summer-game-festival", { assetDir: "game-festival", route: "/game/festival", component: "SummerGameFestivalExperience" }),
+  "pet-red-packet": realPageTarget("pet-red-packet", { assetDir: "pet-red-packet", route: "/pet/red-packet", component: "PetRedPacketExperience" }),
 };
 
 export function resolveTargetBySampleId(sampleId: string): ProductionTargetRegistration {

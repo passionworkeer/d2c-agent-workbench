@@ -48,6 +48,12 @@ export interface ProductionRunRecord {
   referenceScreenshot: string;
   /** 仅来自服务端注册/服务端评审适配器，公共请求不能注入。 */
   semanticReviewScore?: number;
+  /**
+   * 服务端注册的可信映射源码文件（composite 归因用）。
+   * 来自 profiles.ts 注册表，仅在 startWorkflow 里增强 mappings 副本传入 orchestrator；
+   * record.mappings 本体与 GET 响应不携带，客户端 schema 剥离后也无法注入。
+   */
+  sourceFile?: string;
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
   generated?: GeneratedProductionOutput;
@@ -107,6 +113,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
             assetSourceRoot: parsed.assetSourceRoot ?? "",
             referenceScreenshot: parsed.referenceScreenshot ?? "",
             ...(parsed.semanticReviewScore !== undefined ? { semanticReviewScore: parsed.semanticReviewScore } : {}),
+          ...(parsed.sourceFile ? { sourceFile: parsed.sourceFile } : {}),
             ...(parsed.latestEvaluation ? { latestEvaluation: productionMetricsSchema.parse(parsed.latestEvaluation) } : {}),
             ...(parsed.latestTextEvidence ? { latestTextEvidence: parsed.latestTextEvidence as { expected: string[]; actual: string[] } } : {}),
             ...(parsed.specEdited ? { specEdited: true } : {}),
@@ -135,6 +142,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       assetSourceRoot: record.assetSourceRoot,
       referenceScreenshot: record.referenceScreenshot,
       semanticReviewScore: record.semanticReviewScore,
+      sourceFile: record.sourceFile,
       latestEvaluation: record.latestEvaluation,
       latestTextEvidence: record.latestTextEvidence,
       specEdited: record.specEdited,
@@ -216,11 +224,17 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       };
     }
     try {
+      // 服务端增强：可信映射副本附加注册的 sourceFile 供 composite 归因。
+      // POST 时非 unmapped 映射都已通过 allowedMappings 白名单校验，
+      // record.mappings 本体保持客户端原样（持久化与 GET 响应不受污染）。
+      const workflowMappings = record.sourceFile
+        ? record.mappings.map((mapping) => (mapping.status === "unmapped" ? mapping : { ...mapping, sourceFile: record.sourceFile }))
+        : record.mappings;
       for await (const event of runProductionWorkflow({
         runId: record.run.id,
         spec: record.spec,
         profile: record.profile,
-        mappings: record.mappings,
+        mappings: workflowMappings,
         repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
         workspace: record.workspace,
         artifacts: record.artifactStore,
@@ -329,6 +343,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         assetSourceRoot,
         referenceScreenshot,
         semanticReviewScore: registration.semanticReviewScore,
+        ...(registration.sourceFile ? { sourceFile: registration.sourceFile } : {}),
       };
       records.set(id, record);
       while (records.size > MAX_RUNS) {

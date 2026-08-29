@@ -257,7 +257,15 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
     payload: {
       sampleId: "commerce-feed",
       spec: JSON.parse(commerceFeedSpecJson) as ActivitySpec,
-      mappings: [],
+      mappings: [
+        {
+          nodeId: "page", figmaComponent: "CommerceFeedRoot",
+          codeComponent: "CommerceFeedExperience", importPath: "@/components/activity/CommerceFeedExperience",
+          props: { atlasUrl: "/commerce-feed/reference.jpg" },
+          confidence: 1, status: "accepted",
+          evidence: ["真实截图混合重建：导航/卡片/底栏语义化组件 + 参考图裁切素材，real-pages.test 全量文本与几何校验通过"],
+        },
+      ],
       referenceNodes: {
         "top-nav": { x: 0, y: 46, width: 390, height: 44 },
         "commerce-search": { x: 12, y: 94, width: 366, height: 42 },
@@ -277,7 +285,15 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
     payload: {
       sampleId: "summer-game-festival",
       spec: JSON.parse(gameFestivalSpecJson) as ActivitySpec,
-      mappings: [],
+      mappings: [
+        {
+          nodeId: "page", figmaComponent: "SummerGameFestivalRoot",
+          codeComponent: "SummerGameFestivalExperience", importPath: "@/components/activity/SummerGameFestivalExperience",
+          props: { atlasUrl: "/game-festival/reference.jpg" },
+          confidence: 1, status: "accepted",
+          evidence: ["真实截图混合重建：任务/福利/兑换/Tab 语义化组件 + 主视觉裁切，real-pages.test 全量文本与几何校验通过"],
+        },
+      ],
       referenceNodes: {
         "festival-hero": { x: 0, y: 0, width: 390, height: 294 },
         "collab-header": { x: 0, y: 272, width: 390, height: 38 },
@@ -296,7 +312,15 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
     payload: {
       sampleId: "pet-red-packet",
       spec: JSON.parse(petRedPacketSpecJson) as ActivitySpec,
-      mappings: [],
+      mappings: [
+        {
+          nodeId: "page", figmaComponent: "PetRedPacketRoot",
+          codeComponent: "PetRedPacketExperience", importPath: "@/components/activity/PetRedPacketExperience",
+          props: { atlasUrl: "/pet-red-packet/reference.jpg" },
+          confidence: 1, status: "accepted",
+          evidence: ["真实截图混合重建：养成舞台/喂食/任务区语义化组件 + 标题与舞台素材裁切，real-pages.test 全量文本与几何校验通过"],
+        },
+      ],
       referenceNodes: {
         "pet-app-nav": { x: 0, y: 0, width: 390, height: 42 },
         "level-progress": { x: 21, y: 144, width: 349, height: 90 },
