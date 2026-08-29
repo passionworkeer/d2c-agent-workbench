@@ -17,6 +17,11 @@ export default defineConfig({
       "@d2c/canvas-ops": resolve(__dirname, "packages/canvas-ops/src/index.ts"),
     },
   },
+  test: {
+    // 排除 git worktree 拷贝：根命令 vitest run scripts/consistency.test.ts 是子串过滤，
+    // 会连带命中 .worktrees/*/scripts/consistency.test.ts（那边的 fixture 只在各自分支存在）
+    exclude: ["**/node_modules/**", "**/dist/**", ".worktrees/**"],
+  },
   // 不显式限定 include —— 让每个 workspace 包各自的 vitest run 默认发现本目录下的 *.test.ts，
   // 同时 root scripts/*.test.ts 通过别名仍可解析 @d2c/* 源码。
 });

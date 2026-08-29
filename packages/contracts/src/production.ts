@@ -264,7 +264,7 @@ export const specEditOpsSchema = z.array(specEditOpSchema);
 export const productionRunSchema = z.object({
   id: z.string().min(1),
   mode: z.literal("production"),
-  state: z.enum(["CREATED", "INPUT_VALIDATED", "PROJECT_INSPECTED", "VISUAL_DRAFTED", "SPEC_VALIDATED", "MAPPINGS_RESOLVED", "CODE_PLANNED", "GENERATED", "TYPECHECKED", "BUILT", "RENDERED", "EVALUATED", "ATTRIBUTED", "REPAIR_PLANNED", "REPAIR_APPLIED", "COMPLETED", "NEEDS_REVIEW", "FAILED"]),
+  state: z.enum(["CREATED", "INPUT_VALIDATED", "PROJECT_INSPECTED", "VISUAL_DRAFTED", "SPEC_VALIDATED", "MAPPINGS_RESOLVED", "PREPARING", "CODE_PLANNED", "GENERATED", "TYPECHECKED", "BUILT", "RENDERED", "EVALUATED", "ATTRIBUTED", "REPAIR_PLANNED", "REPAIR_APPLIED", "COMPLETED", "NEEDS_REVIEW", "FAILED"]),
   status: z.enum(["running", "completed", "needs_review", "failed"]),
   createdAt: z.string().datetime(),
   iteration: z.number().int().min(0).max(3),

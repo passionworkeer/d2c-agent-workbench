@@ -176,6 +176,7 @@ export const workflowStateSchema = z.enum([
   "VISUAL_DRAFTED",
   "SPEC_VALIDATED",
   "MAPPINGS_RESOLVED",
+  "PREPARING",
   "TYPECHECKED",
   "RENDERED",
   "ATTRIBUTED",

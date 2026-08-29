@@ -94,6 +94,7 @@ const stateNames: Record<WorkflowState | "READY", string> = {
   VISUAL_DRAFTED: "视觉草稿完成",
   SPEC_VALIDATED: "Spec 校验通过",
   MAPPINGS_RESOLVED: "映射已确认",
+  PREPARING: "安装依赖中",
   TYPECHECKED: "类型检查通过",
   RENDERED: "已渲染",
   ATTRIBUTED: "已归因",

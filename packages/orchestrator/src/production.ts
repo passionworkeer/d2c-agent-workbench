@@ -205,6 +205,8 @@ export async function* runProductionWorkflow(
   yield event("CODE_PLANNED", "代码计划已生成", `${generated.plan.files.length} 个文件 · ${generated.plan.reusedComponents.length} 个复用组件`, { artifactId: planArtifact.id, files: generated.plan.files.map((file) => file.path) });
 
   if (adapters.prepare) {
+    // 依赖安装是最慢的一步（冷启动 1–2 分钟）：先发事件让观众知道在装什么，而不是盯着 CODE_PLANNED 静默等待
+    yield event("PREPARING", "播种隔离工作区并安装依赖", "复制目标仓库 → pnpm install（首次运行约 1–2 分钟，热缓存秒级）");
     const seeded = await adapters.prepare({ workspace: input.workspace, repositoryRoot: input.repositoryRoot, profile: input.profile });
     const prepareArtifact = await input.artifacts.writeJson("workspace", "seed-manifest", { entries: seeded });
     yield event("GENERATED", "工作区已播种目标仓库", `复制 ${seeded.length} 个顶层条目并安装依赖`, { artifactId: prepareArtifact.id, entries: seeded });

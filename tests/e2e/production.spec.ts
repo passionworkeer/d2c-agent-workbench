@@ -15,6 +15,8 @@ test("activity page production loop builds, evaluates, attributes and repairs", 
 
   await page.getByRole("button", { name: "运行生产闭环" }).click();
 
+  // 依赖安装是最慢的一步：PREPARING 事件让观众知道在装什么，而不是静默等待
+  await expect(page.getByText("PREPARING")).toBeVisible({ timeout: 120_000 });
   await expect(page.getByText("真实构建通过").first()).toBeVisible({ timeout: 300_000 });
   await expect(page.getByText("COMPLETED")).toBeVisible({ timeout: 300_000 });
 
