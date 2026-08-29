@@ -26,6 +26,7 @@ import type { GeneratedProductionOutput } from "@d2c/codegen";
 import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
 import { resolveTargetBySampleId } from "./profiles";
+import { reviewSemanticFidelity } from "./semantic-review";
 
 export interface ProductionRouteOptions {
   /** 运行数据（runs/、workspaces/、artifacts/、renders/）落盘根目录 */
@@ -476,6 +477,56 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       } catch {
         return reply.code(404).send({ code: "RENDER_NOT_FOUND", message: "该视口暂无截图（run 可能未渲染或已重启）" });
       }
+    },
+  );
+
+  // 闭环外 VLM 语义复核：key 走 X-LLM-Key 请求头（与 /api/vision/interpret 同模式），
+  // 服务端读参考图 + 桌面渲染截图调视觉模型。结果只回给本次请求——不写 run.json、
+  // 不进事件流、不进下载报告（key 与复核分数都不落盘），闭环 finalScore 保持确定性。
+  app.post<{ Params: { id: string }; Body: { baseUrl?: string; model?: string } }>(
+    "/api/production/runs/:id/semantic-review",
+    async (request, reply) => {
+      const record = records.get(request.params.id);
+      if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
+      const apiKey = request.headers["x-llm-key"];
+      if (typeof apiKey !== "string" || apiKey.length === 0) {
+        return reply.code(400).send({ code: "SEMANTIC_BAD_REQUEST", message: "缺少 X-LLM-Key 请求头（请在设置面板填写）" });
+      }
+      const rendersRoot = resolve(dataRoot, "renders");
+      const renderedPath = resolve(rendersRoot, record.run.id, "desktop.png");
+      if (!isInside(rendersRoot, renderedPath)) {
+        return reply.code(400).send({ code: "PATH_FORBIDDEN", message: "截图路径越界" });
+      }
+      const [referenceBuffer, renderedBuffer] = await Promise.all([
+        readFile(record.referenceScreenshot).catch(() => null),
+        readFile(renderedPath).catch(() => null),
+      ]);
+      if (!referenceBuffer) {
+        return reply.code(500).send({ code: "REFERENCE_MISSING", message: `参考图缺失：${record.referenceScreenshot}` });
+      }
+      if (!renderedBuffer) {
+        return reply.code(409).send({ code: "RENDER_NOT_READY", message: "渲染截图尚未生成（run 可能未到渲染步骤或已重启）" });
+      }
+      const referenceMedia = record.referenceScreenshot.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+      const result = await reviewSemanticFidelity({
+        baseUrl: request.body?.baseUrl ?? "https://api.minimaxi.com/anthropic",
+        apiKey,
+        model: request.body?.model ?? "MiniMax-M3",
+        referenceDataUrl: `data:${referenceMedia};base64,${referenceBuffer.toString("base64")}`,
+        renderedDataUrl: `data:image/png;base64,${renderedBuffer.toString("base64")}`,
+      });
+      if (!result.ok) {
+        const httpCode = result.code === "SEMANTIC_UNAVAILABLE" ? 502 : 400;
+        return reply.code(httpCode).send({ code: result.code, message: result.message });
+      }
+      return reply.code(200).send({
+        score: result.score,
+        summary: result.summary,
+        observations: result.observations,
+        model: result.model,
+        source: "vlm",
+        note: "闭环外复核证据：不计入 finalScore，闭环内 semanticReview 仍为服务端黄金基准（保证可复现）",
+      });
     },
   );
 

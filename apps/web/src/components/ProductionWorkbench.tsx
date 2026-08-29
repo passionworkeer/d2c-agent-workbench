@@ -8,8 +8,11 @@ import {
   getProductionArtifact,
   getProductionRun,
   repairProductionRun,
+  requestSemanticReview,
   subscribeToProductionRun,
+  type SemanticReviewOutcome,
 } from "../lib/production-api";
+import { loadProviderSettings } from "../lib/provider";
 import { PrototypeEditor } from "./PrototypeEditor";
 
 // 生产工作台：真实构建/渲染/评测/修复闭环的可视化。
@@ -58,6 +61,10 @@ export function ProductionWorkbench() {
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
+  // 闭环外 VLM 语义复核（key 仅存 localStorage，经 X-LLM-Key 头转发，不进报告）
+  const [semanticReview, setSemanticReview] = useState<SemanticReviewOutcome | null>(null);
+  const [semanticReviewBusy, setSemanticReviewBusy] = useState(false);
+  const [semanticReviewError, setSemanticReviewError] = useState<string | null>(null);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
@@ -150,6 +157,8 @@ export function ProductionWorkbench() {
     setFinalScore(null);
     setLatestMetrics(null);
     setLatestTextEvidence(null);
+    setSemanticReview(null);
+    setSemanticReviewError(null);
     try {
       const sample = selectedSample ?? GOLDEN_SAMPLES[0]!;
       const submittedSpec = editableSpec ?? sample.payload.spec;
@@ -210,6 +219,26 @@ export function ProductionWorkbench() {
     }
   }
 
+  // 闭环外 VLM 语义复核：读 localStorage 的 provider 设置，key 经请求头转发、不落任何报告
+  async function runSemanticReview() {
+    if (!runId || running || semanticReviewBusy) return;
+    const settings = loadProviderSettings();
+    if (settings.provider !== "llm" || !settings.key) {
+      setSemanticReviewError("需要真视觉模型：在「设置」（右上角）选择 LLM provider 并填写 key（仅存浏览器 localStorage）");
+      return;
+    }
+    setSemanticReviewBusy(true);
+    setSemanticReviewError(null);
+    try {
+      setSemanticReview(await requestSemanticReview(runId, settings));
+    } catch (cause) {
+      setSemanticReview(null);
+      setSemanticReviewError(cause instanceof Error ? cause.message : "VLM 语义复核失败");
+    } finally {
+      setSemanticReviewBusy(false);
+    }
+  }
+
   // 按编辑重跑：服务端会因 specEdited 强制重新生成，保证新 spec 与代码一致
   async function rerunAfterEdit() {
     if (!runId || running) return;
@@ -221,6 +250,8 @@ export function ProductionWorkbench() {
     setViewports([]);
     setLatestMetrics(null);
     setLatestTextEvidence(null);
+    setSemanticReview(null);
+    setSemanticReviewError(null);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
@@ -342,6 +373,36 @@ export function ProductionWorkbench() {
               </tr>
             </tbody>
           </table>
+          <div className="semantic-review" data-testid="semantic-review">
+            <div className="semantic-review-head">
+              <strong>VLM 语义复核（闭环外）</strong>
+              <small>真视觉模型对比参考图与渲染截图；分数不计入 finalScore——闭环内 semanticReview 保持服务端黄金基准，无 key 也全链路可复现</small>
+            </div>
+            <button
+              className="button secondary"
+              disabled={!runId || running || semanticReviewBusy}
+              onClick={() => void runSemanticReview()}
+            >
+              {semanticReviewBusy ? "VLM 评审中…" : "运行 VLM 语义复核"}
+            </button>
+            {semanticReviewError && <p className="semantic-review-error" role="alert">{semanticReviewError}</p>}
+            {semanticReview && (
+              <div className="semantic-review-result" data-testid="semantic-review-result">
+                <p>
+                  <strong>VLM 实测 {semanticReview.score.toFixed(0)}</strong>
+                  {latestMetrics?.visual.semanticReview != null && (
+                    <> vs 闭环黄金基准 {latestMetrics.visual.semanticReview.toFixed(0)}（{semanticReview.model}）</>
+                  )}
+                </p>
+                {semanticReview.summary && <p>{semanticReview.summary}</p>}
+                {semanticReview.observations.length > 0 ? (
+                  <ul>{semanticReview.observations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                ) : (
+                  <p className="ok">未发现语义差异</p>
+                )}
+              </div>
+            )}
+          </div>
           {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
             <details className="text-evidence" data-testid="text-evidence" open={baselineTexts !== null}>
               <summary>{baselineTexts !== null ? "文本证据逐项对比（已应用编辑 · 基线 → spec → 渲染）" : "文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）"}</summary>

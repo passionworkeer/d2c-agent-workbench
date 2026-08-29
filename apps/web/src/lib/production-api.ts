@@ -117,6 +117,26 @@ export async function getProductionArtifact(runId: string, artifactId: string): 
   return readJson(await fetch(`/api/production/runs/${runId}/artifacts/${artifactId}`));
 }
 
+export interface SemanticReviewOutcome {
+  score: number;
+  summary: string;
+  observations: string[];
+  model: string;
+}
+
+/** 闭环外 VLM 语义复核：key 走 X-LLM-Key 请求头（仅本次请求生命周期，不落任何报告）。 */
+export async function requestSemanticReview(
+  runId: string,
+  settings: { key: string; baseUrl: string; model: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<SemanticReviewOutcome> {
+  return readJson(await fetchImpl(`/api/production/runs/${runId}/semantic-review`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-llm-key": settings.key },
+    body: JSON.stringify({ baseUrl: settings.baseUrl, model: settings.model }),
+  }));
+}
+
 /** 黄金样例：不同结构的活动页共享同一目标仓库骨架（含可修复的基线间距问题） */
 export interface GoldenSample {
   id: string;

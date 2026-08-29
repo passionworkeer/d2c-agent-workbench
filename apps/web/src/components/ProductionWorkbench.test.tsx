@@ -11,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   getProductionArtifact: vi.fn(),
   editProductionRun: vi.fn(),
   repairProductionRun: vi.fn(),
+  requestSemanticReview: vi.fn(),
 }));
 
 vi.mock("../lib/production-api", () => ({
@@ -24,6 +25,7 @@ vi.mock("../lib/production-api", () => ({
   getProductionArtifact: apiMocks.getProductionArtifact,
   editProductionRun: apiMocks.editProductionRun,
   repairProductionRun: apiMocks.repairProductionRun,
+  requestSemanticReview: apiMocks.requestSemanticReview,
 }));
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
@@ -79,6 +81,7 @@ beforeEach(() => {
   apiMocks.createProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.editProductionRun.mockReset().mockResolvedValue({ spec: {} });
   apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
+  apiMocks.requestSemanticReview.mockReset();
   apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
     content: { viewports: [
@@ -103,6 +106,28 @@ afterEach(() => {
 });
 
 describe("ProductionWorkbench", () => {
+  it("runs the out-of-loop VLM semantic review and contrasts it with the in-loop golden baseline", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    await screen.findByText("真实构建通过");
+
+    // 未配置 key：点按钮给设置指引，不伪造结果
+    await user.click(screen.getByRole("button", { name: "运行 VLM 语义复核" }));
+    expect(screen.getByRole("alert").textContent).toContain("设置");
+
+    // 配好 key（仅 localStorage）：VLM 实测分与闭环黄金基准并列展示
+    localStorage.setItem("d2c-agent-workbench.provider.v1", JSON.stringify({ provider: "llm", baseUrl: "https://api.example.com/anthropic", model: "test-model", key: "sk-test" }));
+    apiMocks.requestSemanticReview.mockResolvedValueOnce({ score: 86, summary: "结构一致，细节有偏移", observations: ["主视觉间距偏小"], model: "test-model" });
+    await user.click(screen.getByRole("button", { name: "运行 VLM 语义复核" }));
+    const result = await screen.findByTestId("semantic-review-result");
+    expect(result.textContent).toContain("VLM 实测 86");
+    expect(result.textContent).toContain("闭环黄金基准 95");
+    expect(result.textContent).toContain("主视觉间距偏小");
+    localStorage.removeItem("d2c-agent-workbench.provider.v1");
+  });
+
   it("shows real build artifacts, diff regions and targeted patch scope", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);

@@ -57,7 +57,7 @@
 - 点「载入黄金样例」→「运行生产闭环」。这不是演示管线，是**真的**：目标仓库复制进隔离工作区 → `pnpm install` → 真实 `tsc` typecheck → 真实 `vite build` → 自由端口起 `vite preview` → Playwright 渲染采集逐节点几何
 - 黄金样例内置一处可修复问题（目标仓库骨架 padding-left 48px vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` **P1** → 点击违规展开 **Region → Node → Source**（直接定位到 CampaignPage.module.css 的 .hero）→ **桌面截图上叠加红框圈出 hero 区域**（按节点几何等比缩放、按 severity 上色）→ 定向修复**只改这一个文件**（CSS 声明级补丁，回滚快照已存档）
 - 复评后 **COMPLETED，终局 93+ 分**。事件流里每个状态都带真实 Artifact ID；build 失败是 P0 硬门槛，任一视口横向溢出是 P1 硬门槛，分数刷不掉
-- **诚实评分一幕**：跑完后看右上「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；视觉子分里 perceptualDiff 由服务端注册的真实参考截图（`examples/activity-pages/{sample}/reference.png`）跑 pixel diff 得出，textConsistency 100 是从 spec 文本节点与渲染 DOM.textContent 逐项对比得出（展开面板可见每行 ✓），semanticReview 则明确标为服务端本地黄金基准 95（公共请求不可覆盖），不冒充真实 VLM 结果。
+- **诚实评分一幕**：跑完后看右上「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；视觉子分里 perceptualDiff 由服务端注册的真实参考截图（`examples/activity-pages/{sample}/reference.png`）跑 pixel diff 得出，textConsistency 100 是从 spec 文本节点与渲染 DOM.textContent 逐项对比得出（展开面板可见每行 ✓），semanticReview 则明确标为服务端本地黄金基准 95（公共请求不可覆盖），不冒充真实 VLM 结果。面板下方「VLM 语义复核（闭环外）」可一键拉真视觉模型对比参考图与渲染截图（key 仅存浏览器 localStorage，经代理转发）：VLM 实测分与闭环黄金基准**并列展示**、逐条差异可见，但**不计入 finalScore**——闭环评分保持无 key 也可复现，VLM 是按需的复核证据而非门槛，这是可部署工程的取舍。
 - **设计干预一幕**（60 秒内完成）：闭环完成后在「Puck 原型编辑」里把标题改成”全场 6 折”→ 点「保存编辑到 Run」（类型化 SpecEditOp 回写 ActivitySpec，不直接改代码）→ 工作台「文本证据」面板自动展开，标题行新增「基线（保存前）· 全场 5 折」列，与新 spec「全场 6 折」并列，差异列直接显示「✓ 编辑已应用」——观众立刻看到编辑意图落到了 ActivitySpec；点「按编辑重跑闭环」→ 重新生成 → 构建渲染复评 → 渲染 DOM 列也跟着变成 6 折——"编辑意图直达代码，全程可追溯"
 - 收尾可切第二个黄金样例「体验官招募（表单页）」再跑一遍：**不同分数、不同修复文件**（表单页是 SummerFormPage.module.css）——不同页面结构、独立分数，证明评分非硬编码；时间充裕再切「快手商城」真实移动样例（手机实拍 jpg 参考图 + 图集裁切资产），跑出 **NEEDS_REVIEW 90.6 分 + 剩余 3 违规**——不是所有样例都满分收场，这本身就是评测诚实的活证据；最后点「下载 Run 报告」把完整证据链（事件流 + 分数构成 + 文本证据 + 违规 + 逐节点几何）作为 JSON 带走
 - 一句话收束：”前面五条亮点是可演示的链路，这一条是能落进研发流程的系统——每一步可追溯、可回滚、可评测、可被设计意图干预，**且评测本身不撒谎**。”
@@ -238,7 +238,7 @@ Build 和 Eval 隔离上下文；关键门槛由 TypeScript、Build、页面加�
    - **typecheck / build**：真实 `tsc` 与 `vite build`，白名单命令、最小 env 白名单（PATH/Node/HOME 等），超时杀树；失败即 P0，分数不可覆盖；**修复后失败自动 restoreRollback 到修复前快照**
    - **渲染评测**：`vite preview` 起服务，Playwright 双视口（desktop 1440×900 + mobile 390×844）渲染，采集逐节点几何——首轮 hero 偏移 48px（目标仓库骨架的已知问题），产出 `layout:hero` P1；**任一视口横向溢出也是 P1 硬门槛**
    - **归因与局部修复**：点击违规展示 Region → Node → Source（CampaignPage.module.css 的 .hero），**桌面截图上叠加红框圈出 hero 区域**（按节点几何等比缩放、按 severity 上色），修复仅触碰 1 个文件，CSS 声明级替换，回滚快照已存档
-   - **诚实评分**：复评后看「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；perceptualDiff 走真实像素 diff（每个黄金样例在服务端注册了 reference.png + compareImages 适配器），textConsistency 100 附带 spec 文本 vs 渲染 DOM 的逐项对比（展开面板可见每行 ✓），semanticReview 是服务端黄金基准——**评测本身不撒谎**
+   - **诚实评分**：复评后看「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；perceptualDiff 走真实像素 diff（每个黄金样例在服务端注册了 reference.png + compareImages 适配器），textConsistency 100 附带 spec 文本 vs 渲染 DOM 的逐项对比（展开面板可见每行 ✓），semanticReview 是服务端黄金基准（闭环外另有「VLM 语义复核」按钮拉真视觉模型并列对比，不计入 finalScore）——**评测本身不撒谎**
    - **复评通过**：修复后重新 typecheck/build/渲染评测，hero 回到 (0,0,1440,500)，终局分数 ≥90，状态 COMPLETED。
 4. 收尾追问点：
    - **为什么不重新生成整页？** 修复是文件级定向 patch（≤5 文件、幂等 CSS/AST 补丁），保留人工确认的映射与编辑。

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { activitySpecSchema, type ActivitySpec, type TargetProjectProfile } from "@d2c/contracts";
@@ -224,6 +224,58 @@ describe("production routes", () => {
     // 黄金样例 hero-title.content.text = "夏日好物节"；渲染产物 texts 同名条目 "夏日好物节"
     expect(detail.latestTextEvidence.expected).toContain("夏日好物节");
     expect(detail.latestTextEvidence.actual).toContain("夏日好物节");
+  });
+
+  it("serves on-demand VLM semantic review via X-LLM-Key without persisting it", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    await waitTerminal(app, runId);
+
+    // 无 key → 400
+    const noKey = await app.inject({ method: "POST", url: `/api/production/runs/${runId}/semantic-review`, payload: {} });
+    expect(noKey.statusCode).toBe(400);
+    expect(noKey.json().code).toBe("SEMANTIC_BAD_REQUEST");
+
+    // 有 key 但渲染截图未落盘 → 409（VLM 不该被打扰）
+    const notRendered = await app.inject({ method: "POST", url: `/api/production/runs/${runId}/semantic-review`, headers: { "x-llm-key": "sk-test" }, payload: {} });
+    expect(notRendered.statusCode).toBe(409);
+    expect(notRendered.json().code).toBe("RENDER_NOT_READY");
+
+    // 落盘渲染截图 → 复核走通，分数与观察来自 VLM
+    const rendersDirectory = join(dataRoot, "renders", runId);
+    await mkdir(rendersDirectory, { recursive: true });
+    await writeFile(join(rendersDirectory, "desktop.png"), Buffer.from("fake-png"));
+    const requests: Array<{ url: string; body: { messages: Array<{ content: Array<{ type: string }> }> } }> = [];
+    vi.stubGlobal("fetch", (async (url: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: url.toString(), body: JSON.parse(String(init?.body)) as { messages: Array<{ content: Array<{ type: string }> }> } });
+      return new Response(JSON.stringify({ content: [{ type: "tool_use", name: "emit_semantic_review", input: { score: 88, summary: "结构一致", observations: ["主视觉间距偏小"] } }] }), { status: 200 });
+    }) as typeof fetch);
+    try {
+      const reviewed = await app.inject({
+        method: "POST",
+        url: `/api/production/runs/${runId}/semantic-review`,
+        headers: { "x-llm-key": "sk-test" },
+        payload: { baseUrl: "https://api.example.com/anthropic", model: "test-model" },
+      });
+      expect(reviewed.statusCode).toBe(200);
+      const body = reviewed.json();
+      expect(body.score).toBe(88);
+      expect(body.source).toBe("vlm");
+      expect(body.observations).toEqual(["主视觉间距偏小"]);
+      // 参考图 + 渲染截图两张都发给了模型
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.url).toBe("https://api.example.com/anthropic/v1/messages");
+      const images = requests[0]!.body.messages[0]!.content.filter((block) => block.type === "image");
+      expect(images).toHaveLength(2);
+      // 复核结果不落盘：run.json 里搜不到 VLM 分数与观察（key 亦然）
+      const persisted = await readFile(join(dataRoot, "runs", runId, "run.json"), "utf8");
+      expect(persisted).not.toContain("主视觉间距偏小");
+      expect(persisted).not.toContain('"score":88');
+      expect(persisted).not.toContain("sk-test");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("rejects unknown sampleIds instead of trusting client-supplied commands", async () => {

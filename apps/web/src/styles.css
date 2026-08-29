@@ -674,6 +674,16 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .eval-table td.ok { color: #1f5f3f; }
 .eval-table td.gap { color: #a43b19; }
 .eval-table td.warn { color: #a43b19; font-weight: 600; }
+.semantic-review { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #d9dccf; }
+.semantic-review-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; font-size: 12px; }
+.semantic-review-head small { color: #6a6f66; }
+.semantic-review .button { font-size: 12px; }
+.semantic-review-error { margin: 8px 0 0; font-size: 12px; color: #a43b19; }
+.semantic-review-result { margin-top: 8px; font-size: 12px; }
+.semantic-review-result p { margin: 0 0 4px; }
+.semantic-review-result strong { color: #1f5f3f; }
+.semantic-review-result ul { margin: 4px 0 0; padding-left: 18px; color: #4a4f46; }
+.semantic-review-result .ok { color: #1f5f3f; }
 .text-evidence { margin-top: 12px; }
 .text-evidence summary { cursor: pointer; font-size: 12px; color: #1f5f3f; padding: 4px 0; }
 .text-evidence summary:hover { color: #15311f; }
