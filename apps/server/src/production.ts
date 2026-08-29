@@ -359,6 +359,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   app.get<{ Params: { id: string } }>("/api/production/runs/:id", async (request, reply) => {
     const record = records.get(request.params.id);
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
+    // 终态已写入内存时，等待同一 run 的落盘链结束；否则客户端紧接着重启服务会把磁盘中的 running 快照改判 failed。
+    if (record.run.status !== "running") await (persistChains.get(record.run.id) ?? Promise.resolve()).catch(() => undefined);
     return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
   });
 
