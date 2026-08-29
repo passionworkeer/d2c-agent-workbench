@@ -10,6 +10,11 @@ import { buildMinimalEnv, terminateProcessTree } from "./command";
 
 const IGNORED_DIRECTORIES = new Set(["node_modules", ".git", "dist", ".worktrees", ".data"]);
 
+// 仓库自身的测试文件不进生产工作区：它们可能以相对路径引用仓库外的 fixture
+// （如 examples/activity-pages 的 spec JSON），隔离复制后路径必然断裂挡住 typecheck；
+// 工作区只负责构建交付页面，仓库测试质量由仓库自己的 CI 守护。
+const TEST_FILE_PATTERN = new RegExp("(?:^|[\\\\/])([^\\\\/]+)\\.(test|spec)\\.[a-z]+$", "i");
+
 export async function seedWorkspaceFrom(sourceRoot: string, workspace: RunWorkspace): Promise<string[]> {
   const entries = await readdir(sourceRoot, { withFileTypes: true });
   const copied: string[] = [];
@@ -17,7 +22,7 @@ export async function seedWorkspaceFrom(sourceRoot: string, workspace: RunWorksp
     if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) continue;
     const source = join(sourceRoot, entry.name);
     const target = resolve(workspace.root, entry.name);
-    await cp(source, target, { recursive: true });
+    await cp(source, target, { recursive: true, filter: (candidate) => !TEST_FILE_PATTERN.test(candidate) });
     copied.push(entry.name);
   }
   return copied;
