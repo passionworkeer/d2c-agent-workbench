@@ -99,6 +99,11 @@ export function resolveTargetBySampleId(sampleId: string): ProductionTargetRegis
   return registration;
 }
 
+/** 已注册的全部 sampleId：供依赖预热等启动期任务枚举目标仓库。 */
+export function listProductionSampleIds(): string[] {
+  return Object.keys(PROFILE_REGISTRY);
+}
+
 export function resolveProfileBySampleId(sampleId: string): TargetProjectProfile {
   return resolveTargetBySampleId(sampleId).profile;
 }

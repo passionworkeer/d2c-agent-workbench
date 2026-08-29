@@ -255,7 +255,7 @@ export function ProductionWorkbench() {
       <header className="production-header">
         <div>
           <h2>活动页生产闭环</h2>
-          <p className="production-sub">ActivitySpec v2 → 真实代码 → 隔离构建 → Playwright 渲染 → 客观评测 → 区域归因 → 定向修复<small className="production-eta"> · 首次运行含依赖安装（约 1–2 分钟），热缓存后约 20 秒</small></p>
+          <p className="production-sub">ActivitySpec v2 → 真实代码 → 隔离构建 → Playwright 渲染 → 客观评测 → 区域归因 → 定向修复<small className="production-eta"> · 服务端启动即后台预热依赖，单次闭环约 20 秒（预热未完成时首轮约 1–2 分钟）</small></p>
         </div>
         <div className="production-actions">
           {finalScore !== null && (
