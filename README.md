@@ -40,6 +40,7 @@
 - **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
 - **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
+- **工作台横向溢出标注**：mobile / 任一视口的 `documentElement.scrollWidth > clientWidth` 直接在工作台渲染截图上描红边 + 标注「⚠ 横向溢出 → P1」，把「任一视口也是 P1 硬门槛」演给观众看。
 - **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
