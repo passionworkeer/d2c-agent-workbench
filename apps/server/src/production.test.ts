@@ -126,6 +126,19 @@ describe("production routes", () => {
     expect(badViewport.statusCode).toBe(400);
   });
 
+  it("exposes the latest evaluation metrics on the run detail so the workbench can show evidence breakdown", async () => {
+    const { app } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    expect(detail.latestEvaluation).toBeTruthy();
+    // 评测指标结构完整、含 evidence 可用性字段；工作台据此渲染「缺证据」标记
+    expect(detail.latestEvaluation.visual.layoutGeometry).toBe(96);
+    expect(detail.latestEvaluation.visual.semanticReview).toBe(92);
+    expect(detail.latestEvaluation.visual.semanticReviewAvailable).toBe(true);
+    expect(detail.latestEvaluation.finalScore).toBe(92);
+  });
+
   it("rejects unknown sampleIds instead of trusting client-supplied commands", async () => {
     const { app } = await createApp();
     const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, sampleId: "no-such-target" } });

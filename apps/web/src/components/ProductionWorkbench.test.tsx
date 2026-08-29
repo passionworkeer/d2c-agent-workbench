@@ -36,6 +36,29 @@ const violation = {
   expected: null, actual: null, evidence: [], confidence: .95, suggestedAction: "修正父容器布局",
 };
 
+const evaluationMetrics = {
+  visual: {
+    layoutGeometry: 92.4,
+    perceptualDiff: null,
+    perceptualDiffAvailable: false,
+    textConsistency: 100,
+    textConsistencyAvailable: true,
+    colorEffects: null,
+    colorEffectsAvailable: false,
+    assetConsistency: null,
+    assetConsistencyAvailable: false,
+    semanticReview: 95,
+    semanticReviewAvailable: true,
+  },
+  engineering: {
+    buildSuccess: 100, componentReuse: 75, tokenUsage: 80, structuralAbsoluteRatio: 100,
+    hardcodeRatio: 80, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 92,
+  },
+  visualScore: 94.1,
+  engineeringScore: 91.9,
+  finalScore: 93.4,
+};
+
 const flowEvents: TraceEvent[] = [
   event("INPUT_VALIDATED", "输入校验通过"),
   event("PROJECT_INSPECTED", "目标仓库索引完成", { artifactId: "artifact-1" }),
@@ -45,7 +68,7 @@ const flowEvents: TraceEvent[] = [
   event("TYPECHECKED", "类型检查通过", { artifactId: "artifact-5" }),
   event("BUILT", "真实构建通过", { artifactId: "artifact-6", exitCode: 0 }),
   event("RENDERED", "第 1 轮渲染完成", { artifactId: "artifact-7" }),
-  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86 }),
+  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics }),
   event("ATTRIBUTED", "第 1 轮错误归因完成", { artifactId: "artifact-9", violations: [violation] }),
   event("REPAIR_PLANNED", "第 1 轮定向修复已规划", { artifactId: "artifact-10", allowedFiles: ["src/pages/CampaignPage.tsx", "src/pages/CampaignPage.module.css"] }),
   event("REPAIR_APPLIED", "第 1 轮修复已应用", { artifactId: "artifact-11" }),
@@ -63,7 +86,7 @@ beforeEach(() => {
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
     artifacts: flowEvents.filter((item) => item.data?.artifactId).map((item, index) => ({ id: `artifact-${index}`, kind: "event", path: "runs/run-1/x.json", createdAt: item.timestamp })),
-    violations: [violation], events: flowEvents,
+    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics,
   });
   apiMocks.subscribeToProductionRun.mockReset().mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
     for (const item of flowEvents) onEvent(item);
@@ -143,5 +166,24 @@ describe("ProductionWorkbench", () => {
     // 新样例可直接再跑
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
+  });
+
+  it("surfaces the evidence breakdown so missing perceptual/text evidence shows as gaps not 100", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    const breakdown = await screen.findByTestId("eval-breakdown");
+    // 三个总分
+    expect(breakdown.textContent).toMatch(/视觉\s*94\.1/);
+    expect(breakdown.textContent).toMatch(/工程\s*91\.9/);
+    expect(breakdown.getAttribute("data-testid")).toBe("eval-breakdown");
+    expect(screen.getByTestId("eval-breakdown-final").textContent).toContain("93.4");
+    // 缺证据的两项必须显式标 "缺"，不能默认 100 蒙混
+    expect(breakdown.textContent).toContain("缺参考截图");
+    expect(breakdown.textContent).toContain("依赖 perceptualDiff");
+    expect(breakdown.textContent).toContain("黄金样例默认 95 模拟");
+    // 有证据的视觉指标仍展示具体分
+    expect(breakdown.textContent).toContain("92.4");
   });
 });

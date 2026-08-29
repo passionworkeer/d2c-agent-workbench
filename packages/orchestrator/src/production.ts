@@ -245,7 +245,7 @@ export async function* runProductionWorkflow(
       ...(input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
     });
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
-    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore });
+    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore, metrics: evaluation.metrics });
 
     const attributed = attribute(comparison.diffClusters, (canonical?.nodes ?? {}) as Parameters<typeof attribute>[1], generated.sourceMap);
     const violations = mergeViolations([evaluation.violations, attributed]);

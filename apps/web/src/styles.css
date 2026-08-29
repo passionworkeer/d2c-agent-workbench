@@ -653,6 +653,18 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .violation-style { margin-left: 6px; color: #6a6f66; }
 .violation-action { margin: 8px 0 0; color: #6a6f66; }
 .repair-scope p { margin: 0 0 6px; color: #1f5f3f; font-weight: 600; }
+.eval-breakdown { margin-top: 14px; background: #fcfcfa; border: 1px solid #e3e5de; border-radius: 11px; padding: 14px 16px; }
+.eval-breakdown h3 { margin: 0 0 10px; font-size: 13px; }
+.eval-breakdown h3 small { font-weight: 400; color: #6a6f66; margin-left: 6px; }
+.eval-headline { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; font-size: 13px; color: #1f5f3f; }
+.eval-headline strong { font-size: 14px; margin-right: 4px; }
+.eval-headline small { color: #6a6f66; font-weight: 400; margin-left: 6px; }
+.eval-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.eval-table th, .eval-table td { padding: 6px 8px; border-bottom: 1px solid #eceee7; text-align: left; vertical-align: top; }
+.eval-table th { color: #6a6f66; font-weight: 600; background: #f7f8f4; }
+.eval-table td.ok { color: #1f5f3f; }
+.eval-table td.gap { color: #a43b19; }
+.eval-table td.warn { color: #a43b19; font-weight: 600; }
 @media (max-width: 1100px) { .production-columns { grid-template-columns: 1fr; } }
 
 .production-sample { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 10px 14px; border: 1px solid #e3e5de; border-radius: 9px; background: #f7f8f4; font-size: 12.5px; color: #4a4f46; }

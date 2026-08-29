@@ -1,4 +1,4 @@
-import type { ActivitySpec, ProductionViolation, SpecEditOp, TargetProjectProfile, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TargetProjectProfile, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
 
 // 生产模式 API client：ActivitySpec → 真实构建/渲染/评测/修复闭环。
 // 与 lib/api.ts 同模式：readJson 统一错误处理，SSE 订阅复用 EventSource。
@@ -14,6 +14,8 @@ export interface ProductionRunDetail {
   violations: ProductionViolation[];
   events: TraceEvent[];
   mappings?: ComponentMapping[];
+  /** 最近一轮评测指标：null/undefined 表示还没出第一轮 EVALUATED */
+  latestEvaluation?: ProductionMetrics;
 }
 
 export interface ProductionRunPayload {

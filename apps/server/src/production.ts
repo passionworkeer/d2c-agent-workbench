@@ -5,12 +5,14 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   activitySpecSchema,
   componentMappingSchema,
+  productionMetricsSchema,
   productionRunSchema,
   rectSchema,
   targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
   type ComponentMapping,
+  type ProductionMetrics,
   type ProductionRun,
   type TargetProjectProfile,
   type TraceEvent,
@@ -49,6 +51,8 @@ export interface ProductionRunRecord {
   generated?: GeneratedProductionOutput;
   /** /edit 修改过 spec：repair 必须重新生成代码，否则新 spec 与旧代码错位 */
   specEdited?: boolean;
+  /** 最近一轮评测指标：每次 EVALUATED 事件覆盖；GET /runs/:id 透传给工作台展示证据构成 */
+  latestEvaluation?: ProductionMetrics;
 }
 
 type RunListener = (event: TraceEvent) => void;
@@ -122,6 +126,11 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     if (event.state === "REPAIR_APPLIED") record.run.iteration += 1;
     if (event.state === "ATTRIBUTED" && Array.isArray(event.data?.violations)) {
       record.run.violations = event.data.violations as ProductionRun["violations"];
+    }
+    // 评测指标透传：服务端不重新算，仅校验形状（防止手改 EventSource 帧注入伪分）
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "metrics" in event.data) {
+      const parsed = productionMetricsSchema.safeParse((event.data as { metrics?: unknown }).metrics);
+      if (parsed.success) record.latestEvaluation = parsed.data;
     }
     void persistRun(record);
     for (const listener of listeners.get(record.run.id) ?? []) listener(event);
@@ -284,7 +293,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   app.get<{ Params: { id: string } }>("/api/production/runs/:id", async (request, reply) => {
     const record = records.get(request.params.id);
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
-    return { ...record.run, events: record.events, mappings: record.mappings };
+    return { ...record.run, events: record.events, mappings: record.mappings, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {

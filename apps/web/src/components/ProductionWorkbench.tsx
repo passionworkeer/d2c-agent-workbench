@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ActivitySpec, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
 import {
   GOLDEN_SAMPLES,
   createProductionRun,
@@ -39,6 +39,8 @@ export function ProductionWorkbench() {
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number }>>([]);
+  // 最近一轮评测指标：让工作台可视化「证据构成」——审计修复后可看到 perceptualDiff 缺为 null 而非 100
+  const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
@@ -68,6 +70,10 @@ export function ProductionWorkbench() {
     if (event.state === "COMPLETED" && typeof event.data?.finalScore === "number") {
       setFinalScore(event.data.finalScore as number);
     }
+    // 评测完成时同步覆盖证据指标；服务端 schema 已校验，这里直接落
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "metrics" in event.data) {
+      setLatestMetrics((event.data as { metrics?: ProductionMetrics }).metrics ?? null);
+    }
     // 渲染完成后拉取视口清单，展示真实 Playwright 截图
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
@@ -88,6 +94,7 @@ export function ProductionWorkbench() {
         void getProductionRun(id)
           .then((detail) => {
             if (detail.violations.length) setViolations(detail.violations);
+            if (detail.latestEvaluation) setLatestMetrics(detail.latestEvaluation);
             setRunning(false);
           })
           .catch(() => setRunning(false));
@@ -98,7 +105,7 @@ export function ProductionWorkbench() {
     });
   }
 
-  // 切换样例：清空上一轮展示状态（事件/违规/截图/分数），编辑面板由 useEffect 重置
+  // 切换样例：清空上一轮展示状态（事件/违规/截图/分数/证据指标），编辑面板由 useEffect 重置
   function switchSample(sampleId: string) {
     if (sampleId === selectedSampleId || running) return;
     setSelectedSampleId(sampleId);
@@ -109,6 +116,7 @@ export function ProductionWorkbench() {
     setViewports([]);
     setRunId(null);
     setError(null);
+    setLatestMetrics(null);
   }
 
   async function runLoop() {
@@ -118,6 +126,7 @@ export function ProductionWorkbench() {
     setViolations([]);
     setSelectedViolation(null);
     setFinalScore(null);
+    setLatestMetrics(null);
     try {
       const { runId: id } = await createProductionRun((selectedSample ?? GOLDEN_SAMPLES[0]!).payload);
       setRunId(id);
@@ -174,6 +183,7 @@ export function ProductionWorkbench() {
     setSelectedViolation(null);
     setFinalScore(null);
     setViewports([]);
+    setLatestMetrics(null);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
@@ -223,6 +233,64 @@ export function ProductionWorkbench() {
       )}
 
       {error && <div className="production-error" role="alert">{error}</div>}
+
+      {latestMetrics && (
+        <section className="eval-breakdown" aria-label="评测分构成" data-testid="eval-breakdown">
+          <h3>评测分构成 <small>证据驱动 · 缺证据产出 null 并按可用项归一权重，杜绝无声 100</small></h3>
+          <div className="eval-headline">
+            <span><strong>视觉</strong> {latestMetrics.visualScore.toFixed(1)}</span>
+            <span><strong>工程</strong> {latestMetrics.engineeringScore.toFixed(1)}</span>
+            <span data-testid="eval-breakdown-final"><strong>总分</strong> {latestMetrics.finalScore.toFixed(1)} <small>= 视觉 × .70 + 工程 × .30</small></span>
+          </div>
+          <table className="eval-table">
+            <thead>
+              <tr><th>视觉证据</th><th>分</th><th>状态</th><th>工程指标</th><th>分</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>layoutGeometry（节点几何 vs 参考）</td>
+                <td>{latestMetrics.visual.layoutGeometry.toFixed(1)}</td>
+                <td className="ok">有证据</td>
+                <td>buildSuccess（typecheck + build + 运行时）</td>
+                <td>{latestMetrics.engineering.buildSuccess.toFixed(0)}</td>
+              </tr>
+              <tr>
+                <td>perceptualDiff（参考截图像素 diff）</td>
+                <td>{latestMetrics.visual.perceptualDiff === null ? "—" : latestMetrics.visual.perceptualDiff.toFixed(1)}</td>
+                <td className={latestMetrics.visual.perceptualDiffAvailable ? "ok" : "gap"}>{latestMetrics.visual.perceptualDiffAvailable ? "有证据" : "缺参考截图"}</td>
+                <td>responsiveBehavior（任一视口溢出 → 40）</td>
+                <td className={latestMetrics.engineering.responsiveBehavior < 60 ? "warn" : ""}>{latestMetrics.engineering.responsiveBehavior.toFixed(0)}</td>
+              </tr>
+              <tr>
+                <td>textConsistency（PRD 文本对照）</td>
+                <td>{latestMetrics.visual.textConsistency === null ? "—" : latestMetrics.visual.textConsistency.toFixed(1)}</td>
+                <td className={latestMetrics.visual.textConsistencyAvailable ? "ok" : "gap"}>{latestMetrics.visual.textConsistencyAvailable ? "有证据" : "未注入 PRD 文本"}</td>
+                <td>componentReuse / tokenUsage / hardcodeRatio</td>
+                <td>{latestMetrics.engineering.componentReuse.toFixed(0)} / {latestMetrics.engineering.tokenUsage.toFixed(0)} / {latestMetrics.engineering.hardcodeRatio.toFixed(0)}</td>
+              </tr>
+              <tr>
+                <td>colorEffects（perceptual + geometry）</td>
+                <td>{latestMetrics.visual.colorEffects === null ? "—" : latestMetrics.visual.colorEffects.toFixed(1)}</td>
+                <td className={latestMetrics.visual.colorEffectsAvailable ? "ok" : "gap"}>{latestMetrics.visual.colorEffectsAvailable ? "有证据" : "依赖 perceptualDiff"}</td>
+                <td>structuralAbsoluteRatio / semanticHtml / accessibility / codeComplexity</td>
+                <td>{latestMetrics.engineering.structuralAbsoluteRatio.toFixed(0)} / {latestMetrics.engineering.semanticHtml.toFixed(0)} / {latestMetrics.engineering.accessibility.toFixed(0)} / {latestMetrics.engineering.codeComplexity.toFixed(0)}</td>
+              </tr>
+              <tr>
+                <td>assetConsistency（pHash 距离）</td>
+                <td>{latestMetrics.visual.assetConsistency === null ? "—" : latestMetrics.visual.assetConsistency.toFixed(1)}</td>
+                <td className={latestMetrics.visual.assetConsistencyAvailable ? "ok" : "gap"}>{latestMetrics.visual.assetConsistencyAvailable ? "有证据" : "无素材证据"}</td>
+                <td></td><td></td>
+              </tr>
+              <tr>
+                <td>semanticReview（VLM 语义评审）</td>
+                <td>{latestMetrics.visual.semanticReview === null ? "—" : latestMetrics.visual.semanticReview.toFixed(1)}</td>
+                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"}>{latestMetrics.visual.semanticReviewAvailable ? "有证据（黄金样例默认 95 模拟）" : "缺 VLM 注入 → evidence:semantic-review-missing 触发 P1"}</td>
+                <td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {editableSpec && (
         <section className="prototype-panel" aria-label="原型编辑">
