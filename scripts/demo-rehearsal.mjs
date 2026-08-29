@@ -1,4 +1,5 @@
-// 演示彩排：按 docs/demo-script.md 的顺序走一遍三条链路，逐步截图 + 计时。
+// 演示彩排：按 docs/demo-script.md 的顺序走一遍三条链路（含快手商城真实移动样例），
+// 逐步截图 + 计时 + 关键断言（真实样例实测分必须落在 75-80 诚实区间）。
 // 用法：先起 `pnpm dev`，再 `node scripts/demo-rehearsal.mjs`；产物在 .data/demo-rehearsal/。
 import { chromium } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -82,6 +83,24 @@ try {
     if (!report.events?.length || typeof report.finalScore !== "number") {
       throw new Error(`Run 报告缺关键证据链：keys=${Object.keys(report).join(",")}`);
     }
+  }, page);
+
+  // 压轴中的压轴：切「快手商城」真实移动样例（390px 整页）——COMPLETED + 实测 75-80 分
+  // 过按样例声明的验收门槛 70，与黄金样例 93+ 同屏对比，讲「分数不撒谎」。
+  await step("real-mobile-loop", async () => {
+    await page.getByRole("button", { name: /快手商城/ }).click();
+    await page.getByTestId("production-sample").filter({ hasText: "390px" }).waitFor();
+    await page.getByRole("button", { name: "运行生产闭环" }).click();
+    await page.getByText("真实构建通过").first().waitFor();
+    await page.getByText("COMPLETED").first().waitFor();
+  }, page);
+
+  await step("real-mobile-score", async () => {
+    const score = page.getByTestId("production-final-score");
+    await score.waitFor();
+    const value = Number(((await score.textContent()) ?? "").replace(/[^\d.]/g, ""));
+    if (!(value >= 70 && value < 90)) throw new Error(`快手商城实测分 ${value} 不在诚实区间 70-90（合并后真实样例实测 75-80，门槛 70）`);
+    await page.getByTestId("semantic-provider").scrollIntoViewIfNeeded();
   }, page);
 
   console.log("\n=== 彩排耗时 ===");

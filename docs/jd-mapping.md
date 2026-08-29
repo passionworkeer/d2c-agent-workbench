@@ -79,7 +79,7 @@
 | 设计意图编译为可交付代码 | `packages/production-runtime`（隔离工作区 `seedWorkspaceFrom` / `runAllowedCommand` 白名单 + 最小 env / Playwright 渲染 / 回滚快照）+ `packages/orchestrator` 生产状态机（INPUT_VALIDATED → … → EVALUATED → ATTRIBUTED → REPAIR_* → COMPLETED） | 切「活动页生产」→ 载入黄金样例 → 运行生产闭环（约 20–30s，启动即后台预热依赖） | 目标仓库复制进隔离工作区，真实 `pnpm install` / `tsc` / `vite build`；Profile 命令服务端注册、客户端不可注入；每步产出带 Artifact ID 的落盘证据 |
 | 证据驱动评分（缺证据不默认满分） | 生产 evaluator：5 项视觉指标各带 `*Available` 布尔，缺证据记 `null` 按可用项归一权重；闭环内 MiniMax 双图语义评审（四维子分 + issues），无 key/失败回退服务端注册基准并如实标 `provider=registered-fallback` | 跑完看「评测分构成」面板（缺证据项标红「缺参考截图」）+ 展开「语义评审证据」四维子分 | 真模型在环但分数永远可复现：有 key 走 MiniMax 实时，没 key 走注册基准，provider 字段从不撒谎；任一视口横向溢出是 P1 硬门槛，build 失败是 P0，分数刷不掉 |
 | 评测反哺定位修复 | 违规 → Region → Node → Source 归因；修复 ≤5 文件、CSS 声明级 / ts-morph AST 级补丁；每轮先写回滚快照，修复后 build 失败自动 `restoreRollback` | 点违规 → 桌面截图红框叠加定位 → 看「仅修改 2 个文件」 | 修复不是整体重生成，是定位到 `CampaignPage.module.css` `.hero` 的声明级补丁；黄金样例内置一处可修复 Hero 间距（48px vs 参考稿 x=0），首轮 P1 → 修复 → 复评 COMPLETED |
-| 真实样例诚实达标 | `examples/activity-pages/` 三张真实手机截图样例（快手商城 / 夏日游戏节 / 养萌宠红包）+ 按样例声明的验收门槛（70/62） | 切「快手商城」→ 跑出实测 75–80 分 + NEEDS_REVIEW 与剩余违规并存 | 照片重采样 + 语义重建导航有像素天花板——分数如实、门槛不放松；不是所有样例都满分收场，这本身就是评测诚实的活证据 |
+| 真实样例诚实达标 | `examples/activity-pages/` 三张真实手机截图样例（快手商城 / 夏日游戏节 / 养萌宠红包）+ 按样例声明的验收门槛（70/62） | 切「快手商城」→ 跑出实测 75–80 分 COMPLETED（门槛 70 按样例在服务端声明），与黄金样例 93+ 同屏对比 | 照片重采样 + 语义重建导航有像素天花板——分数如实落在 75–80（明显低于黄金样例）、门槛按样例声明不放松也不虚高；真实照片页不到 90 分依然过验收，本身就是评测诚实的活证据 |
 | 可追溯交付 | Run 报告下载（事件流 + 分数构成 + 文本证据 + 违规 + 双视口逐节点几何）/ 历史 Run 只读回看（服务端重启后从磁盘重载）/ 启动清理孤儿工作区 + runs 封顶 50 条 | 点「下载 Run 报告」；顶部「历史 Run」点任一条只读回看 | 「重启后数据还在吗」当场可演：证据链独立于工作区持久化，回看态同样可下载报告；磁盘卫生（孤儿清理 / 封顶淘汰）是生产系统素养 |
 | 设计干预直达代码 | Puck 原型编辑 → 类型化 `SpecEditOp` 回写 ActivitySpec → 按编辑重跑强制重新生成 | 闭环完成后改标题 → 保存编辑 → 文本证据面板展开「基线列 + ✓ 编辑已应用」→ 按编辑重跑 | 编辑不直接改代码：改的是单一事实源 ActivitySpec，渲染 DOM 列跟着变——"设计意图落到了代码，全程可追溯" |
 | 反向链路：代码 → Figma | `buildFigmaImportBundle` v2 自包含导入包（素材 base64 随包 / imageCrop 归一化 / 缺证据节点进 degradations）+ `apps/figma-importer-plugin` 离线插件（零运行时依赖、手写结构校验） | PRODUCTION → 「下载 Figma 导入包」；插件源码在 `apps/figma-importer-plugin` | D2C 不止 figma→code：生产页可回灌 Figma 继续编辑；插件 `networkAccess` 为空——不联网、不读任何令牌，安全姿态与主链路一致 |
@@ -115,6 +115,6 @@
 4. 设置面板切到 LLM 但 key 留空 → 发送指令 → 降级规则解析 + ChatPanel 提示 LLM 不可达
 5. I2D 上传参考图（provider=llm + key）→ vision-note 显示真实视觉模型；拔掉网络再传 → vision-note 显示降级原因
 6. I2D 编辑两轮 → 回写面板预览（dryRun 零写入）→ 应用 → trace 出现 SPEC_EXPORTED（target=figma）；用只读 PAT 重试 → transport=comment 评论降级
-7. PRODUCTION 跑「快手商城」真实样例 → NEEDS_REVIEW + 实测分与剩余违规并存（非满分收场）；对比黄金样例 COMPLETED —— 两个结局同屏讲「评测不撒谎」
+7. PRODUCTION 跑「快手商城」真实移动样例 → COMPLETED + 实测 75–80 分，与黄金样例 93+ 同屏对比（照片重采样天花板如实写进分数，不调宽容度刷高）；语义评审证据来源标注 MiniMax 实时 / 黄金基准回退——评测不撒谎
 8. PRODUCTION 闭环完成 → 点「下载 Run 报告」→ JSON 里逐事件 artifactId 齐全、不含任何 key；重启服务端刷新页面 → 「历史 Run」回看同一 run，证据链完整
 9. 黄金样例跑完 → Puck 改标题「全场 6 折」→ 保存编辑 → 文本证据面板展开基线列 + 「✓ 编辑已应用」→ 按编辑重跑 → 渲染 DOM 列跟着变
