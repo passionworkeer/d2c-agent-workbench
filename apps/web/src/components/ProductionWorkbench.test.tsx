@@ -16,9 +16,9 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock("../lib/production-api", () => ({
   GOLDEN_SAMPLES: [
-    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
-    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
-    { id: "commerce-feed", label: "快手商城（信息流页·真实截图）", targetRepository: "examples/activity-target", payload: { sampleId: "commerce-feed", spec: { page: { id: "page", name: "CommerceFeed", route: "/campaign/commerce", canonicalViewport: { width: 390, height: 867 } }, assets: [{ id: "banner-art", path: "reference.jpg", mimeType: "image/jpeg" }], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 390, height: 867 }, children: ["banner-art"] }, { id: "banner-art", role: "image", name: "氛围图", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 208, width: 390, height: 67 }, parentId: "page", children: [], content: { assetId: "banner-art", alt: "氛围图" } }] } } },
+    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
+    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
+    { id: "commerce-feed", label: "快手商城（信息流页·真实截图）", targetRepository: "examples/activity-target", fidelity: "390px 手机端 · 高保真整页还原", thumbnailUrl: "mock-atlas.jpg", payload: { sampleId: "commerce-feed", spec: { page: { id: "page", name: "CommerceFeed", route: "/campaign/commerce", canonicalViewport: { width: 390, height: 867 } }, assets: [{ id: "banner-art", path: "reference.jpg", mimeType: "image/jpeg" }], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 390, height: 867 }, children: ["banner-art"] }, { id: "banner-art", role: "image", name: "氛围图", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 208, width: 390, height: 67 }, parentId: "page", children: [], content: { assetId: "banner-art", alt: "氛围图" } }] } } },
   ],
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
@@ -28,6 +28,14 @@ vi.mock("../lib/production-api", () => ({
   repairProductionRun: apiMocks.repairProductionRun,
   loadEmbeddedAssets: apiMocks.loadEmbeddedAssets,
 }));
+
+// jsdom 的 Blob 未实现 text()/arrayBuffer()，用 FileReader 读内容
+const blobText = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error("blob 读取失败"));
+  reader.readAsText(blob);
+});
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
   id: `${state}-${Math.random()}`, runId: "run-1", timestamp: new Date().toISOString(), state, title, data,
@@ -182,17 +190,21 @@ describe("ProductionWorkbench", () => {
 
   it("offers a downloadable Figma import bundle for the edited production spec", async () => {
     const user = userEvent.setup();
+    // jsdom 未实现 createObjectURL：补假实现（保留 URL 构造器——chip 缩略图解析依赖它）
     const createObjectUrl = vi.fn(() => "blob:figma-bundle");
-    const revokeObjectUrl = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: revokeObjectUrl });
+    URL.createObjectURL = createObjectUrl;
+    const revokeObjectUrl = vi.fn(() => undefined);
+    URL.revokeObjectURL = revokeObjectUrl;
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     render(<ProductionWorkbench />);
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
-    expect(await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce())).toBeUndefined();
+    // vitest 断言返回 Chai Assertion（链式），勿再包一层 expect(...).toBeUndefined()
+    await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce());
     expect(click).toHaveBeenCalledOnce();
     click.mockRestore();
-    vi.unstubAllGlobals();
+    Reflect.deleteProperty(URL, "createObjectURL");
+    Reflect.deleteProperty(URL, "revokeObjectURL");
   });
 
   it("embeds the atlas as a self-contained asset when exporting a real sample to Figma", async () => {
@@ -200,21 +212,25 @@ describe("ProductionWorkbench", () => {
     // 真实样例：loadEmbeddedAssets 返回整页图集的 base64，随导入包自包含携带
     apiMocks.loadEmbeddedAssets.mockResolvedValue([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
     let captured: Blob | undefined;
+    // jsdom 未实现 createObjectURL：补假实现并捕获 Blob 内容（保留 URL 构造器）
     const createObjectUrl = vi.fn((blob: Blob) => { captured = blob; return "blob:figma-bundle"; });
-    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: vi.fn() });
+    URL.createObjectURL = createObjectUrl;
+    const revokeObjectUrl = vi.fn(() => undefined);
+    URL.revokeObjectURL = revokeObjectUrl;
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     render(<ProductionWorkbench />);
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     // 切到真实截图样例（快手商城）：spec 素材全是整页图集的裁切
     await user.click(screen.getByRole("button", { name: /快手商城/ }));
     await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
-    expect(await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce())).toBeUndefined();
+    await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce());
     expect(apiMocks.loadEmbeddedAssets).toHaveBeenCalledWith("commerce-feed");
-    const bundle = JSON.parse(await captured!.text()) as { version: string; assets: Array<{ id: string; mimeType: string; data: string }> };
+    const bundle = JSON.parse(await blobText(captured!)) as { version: string; assets: Array<{ id: string; mimeType: string; data: string }> };
     expect(bundle.version).toBe("2.0");
     expect(bundle.assets).toEqual([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
     click.mockRestore();
-    vi.unstubAllGlobals();
+    Reflect.deleteProperty(URL, "createObjectURL");
+    Reflect.deleteProperty(URL, "revokeObjectURL");
   });
 
   it("disables the Figma export with an explicit message when the atlas cannot be loaded", async () => {
@@ -247,6 +263,19 @@ describe("ProductionWorkbench", () => {
     // 新样例可直接再跑
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
+  });
+
+  it("shows reference thumbnails for real samples and labels phone-only fidelity", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    // 黄金样例（骨架）无缩略图；真实样例带整页参考图缩略图
+    expect(screen.queryByTestId("sample-thumb-campaign")).not.toBeInTheDocument();
+    const thumb = screen.getByTestId("sample-thumb-commerce-feed");
+    expect(thumb.getAttribute("src")).toBe("mock-atlas.jpg");
+    // 切到真实样例后，banner 明示 390px 手机端保真范围
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    expect(screen.getByTestId("production-sample").textContent).toContain("390px 手机端 · 高保真整页还原");
   });
 
   it("surfaces the evidence breakdown so missing perceptual/text evidence shows as gaps not 100", async () => {
@@ -286,7 +315,7 @@ describe("ProductionWorkbench", () => {
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     // 共享 mock 未装配 MiniMax → 证据列如实标注回退来源
-    expect((await screen.findByTestId("semantic-review-source")).textContent).toContain("黄金基准回退");
+    expect((await screen.findByTestId("semantic-provider")).textContent).toContain("黄金基准回退");
     const panel = await screen.findByTestId("semantic-review-evidence");
     expect(panel.textContent).toContain("回退服务端注册基准分");
     expect(panel.textContent).toContain("任务链路");
@@ -313,7 +342,7 @@ describe("ProductionWorkbench", () => {
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
     // 证据列标注 MiniMax 实时评审；展开面板给出四维子分与问题清单（含区域坐标）
-    expect((await screen.findByTestId("semantic-review-source")).textContent).toContain("MiniMax 实时评审");
+    expect((await screen.findByTestId("semantic-provider")).textContent).toContain("MiniMax 实时评审");
     const panel = await screen.findByTestId("semantic-review-evidence");
     expect(panel.textContent).toContain("实现与参考高度一致");
     expect(panel.textContent).toContain("任务链路");

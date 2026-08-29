@@ -132,12 +132,6 @@ export interface EmbeddedSampleAsset {
 }
 
 // 真实样例的图集即整页原图（单一 reference.jpg）；campaign/summer-form 纯语义组件无素材
-const SAMPLE_ATLAS_URL: Record<string, string> = {
-  "commerce-feed": commerceFeedAtlasUrl,
-  "summer-game-festival": gameFestivalAtlasUrl,
-  "pet-red-packet": petRedPacketAtlasUrl,
-};
-
 async function fetchAssetAsBase64(url: string): Promise<{ mimeType: string; data: string }> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`素材加载失败（HTTP ${response.status}）`);
@@ -164,14 +158,26 @@ export interface GoldenSample {
   id: string;
   label: string;
   targetRepository: string;
+  /** 还原保真说明：真实样例为 390px 手机端整页高保真，黄金样例为演示骨架 */
+  fidelity: string;
+  /** 真实样例用参考截图做缩略图 */
+  thumbnailUrl?: string;
   payload: ProductionRunPayload;
 }
+
+/** 真实样例的整页参考图（缩略图与 Figma 导入包共用同一份原图） */
+export const SAMPLE_ATLAS_URL: Record<string, string> = {
+  "commerce-feed": commerceFeedAtlasUrl,
+  "summer-game-festival": gameFestivalAtlasUrl,
+  "pet-red-packet": petRedPacketAtlasUrl,
+};
 
 export const GOLDEN_SAMPLES: GoldenSample[] = [
   {
     id: "campaign",
     label: "夏日好物节（主视觉页）",
     targetRepository: "examples/activity-target",
+    fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题",
     payload: {
       sampleId: "campaign",
       spec: {
@@ -219,6 +225,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
     id: "summer-form",
     label: "体验官招募（表单页）",
     targetRepository: "examples/activity-target",
+    fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题",
     payload: {
       sampleId: "summer-form",
       spec: {
@@ -294,6 +301,8 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
   },
   {
     id: "commerce-feed",
+    fidelity: "390px 手机端 · 高保真整页还原",
+    thumbnailUrl: SAMPLE_ATLAS_URL["commerce-feed"],
     label: "快手商城（信息流页·真实截图）",
     targetRepository: "examples/activity-target",
     payload: {
@@ -322,6 +331,8 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
   },
   {
     id: "summer-game-festival",
+    fidelity: "390px 手机端 · 高保真整页还原",
+    thumbnailUrl: SAMPLE_ATLAS_URL["summer-game-festival"],
     label: "夏日游戏节（任务页·真实截图）",
     targetRepository: "examples/activity-target",
     payload: {
@@ -349,6 +360,8 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
   },
   {
     id: "pet-red-packet",
+    fidelity: "390px 手机端 · 高保真整页还原",
+    thumbnailUrl: SAMPLE_ATLAS_URL["pet-red-packet"],
     label: "养萌宠红包（养成页·真实截图）",
     targetRepository: "examples/activity-target",
     payload: {

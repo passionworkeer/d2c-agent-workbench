@@ -291,12 +291,13 @@ export function ProductionWorkbench() {
         <div className="production-sample" data-testid="production-sample">
           <span>
             黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
-            目标仓库 {selectedSample?.targetRepository}（含一处可修复的基线间距问题）
+            {selectedSample?.fidelity}
           </span>
           <span className="sample-switcher">
             换个页面：
             {GOLDEN_SAMPLES.map((sample) => (
               <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => switchSample(sample.id)}>
+                {sample.thumbnailUrl && <img className="sample-thumb" src={sample.thumbnailUrl} alt="" data-testid={`sample-thumb-${sample.id}`} />}
                 {sample.label}
               </button>
             ))}
@@ -356,7 +357,7 @@ export function ProductionWorkbench() {
               <tr>
                 <td>semanticReview（VLM 语义评审）</td>
                 <td>{latestMetrics.visual.semanticReview === null ? "—" : latestMetrics.visual.semanticReview.toFixed(1)}</td>
-                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"} data-testid="semantic-review-source">
+                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"} data-testid="semantic-provider">
                   {latestSemanticReview?.provider === "minimax" ? "有证据（MiniMax 实时评审）"
                     : latestSemanticReview?.provider === "registered-fallback" ? "有证据（黄金基准回退）"
                     : latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）"
