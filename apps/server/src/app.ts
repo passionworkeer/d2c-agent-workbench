@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { scanRepo } from "@d2c/asset-indexer";
 import { editOpsSchema } from "@d2c/canvas-ops";
 import { SDS_REGISTRY_SIZE, buildRegistryFromEntries, mapSdsComponents } from "@d2c/component-matcher";
@@ -107,6 +108,16 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const runs = new Map<string, RunRecord>();
   const listeners = new Map<string, Set<RunListener>>();
   const replayDelayMs = options.replayDelayMs ?? 260;
+
+  // 诊断：未处理路由异常落盘（logger:false 时 fastify 默认静默，E2E 排障需要现场）
+  app.setErrorHandler((error, request, reply) => {
+    try {
+      appendFileSync(join(process.cwd(), ".data", "server-errors.log"), `${new Date().toISOString()} ${request.method} ${request.url} :: ${error.stack ?? error.message}\n`);
+    } catch {
+      // 日志失败不影响响应
+    }
+    reply.code(500).send({ code: "INTERNAL", message: error instanceof Error ? error.message : "服务器内部错误" });
+  });
 
   void app.register(multipart, {
     limits: { files: 1, fileSize: 25 * 1024 * 1024 },
