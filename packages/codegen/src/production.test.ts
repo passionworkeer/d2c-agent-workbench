@@ -58,9 +58,29 @@ describe("generateProductionPage", () => {
   });
 
   it("references copied assets instead of embedding them", () => {
-    const output = generateProductionPage(spec, profile, []);
-    expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain("/campaign/hero.png");
-    expect(output.plan.assets).toEqual([{ source: "assets/hero.png", target: "public/campaign/hero.png" }]);
+    const withSameBasename = {
+      ...spec,
+      assets: [
+        ...spec.assets,
+        { ...spec.assets[0]!, id: "hero-mobile", path: "assets/mobile/hero.png" },
+      ],
+    };
+    const output = generateProductionPage(withSameBasename, profile, []);
+    expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain("/campaign/assets/hero.png");
+    expect(output.plan.assets).toEqual([
+      { source: "assets/hero.png", target: "public/campaign/assets/hero.png" },
+      { source: "assets/mobile/hero.png", target: "public/campaign/assets/mobile/hero.png" },
+    ]);
+  });
+
+  it("rejects mapping identifiers that could inject source code", () => {
+    expect(() => generateProductionPage(spec, profile, [{
+      nodeId: "hero",
+      figmaComponent: "Hero",
+      codeComponent: "Hero } from 'evil'; throw new Error('owned') //",
+      importPath: "@/components/Hero",
+      props: {}, confidence: 1, status: "accepted", evidence: [],
+    }])).toThrow(/codeComponent/);
   });
 
   it("rejects code plans outside allowed write globs", () => {

@@ -206,6 +206,23 @@ describe("runProductionWorkflow", () => {
     expect(events.at(-1)?.detail).toContain("已自动回滚");
   });
 
+  it("reports rollback failure instead of claiming the workspace was restored", async () => {
+    const { workspace, artifacts } = await setup();
+    let buildCalls = 0;
+    const events = await collect(runProductionWorkflow({ ...baseInput, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => (++buildCalls === 1 ? commandOk("build") : commandFail("build")),
+      render: async () => renderFake(12),
+      evaluate: async () => ({ outcome: "needs_review", metrics: metrics(86), violations: [layoutViolation] }),
+      attribute: () => [layoutViolation],
+      applyRepair: async () => ({ writtenFiles: [], rollbackPath: join(workspace.root, "missing-rollback.json") }),
+    }));
+    expect(events.at(-1)?.state).toBe("FAILED");
+    expect(events.at(-1)?.detail).toContain("回滚失败");
+    expect(events.at(-1)?.detail).not.toContain("已自动回滚");
+  });
+
   it("builds text evidence from spec text nodes + rendered texts so textConsistency becomes available", async () => {
     const { workspace, artifacts } = await setup();
     let seenText: { expected: string[]; actual: string[] } | undefined;
@@ -227,5 +244,10 @@ describe("runProductionWorkflow", () => {
     expect(seenText!.expected).toContain(seenText!.actual[0]);
     // 终局 COMPLETED（passed）
     expect(events.at(-1)?.state).toBe("COMPLETED");
+    // EVALUATED 事件附带 text 证据：服务端透传给工作台展示逐项对比
+    const evaluated = events.find((event) => event.state === "EVALUATED");
+    const eventText = evaluated?.data?.text as { expected: string[]; actual: string[] } | undefined;
+    expect(eventText?.expected[0]).toBe("夏日好物节");
+    expect(eventText?.actual[0]).toBe("夏日好物节");
   });
 });

@@ -1,4 +1,4 @@
-import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TargetProjectProfile, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
 
 // 生产模式 API client：ActivitySpec → 真实构建/渲染/评测/修复闭环。
 // 与 lib/api.ts 同模式：readJson 统一错误处理，SSE 订阅复用 EventSource。
@@ -16,16 +16,15 @@ export interface ProductionRunDetail {
   mappings?: ComponentMapping[];
   /** 最近一轮评测指标：null/undefined 表示还没出第一轮 EVALUATED */
   latestEvaluation?: ProductionMetrics;
+  /** 最近一轮文本证据：spec 中 role=text 的 content.text vs 渲染 DOM 的 textContent */
+  latestTextEvidence?: { expected: string[]; actual: string[] };
 }
 
 export interface ProductionRunPayload {
+  sampleId: string;
   spec: ActivitySpec;
-  profile: TargetProjectProfile;
   mappings?: ComponentMapping[];
   referenceNodes?: Record<string, Rect>;
-  /** VLM 语义评审分（0-100）；未提供时评测标记 evidence: semantic-review-missing 为 P1 并阻止 passed。
-   *  黄金样例默认注入 95 以让 demo 可达 passed；真实 VLM 接入后由调用方按需覆盖。 */
-  semanticReviewScore?: number;
 }
 
 const TERMINAL_STATES = new Set(["COMPLETED", "FAILED", "NEEDS_REVIEW"]);
@@ -118,23 +117,17 @@ export async function getProductionArtifact(runId: string, artifactId: string): 
 export interface GoldenSample {
   id: string;
   label: string;
+  targetRepository: string;
   payload: ProductionRunPayload;
 }
-
-const targetProfile: TargetProjectProfile = {
-  repositoryPath: "examples/activity-target", framework: "react", language: "typescript", packageManager: "pnpm",
-  routeEntry: "src/App.tsx", generatedRoot: "src/pages/campaign", assetRoot: "public/campaign", styleStrategy: "css-modules",
-  commands: { install: ["pnpm", "install"], typecheck: ["pnpm", "typecheck"], build: ["pnpm", "build"], dev: ["pnpm", "dev"] },
-  previewUrl: "http://127.0.0.1:4173/campaign/summer",
-  allowedWriteGlobs: ["src/pages/campaign/**", "public/campaign/**"],
-  designSystemRoots: ["src/components"], tokenRoots: [],
-};
 
 export const GOLDEN_SAMPLES: GoldenSample[] = [
   {
     id: "campaign",
     label: "夏日好物节（主视觉页）",
+    targetRepository: "examples/activity-target",
     payload: {
+      sampleId: "campaign",
       spec: {
         version: "2.0",
         page: {
@@ -154,17 +147,17 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           },
           {
             id: "hero", parentId: "page", role: "section", name: "主视觉", sourceBox: { x: 0, y: 0, width: 1440, height: 500 },
-            layout: { mode: "flex", direction: "column", width: { mode: "fill" }, height: { mode: "fixed", value: 500 }, rationale: "首屏区块" },
+            layout: { mode: "flex", direction: "column", padding: { top: 40, right: 40, bottom: 40, left: 40 }, width: { mode: "fill" }, height: { mode: "fixed", value: 500 }, rationale: "首屏区块" },
             // demo 默认 mobile 自适应：hero 缩放到视口宽度，避免 1440 撑爆 390 触发 overflow P1
             responsive: [{ viewport: "mobile", rule: "resize", value: 390 }],
-            visual: { opacity: 1 }, tokenRefs: ["color/accent"],
+            visual: { opacity: 1, background: { type: "solid", value: "#f5f6f8" } }, tokenRefs: ["color/accent"],
             evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例主视觉", confidence: 1 }],
             confidence: .9, reviewState: "accepted", children: ["hero-title"],
           },
           {
             id: "hero-title", parentId: "hero", role: "text", name: "标题", sourceBox: { x: 40, y: 40, width: 600, height: 72 },
             layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "标题按内容尺寸" },
-            responsive: [], visual: { opacity: 1, fontSize: 48, fontWeight: 700 }, tokenRefs: [],
+            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 48, fontWeight: 700 }, tokenRefs: ["color/accent"],
             content: { text: "夏日好物节 · 全场 5 折" },
             evidence: [{ type: "prd", sourceId: "golden-prd", observation: "标题文案", confidence: 1 }],
             confidence: .95, reviewState: "accepted", children: [],
@@ -172,18 +165,16 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
         ],
         interactions: [], unresolved: [],
       },
-      profile: targetProfile,
       mappings: [],
       referenceNodes: { hero: { x: 0, y: 0, width: 1440, height: 500 } },
-      // demo 黄金样例：默认 VLM 语义 95，让 evidence: semantic-review-missing 不阻塞 passed；
-      // 真实 VLM 接入后由调用方覆盖为模型输出。
-      semanticReviewScore: 95,
     },
   },
   {
     id: "summer-form",
     label: "体验官招募（表单页）",
+    targetRepository: "examples/activity-target",
     payload: {
+      sampleId: "summer-form",
       spec: {
         version: "2.0",
         page: {
@@ -203,31 +194,31 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           },
           {
             id: "form-section", parentId: "page", role: "section", name: "表单区", sourceBox: { x: 0, y: 0, width: 1440, height: 640 },
-            layout: { mode: "flex", direction: "column", width: { mode: "fill" }, height: { mode: "fixed", value: 640 }, rationale: "表单主区块" },
+            layout: { mode: "flex", direction: "column", gap: 44, padding: { top: 80, right: 60, bottom: 60, left: 60 }, width: { mode: "fill" }, height: { mode: "fixed", value: 640 }, rationale: "表单主区块" },
             responsive: [{ viewport: "mobile", rule: "resize", value: 390 }],
-            visual: { opacity: 1 }, tokenRefs: ["color/accent"],
+            visual: { opacity: 1, background: { type: "solid", value: "#f7f8f4" } }, tokenRefs: ["color/accent"],
             evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例表单区", confidence: 1 }],
             confidence: .9, reviewState: "accepted", children: ["form-title", "form-body"],
           },
           {
             id: "form-title", parentId: "form-section", role: "text", name: "表单标题", sourceBox: { x: 60, y: 80, width: 520, height: 56 },
             layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "标题按内容尺寸" },
-            responsive: [], visual: { opacity: 1, fontSize: 40, fontWeight: 700 }, tokenRefs: [],
+            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 40, fontWeight: 700 }, tokenRefs: ["color/accent"],
             content: { text: "限时体验官招募 · 填写即领券" },
             evidence: [{ type: "prd", sourceId: "golden-prd", observation: "表单标题文案", confidence: 1 }],
             confidence: .95, reviewState: "accepted", children: [],
           },
           {
             id: "form-body", parentId: "form-section", role: "container", name: "表单主体", sourceBox: { x: 60, y: 180, width: 520, height: 400 },
-            layout: { mode: "flex", direction: "column", gap: 24, width: { mode: "fixed", value: 520 }, height: { mode: "hug" }, rationale: "表单字段纵向排列" },
-            responsive: [], visual: { opacity: 1 }, tokenRefs: [],
+            layout: { mode: "flex", direction: "column", gap: 24, padding: { top: 24, right: 24, bottom: 24, left: 24 }, width: { mode: "fixed", value: 520 }, height: { mode: "fixed", value: 260 }, rationale: "表单字段纵向排列" },
+            responsive: [{ viewport: "mobile", rule: "resize", value: 390 }], visual: { opacity: 1, background: { type: "solid", value: "#ffffff" }, border: "1px solid #e3e5de" }, tokenRefs: [],
             evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例表单主体", confidence: 1 }],
             confidence: .85, reviewState: "accepted", children: ["field-name", "field-phone", "submit-hint"],
           },
           {
             id: "field-name", parentId: "form-body", role: "text", name: "姓名字段", sourceBox: { x: 60, y: 180, width: 520, height: 48 },
             layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "输入占位" },
-            responsive: [], visual: { opacity: 1, fontSize: 18 }, tokenRefs: [],
+            responsive: [], visual: { opacity: 1, color: "#4a4f46", fontSize: 18 }, tokenRefs: [],
             content: { text: "您的姓名" },
             evidence: [{ type: "prd", sourceId: "golden-prd", observation: "字段占位文案", confidence: 1 }],
             confidence: .9, reviewState: "accepted", children: [],
@@ -235,7 +226,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           {
             id: "field-phone", parentId: "form-body", role: "text", name: "手机号字段", sourceBox: { x: 60, y: 252, width: 520, height: 48 },
             layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "输入占位" },
-            responsive: [], visual: { opacity: 1, fontSize: 18 }, tokenRefs: [],
+            responsive: [], visual: { opacity: 1, color: "#4a4f46", fontSize: 18 }, tokenRefs: [],
             content: { text: "手机号（用于发放奖励）" },
             evidence: [{ type: "prd", sourceId: "golden-prd", observation: "字段占位文案", confidence: 1 }],
             confidence: .9, reviewState: "accepted", children: [],
@@ -243,7 +234,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           {
             id: "submit-hint", parentId: "form-body", role: "text", name: "提交按钮文案", sourceBox: { x: 60, y: 324, width: 520, height: 56 },
             layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "按钮文案" },
-            responsive: [], visual: { opacity: 1, fontSize: 20, fontWeight: 700 }, tokenRefs: ["color/accent"],
+            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 20, fontWeight: 700 }, tokenRefs: ["color/accent"],
             content: { text: "立即报名 · 100% 中奖" },
             evidence: [{ type: "prd", sourceId: "golden-prd", observation: "按钮文案", confidence: 1 }],
             confidence: .9, reviewState: "accepted", children: [],
@@ -251,10 +242,8 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
         ],
         interactions: [], unresolved: [],
       },
-      profile: targetProfile,
       mappings: [],
       referenceNodes: { "form-section": { x: 0, y: 0, width: 1440, height: 640 } },
-      semanticReviewScore: 95,
     },
   },
 ];

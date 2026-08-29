@@ -17,6 +17,8 @@ export interface GeneratedProductionOutput {
 
 const normalizePath = (value: string) => value.replaceAll("\\", "/").replace(/^\.\//, "");
 const className = (id: string) => id.replace(/[^A-Za-z0-9_-]/g, "-");
+const COMPONENT_IDENTIFIER = /^[A-Z_$][A-Za-z0-9_$]*$/;
+const IMPORT_PATH = /^(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9@_$./-]+$/;
 
 function pathMatchesGlob(path: string, glob: string): boolean {
   const normalizedPath = normalizePath(path);
@@ -115,6 +117,11 @@ function renderNode(node: ActivityNode, nodes: Map<string, ActivityNode>, assetU
 }
 
 export function generateProductionPage(spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]): GeneratedProductionOutput {
+  for (const mapping of mappings) {
+    if (!COMPONENT_IDENTIFIER.test(mapping.codeComponent)) throw new Error(`invalid codeComponent: ${mapping.codeComponent}`);
+    if (!IMPORT_PATH.test(mapping.importPath)) throw new Error(`invalid importPath: ${mapping.importPath}`);
+    if (!spec.nodes.some((node) => node.id === mapping.nodeId)) throw new Error(`mapping nodeId is not in ActivitySpec: ${mapping.nodeId}`);
+  }
   const name = componentName(spec);
   const root = normalizePath(profile.generatedRoot).replace(/\/$/, "");
   const tsxPath = `${root}/${name}.tsx`;
@@ -122,18 +129,21 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
   const sourceMapPath = `${root}/d2c-source-map.json`;
   const assetUrls = new Map<string, string>();
   const assets = spec.assets.map((asset) => {
-    const filename = normalizePath(asset.path).split("/").at(-1) ?? asset.id;
-    const target = `${normalizePath(profile.assetRoot).replace(/\/$/, "")}/${filename}`;
-    assetUrls.set(asset.id, `/${normalizePath(profile.assetRoot).replace(/^public\//, "").replace(/\/$/, "")}/${filename}`);
+    const relativeAssetPath = normalizePath(asset.path);
+    const target = `${normalizePath(profile.assetRoot).replace(/\/$/, "")}/${relativeAssetPath}`;
+    assetUrls.set(asset.id, `/${normalizePath(profile.assetRoot).replace(/^public\//, "").replace(/\/$/, "")}/${relativeAssetPath}`);
     return { source: normalizePath(asset.path), target };
   });
+  if (new Set(assets.map((asset) => asset.target.toLowerCase())).size !== assets.length) {
+    throw new Error("duplicate asset target after normalization");
+  }
   const nodes = new Map(spec.nodes.map((node) => [node.id, node]));
   const mappingByNode = new Map(mappings.map((mapping) => [mapping.nodeId, mapping]));
   const imports = [...new Map(mappings.filter((mapping) => mapping.status !== "unmapped").map((mapping) => [mapping.codeComponent, mapping.importPath]))]
     .map(([component, path]) => `import { ${component} } from ${JSON.stringify(path)};`).join("\n");
   const body = spec.nodes.filter((node) => !node.parentId).map((node) => renderNode(node, nodes, assetUrls, mappingByNode, 2, true)).join("\n");
   const code = `import styles from "./${name}.module.css";${imports ? `\n${imports}` : ""}\n\nexport function ${name}() {\n  return (\n${body}\n  );\n}\n\nexport default ${name};\n`;
-  const css = `:global(body) {\n  margin: 0;\n}\n\n${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
+  const css = `:global(*), :global(*::before), :global(*::after) {\n  box-sizing: border-box;\n}\n\n:global(body) {\n  margin: 0;\n}\n\n:global(p) {\n  margin: 0;\n}\n\n${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
   const sourceMap = sourceMapSchema.parse({ version: "1.0", locators: spec.nodes.map((node) => ({
     nodeId: node.id, file: tsxPath, componentName: name, styleFile: cssPath, styleSelector: `.${className(node.id)}`,
     ...(node.content?.assetId ? { assetPaths: assets.filter((asset) => asset.source === spec.assets.find((item) => item.id === node.content?.assetId)?.path).map((asset) => asset.target) } : {}),

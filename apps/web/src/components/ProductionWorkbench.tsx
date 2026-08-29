@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
+import { buildFigmaImportBundle } from "@d2c/figma-patcher";
 import {
   GOLDEN_SAMPLES,
   createProductionRun,
@@ -15,6 +16,16 @@ import { PrototypeEditor } from "./PrototypeEditor";
 // 每条状态都来自服务端事件与 Artifact；违规点击后展示 Region → Node → Source 定位与补丁范围。
 
 const TERMINAL_STATES = new Set(["COMPLETED", "FAILED", "NEEDS_REVIEW"]);
+type RenderNodeEvidence = { x: number; y: number; width: number; height: number; color?: string; backgroundColor?: string; fontFamily?: string; fontSize?: string };
+
+function downloadJson(payload: unknown, fileName: string): void {
+  const url = URL.createObjectURL(new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: "application/json" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 // 与基准 spec 的文本节点差异 → 类型化 set-content ops（保存与待保存计数共用）
 function diffTextOps(spec: ActivitySpec, baseline: ActivitySpec): SpecEditOp[] {
@@ -38,9 +49,11 @@ export function ProductionWorkbench() {
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number; nodes: Record<string, { x: number; y: number; width: number; height: number }> }>>([]);
+  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number; nodes: Record<string, RenderNodeEvidence> }>>([]);
   // 最近一轮评测指标：让工作台可视化「证据构成」——审计修复后可看到 perceptualDiff 缺为 null 而非 100
   const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
+  // 最近一轮文本证据（spec 文本 vs 渲染文本）：让 textConsistency 的 100 分附带逐项对比
+  const [latestTextEvidence, setLatestTextEvidence] = useState<{ expected: string[]; actual: string[] } | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
@@ -74,12 +87,17 @@ export function ProductionWorkbench() {
     if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "metrics" in event.data) {
       setLatestMetrics((event.data as { metrics?: ProductionMetrics }).metrics ?? null);
     }
+    // 文本证据同步：spec.text 节点 vs 渲染 DOM.textContent 的逐项对比
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "text" in event.data) {
+      const text = (event.data as { text?: { expected: string[]; actual: string[] } }).text;
+      setLatestTextEvidence(text ?? null);
+    }
     // 渲染完成后拉取视口清单（含逐节点几何），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
       void getProductionArtifact(event.runId, artifactId)
         .then(({ content }) => {
-          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; nodes?: Record<string, { x: number; y: number; width: number; height: number }> }> }).viewports ?? [];
+          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
           if (rendered.length) setViewports(rendered.map((v) => ({ name: v.name, width: v.width, height: v.height, nodes: v.nodes ?? {} })));
         })
         .catch(() => undefined);
@@ -95,6 +113,7 @@ export function ProductionWorkbench() {
           .then((detail) => {
             if (detail.violations.length) setViolations(detail.violations);
             if (detail.latestEvaluation) setLatestMetrics(detail.latestEvaluation);
+            if (detail.latestTextEvidence) setLatestTextEvidence(detail.latestTextEvidence);
             setRunning(false);
           })
           .catch(() => setRunning(false));
@@ -117,6 +136,7 @@ export function ProductionWorkbench() {
     setRunId(null);
     setError(null);
     setLatestMetrics(null);
+    setLatestTextEvidence(null);
   }
 
   async function runLoop() {
@@ -127,8 +147,13 @@ export function ProductionWorkbench() {
     setSelectedViolation(null);
     setFinalScore(null);
     setLatestMetrics(null);
+    setLatestTextEvidence(null);
     try {
-      const { runId: id } = await createProductionRun((selectedSample ?? GOLDEN_SAMPLES[0]!).payload);
+      const sample = selectedSample ?? GOLDEN_SAMPLES[0]!;
+      const submittedSpec = editableSpec ?? sample.payload.spec;
+      const { runId: id } = await createProductionRun({ ...sample.payload, spec: submittedSpec });
+      savedSpecRef.current = submittedSpec;
+      setEditSaved(false);
       setRunId(id);
       setViewports([]);
       subscribe(id);
@@ -184,6 +209,7 @@ export function ProductionWorkbench() {
     setFinalScore(null);
     setViewports([]);
     setLatestMetrics(null);
+    setLatestTextEvidence(null);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
@@ -235,7 +261,7 @@ export function ProductionWorkbench() {
         <div className="production-sample" data-testid="production-sample">
           <span>
             黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
-            目标仓库 {selectedSample?.payload.profile.repositoryPath}（含一处可修复的基线间距问题）
+            目标仓库 {selectedSample?.targetRepository}（含一处可修复的基线间距问题）
           </span>
           <span className="sample-switcher">
             换个页面：
@@ -300,11 +326,35 @@ export function ProductionWorkbench() {
               <tr>
                 <td>semanticReview（VLM 语义评审）</td>
                 <td>{latestMetrics.visual.semanticReview === null ? "—" : latestMetrics.visual.semanticReview.toFixed(1)}</td>
-                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"}>{latestMetrics.visual.semanticReviewAvailable ? "有证据（黄金样例默认 95 模拟）" : "缺 VLM 注入 → evidence:semantic-review-missing 触发 P1"}</td>
+                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"}>{latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）" : "缺服务端语义评审 → evidence:semantic-review-missing 触发 P1"}</td>
                 <td></td><td></td>
               </tr>
             </tbody>
           </table>
+          {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
+            <details className="text-evidence" data-testid="text-evidence">
+              <summary>文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）</summary>
+              <table className="text-evidence-table">
+                <thead>
+                  <tr><th>#</th><th>spec 期望（content.text）</th><th>渲染产物（DOM textContent）</th><th>差异</th></tr>
+                </thead>
+                <tbody>
+                  {latestTextEvidence.expected.map((expected, index) => {
+                    const actual = latestTextEvidence.actual[index] ?? "";
+                    const matched = expected === actual;
+                    return (
+                      <tr key={index} className={matched ? "ok" : "warn"}>
+                        <td>{index + 1}</td>
+                        <td><code>{expected}</code></td>
+                        <td><code>{actual || "（渲染缺失）"}</code></td>
+                        <td>{matched ? "✓" : "✗"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </details>
+          )}
         </section>
       )}
 
@@ -322,9 +372,13 @@ export function ProductionWorkbench() {
               {editSaved && !running && (
                 <button className="button primary" onClick={() => void rerunAfterEdit()}>按编辑重跑闭环</button>
               )}
+              <button className="button secondary" disabled={running} onClick={() => {
+                const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
+                downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}), `${editableSpec.page.id}-figma-import.json`);
+              }}>下载 Figma 导入包</button>
             </div>
           </div>
-          <PrototypeEditor spec={editableSpec} onEdit={handleEdit} />
+          <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />
         </section>
       )}
 

@@ -93,6 +93,9 @@ importers:
       '@d2c/figma-importer':
         specifier: workspace:*
         version: link:../../packages/figma-importer
+      '@d2c/figma-patcher':
+        specifier: workspace:*
+        version: link:../../packages/figma-patcher
       '@d2c/orchestrator':
         specifier: workspace:*
         version: link:../../packages/orchestrator

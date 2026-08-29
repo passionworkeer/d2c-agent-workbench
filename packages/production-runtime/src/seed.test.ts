@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TargetProjectProfile } from "@d2c/contracts";
-import { getFreePort, seedWorkspaceFrom, type RunWorkspace } from "./index";
+import { buildPreviewSpawnOptions, getFreePort, seedWorkspaceFrom, type RunWorkspace } from "./index";
 import { RunWorkspace as Workspace } from "./workspace";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -46,5 +46,18 @@ describe("getFreePort", () => {
     expect(Number.isInteger(port)).toBe(true);
     expect(port).toBeGreaterThan(0);
     expect(port).toBeLessThan(65536);
+  });
+});
+
+describe("buildPreviewSpawnOptions", () => {
+  it("does not pass unrelated server secrets to the preview process", () => {
+    process.env.D2C_TEST_SECRET = "must-not-leak";
+    try {
+      const options = buildPreviewSpawnOptions(process.cwd());
+      expect(options.env?.D2C_TEST_SECRET).toBeUndefined();
+      expect(options.env?.PATH ?? options.env?.Path).toBeTruthy();
+    } finally {
+      delete process.env.D2C_TEST_SECRET;
+    }
   });
 });

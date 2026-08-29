@@ -190,9 +190,16 @@ export async function planTargetedRepair(input: RepairPlanningInput): Promise<Pa
 export interface ApplyPatchOptions {
   /** spec 操作作用于 ActivitySpec 单一事实源，由调用方给出其在工作区内的路径 */
   specPath?: string;
+  /** asset 操作的服务端可信素材根。 */
+  assetSourceRoot?: string;
 }
 
-export async function applyPatchPlan(plan: PatchPlan, workspace: RunWorkspace, store?: FileArtifactStore, options: ApplyPatchOptions = {}): Promise<string[]> {
+export interface ApplyPatchResult {
+  writtenFiles: string[];
+  rollbackPath?: string;
+}
+
+export async function applyPatchPlan(plan: PatchPlan, workspace: RunWorkspace, store?: FileArtifactStore, options: ApplyPatchOptions = {}): Promise<ApplyPatchResult> {
   const specPath = options.specPath;
   if (plan.operations.some((operation) => operation.kind === "spec") && !specPath) {
     throw new Error("specPath option is required for spec operations");
@@ -214,12 +221,10 @@ export async function applyPatchPlan(plan: PatchPlan, workspace: RunWorkspace, s
     } else if (operation.kind === "spec") {
       written.push(await workspace.writeFile(specPath ?? "", patchSpecJson(await workspace.readFile(specPath ?? ""), operation.nodeId, operation.path, operation.value)));
     } else {
-      written.push(...await workspace.apply({ files: {}, assets: [{ source: operation.source, target: operation.file }] }));
+      written.push(...await workspace.apply({ files: {}, assetSourceRoot: options.assetSourceRoot, assets: [{ source: operation.source, target: operation.file }] }));
     }
   }
-  // 末位追加 rollback 文件绝对路径（约定：调用方按返回长度判断是否拿到）；空数组会让恢复路径变成 undefined
-  if (rollbackArtifactAbsolutePath) written.push(rollbackArtifactAbsolutePath);
-  return written;
+  return { writtenFiles: written, ...(rollbackArtifactAbsolutePath ? { rollbackPath: rollbackArtifactAbsolutePath } : {}) };
 }
 
 export interface RollbackSnapshot {

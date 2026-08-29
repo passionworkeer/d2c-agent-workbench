@@ -15,8 +15,8 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock("../lib/production-api", () => ({
   GOLDEN_SAMPLES: [
-    { id: "campaign", label: "夏日好物节（主视觉页）", payload: { spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page", role: "page" }, { id: "hero", role: "section" }, { id: "hero-title", role: "text", content: { text: "夏日好物节 · 全场 5 折" } }] }, profile: { repositoryPath: "examples/activity-target" } } },
-    { id: "summer-form", label: "体验官招募（表单页）", payload: { spec: { page: { route: "/campaign/summer-form" }, nodes: [{ id: "page" }] }, profile: { repositoryPath: "examples/activity-target" } } },
+    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
+    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
   ],
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
@@ -68,7 +68,7 @@ const flowEvents: TraceEvent[] = [
   event("TYPECHECKED", "类型检查通过", { artifactId: "artifact-5" }),
   event("BUILT", "真实构建通过", { artifactId: "artifact-6", exitCode: 0 }),
   event("RENDERED", "第 1 轮渲染完成", { artifactId: "artifact-7" }),
-  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics }),
+  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics, text: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] } }),
   event("ATTRIBUTED", "第 1 轮错误归因完成", { artifactId: "artifact-9", violations: [violation] }),
   event("REPAIR_PLANNED", "第 1 轮定向修复已规划", { artifactId: "artifact-10", allowedFiles: ["src/pages/CampaignPage.tsx", "src/pages/CampaignPage.module.css"] }),
   event("REPAIR_APPLIED", "第 1 轮修复已应用", { artifactId: "artifact-11" }),
@@ -89,7 +89,7 @@ beforeEach(() => {
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
     artifacts: flowEvents.filter((item) => item.data?.artifactId).map((item, index) => ({ id: `artifact-${index}`, kind: "event", path: "runs/run-1/x.json", createdAt: item.timestamp })),
-    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics,
+    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics, latestTextEvidence: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] },
   });
   apiMocks.subscribeToProductionRun.mockReset().mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
     for (const item of flowEvents) onEvent(item);
@@ -99,6 +99,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 describe("ProductionWorkbench", () => {
@@ -153,6 +154,37 @@ describe("ProductionWorkbench", () => {
     expect(apiMocks.repairProductionRun).toHaveBeenCalledWith("run-1");
   });
 
+  it("uses prototype edits when creating the first run", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    const input = screen.getByLabelText("hero-title 文本");
+    await user.clear(input);
+    await user.type(input, "首轮就使用的新标题");
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(apiMocks.createProductionRun).toHaveBeenCalledWith(expect.objectContaining({
+      sampleId: "campaign",
+      spec: expect.objectContaining({
+        nodes: expect.arrayContaining([expect.objectContaining({ id: "hero-title", content: { text: "首轮就使用的新标题" } })]),
+      }),
+    }));
+  });
+
+  it("offers a downloadable Figma import bundle for the edited production spec", async () => {
+    const user = userEvent.setup();
+    const createObjectUrl = vi.fn(() => "blob:figma-bundle");
+    const revokeObjectUrl = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: revokeObjectUrl });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the sample switcher available after a completed run and resets state on switch", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
@@ -185,9 +217,21 @@ describe("ProductionWorkbench", () => {
     // 缺证据的两项必须显式标 "缺"，不能默认 100 蒙混
     expect(breakdown.textContent).toContain("缺参考截图");
     expect(breakdown.textContent).toContain("依赖 perceptualDiff");
-    expect(breakdown.textContent).toContain("黄金样例默认 95 模拟");
+    expect(breakdown.textContent).toContain("服务端黄金基准");
     // 有证据的视觉指标仍展示具体分
     expect(breakdown.textContent).toContain("92.4");
+  });
+
+  it("renders text evidence row-by-row so textConsistency 100 is grounded in spec vs render", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    const evidence = await screen.findByTestId("text-evidence");
+    // 黄金样例 hero-title 文案一致 → 期望 1 行 matched
+    expect(evidence.textContent).toContain("夏日好物节 · 全场 5 折");
+    expect(evidence.querySelectorAll("tbody tr").length).toBe(1);
+    expect(evidence.querySelector("tbody tr")?.classList.contains("ok")).toBe(true);
   });
 
   it("draws a Region overlay on the screenshot when a violation with nodes is selected", async () => {

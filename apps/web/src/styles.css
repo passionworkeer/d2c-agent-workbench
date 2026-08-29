@@ -674,6 +674,14 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .eval-table td.ok { color: #1f5f3f; }
 .eval-table td.gap { color: #a43b19; }
 .eval-table td.warn { color: #a43b19; font-weight: 600; }
+.text-evidence { margin-top: 12px; }
+.text-evidence summary { cursor: pointer; font-size: 12px; color: #1f5f3f; padding: 4px 0; }
+.text-evidence summary:hover { color: #15311f; }
+.text-evidence-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+.text-evidence-table th, .text-evidence-table td { padding: 4px 8px; border-bottom: 1px solid #eceee7; text-align: left; vertical-align: top; }
+.text-evidence-table th { color: #6a6f66; font-weight: 600; background: #f7f8f4; }
+.text-evidence-table code { font-family: Consolas, monospace; color: #1f5f3f; }
+.text-evidence-table tr.warn code { color: #a43b19; }
 @media (max-width: 1100px) { .production-columns { grid-template-columns: 1fr; } }
 
 .production-sample { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 10px 14px; border: 1px solid #e3e5de; border-radius: 9px; background: #f7f8f4; font-size: 12.5px; color: #4a4f46; }

@@ -24,7 +24,8 @@ describe("RunWorkspace", () => {
     const workspace = await RunWorkspace.create(join(root, "workspace"), profile);
     await workspace.apply({
       files: { "src/pages/campaign/Page.tsx": "export const Page = () => null;" },
-      assets: [{ source: join(root, "hero.png"), target: "public/campaign/hero.png" }],
+      assetSourceRoot: root,
+      assets: [{ source: "hero.png", target: "public/campaign/hero.png" }],
     });
     expect(await readFile(join(root, "workspace/src/pages/campaign/Page.tsx"), "utf8")).toContain("Page");
     expect(await readFile(join(root, "workspace/public/campaign/hero.png"), "utf8")).toBe("image");
@@ -36,5 +37,24 @@ describe("RunWorkspace", () => {
     const workspace = await RunWorkspace.create(join(root, "workspace"), profile);
     await expect(workspace.writeFile("../secret", "x")).rejects.toThrow(/workspace/);
     await expect(workspace.writeFile("src/config.ts", "x")).rejects.toThrow(/allowedWriteGlobs/);
+  });
+
+  it("rejects asset sources outside their declared root and duplicate targets", async () => {
+    const root = await mkdtemp(join(tmpdir(), "d2c-workspace-"));
+    roots.push(root);
+    await writeFile(join(root, "one.png"), "one");
+    await writeFile(join(root, "two.png"), "two");
+    const workspace = await RunWorkspace.create(join(root, "workspace"), profile);
+    await expect(workspace.apply({
+      files: {}, assetSourceRoot: join(root, "assets"),
+      assets: [{ source: "../one.png", target: "public/campaign/one.png" }],
+    })).rejects.toThrow(/asset source/);
+    await expect(workspace.apply({
+      files: {}, assetSourceRoot: root,
+      assets: [
+        { source: "one.png", target: "public/campaign/same.png" },
+        { source: "two.png", target: "public/campaign/same.png" },
+      ],
+    })).rejects.toThrow(/duplicate asset target/);
   });
 });

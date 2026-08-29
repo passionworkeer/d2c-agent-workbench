@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
+import { once } from "node:events";
 
 export interface CommandOptions {
   cwd: string;
@@ -58,6 +59,21 @@ export function buildMinimalEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEn
   return { ...env, ...extra };
 }
 
+/** 终止完整进程树；Windows 的 shell/.CMD 子进程不能只 kill 外层 cmd.exe。 */
+export async function terminateProcessTree(child: ChildProcess): Promise<void> {
+  if (!child.pid || child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32") {
+    const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+    await once(killer, "close").catch(() => undefined);
+  } else {
+    child.kill("SIGKILL");
+  }
+  await Promise.race([
+    once(child, "close").catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, 2_000)),
+  ]);
+}
+
 export async function runAllowedCommand(command: string[], options: CommandOptions): Promise<CommandResult> {
   if (command.length === 0 || !options.allowedCommands.some((allowed) => sameCommand(command, allowed))) {
     throw new Error(`command is not in the explicit allowlist: ${command.join(" ")}`);
@@ -95,7 +111,7 @@ export async function runAllowedCommand(command: string[], options: CommandOptio
     child.on("error", reject);
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      void terminateProcessTree(child).catch(() => child.kill("SIGKILL"));
     }, options.timeoutMs ?? 120_000);
     child.on("close", (code) => {
       clearTimeout(timer);

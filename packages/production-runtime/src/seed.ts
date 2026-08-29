@@ -1,8 +1,9 @@
-import { spawn } from "node:child_process";
+import { spawn, type SpawnOptions } from "node:child_process";
 import { cp, readdir, stat } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import type { RunWorkspace } from "./workspace";
+import { buildMinimalEnv, terminateProcessTree } from "./command";
 
 // 工作区播种：把目标仓库骨架复制进隔离工作区（忽略 node_modules/.git/dist 等重目录），
 // 之后生成的文件与真实命令都在这份副本上执行，不触碰目标仓库本身。
@@ -42,6 +43,16 @@ export interface PreviewServerHandle {
   dispose: () => Promise<void>;
 }
 
+export function buildPreviewSpawnOptions(cwd: string): SpawnOptions {
+  return {
+    cwd,
+    env: buildMinimalEnv(),
+    shell: process.platform === "win32",
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  };
+}
+
 /** 在工作区启动 vite preview（服务于 Playwright 渲染），返回可释放的服务句柄 */
 export async function startPreviewServer(input: {
   cwd: string;
@@ -50,13 +61,7 @@ export async function startPreviewServer(input: {
   timeoutMs?: number;
 }): Promise<PreviewServerHandle> {
   const executable = input.executable ?? "pnpm";
-  const child = spawn(executable, ["exec", "vite", "preview", "--port", String(input.port), "--strictPort", "--host", "127.0.0.1"], {
-    cwd: input.cwd,
-    // Windows 下 pnpm 是 .CMD 垫片，需 shell 才能执行（命令为固定构造，无用户输入）
-    shell: process.platform === "win32",
-    windowsHide: true,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const child = spawn(executable, ["exec", "vite", "preview", "--port", String(input.port), "--strictPort", "--host", "127.0.0.1"], buildPreviewSpawnOptions(input.cwd));
   const url = `http://127.0.0.1:${input.port}`;
   const started = Date.now();
   while (Date.now() - started < (input.timeoutMs ?? 30_000)) {
@@ -65,18 +70,11 @@ export async function startPreviewServer(input: {
       return {
         url,
         port: input.port,
-        dispose: async () => {
-          if (process.platform === "win32") {
-            spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
-          } else {
-            child.kill("SIGKILL");
-          }
-          await new Promise((done) => setTimeout(done, 300));
-        },
+        dispose: () => terminateProcessTree(child),
       };
     }
     await new Promise((done) => setTimeout(done, 250));
   }
-  child.kill("SIGKILL");
+  await terminateProcessTree(child);
   throw new Error(`vite preview 未在 ${input.timeoutMs ?? 30_000}ms 内就绪（port ${input.port}）`);
 }

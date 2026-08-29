@@ -64,12 +64,13 @@ const adapters = {
   typecheck: async () => ({ command: ["pnpm", "typecheck"], exitCode: 0, stdout: "", stderr: "", durationMs: 3, timedOut: false, truncated: false }),
   build: async () => ({ command: ["pnpm", "build"], exitCode: 0, stdout: "", stderr: "", durationMs: 5, timedOut: false, truncated: false }),
   render: async () => renderFake,
+  compareImages: async () => ({ equal: true, differentPixels: 0, totalPixels: 1_296_000, diffClusters: [] }),
   evaluate: async () => passedReport,
   attribute: () => [],
 };
 
 const payload = {
-  spec, profile, mappings: [],
+  sampleId: "campaign", spec, mappings: [],
   referenceNodes: { hero: { x: 0, y: 0, width: 1440, height: 500 } },
   render: { url: "http://127.0.0.1:4173/campaign/summer", viewports: [{ name: "desktop", width: 1440, height: 900 }] },
 };
@@ -140,6 +141,17 @@ describe("production routes", () => {
     expect(detail.latestEvaluation.finalScore).toBe(92);
   });
 
+  it("exposes latest text evidence (spec text vs render) so the workbench can prove textConsistency is grounded", async () => {
+    const { app } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    expect(detail.latestTextEvidence).toBeTruthy();
+    // 黄金样例 hero-title.content.text = "夏日好物节"；渲染产物 texts 同名条目 "夏日好物节"
+    expect(detail.latestTextEvidence.expected).toContain("夏日好物节");
+    expect(detail.latestTextEvidence.actual).toContain("夏日好物节");
+  });
+
   it("rejects unknown sampleIds instead of trusting client-supplied commands", async () => {
     const { app } = await createApp();
     const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, sampleId: "no-such-target" } });
@@ -147,15 +159,14 @@ describe("production routes", () => {
     expect(response.json().code).toBe("SAMPLE_ID_UNKNOWN");
   });
 
-  it("ignores client-supplied profile in favor of the server-registered one", async () => {
+  it("rejects client-supplied execution profiles and semantic scores", async () => {
     const { app } = await createApp();
-    // 客户端尝试把 repositoryPath 改成 packages/contracts —— 服务端忽略、强制用注册仓库
-    const tampered = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, profile: { ...profile, repositoryPath: "packages/contracts" } } });
-    expect(tampered.statusCode).toBe(202);
-    const runId = tampered.json().runId;
-    const detail = await waitTerminal(app, runId);
-    // 成功跑到 COMPLETED 说明注册仓库被采用；若仍按 packages/contracts 跑会被 workspace 边界拒绝
-    expect(detail.status).toBe("completed");
+    const profileResponse = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, profile } });
+    expect(profileResponse.statusCode).toBe(400);
+    expect(profileResponse.json().code).toBe("CLIENT_EXECUTION_CONFIG_FORBIDDEN");
+    const scoreResponse = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, semanticReviewScore: 100 } });
+    expect(scoreResponse.statusCode).toBe(400);
+    expect(scoreResponse.json().code).toBe("CLIENT_SCORE_FORBIDDEN");
   });
 
   it("rejects malformed mappings and referenceNodes with INPUT_INVALID", async () => {
@@ -168,22 +179,28 @@ describe("production routes", () => {
     expect(badRef.json().code).toBe("INPUT_INVALID");
   });
 
-  it("confirms mappings and applies spec edits to the stored run", async () => {
+  it("rejects mappings that are not registered for the selected target", async () => {
     const { app } = await createApp();
-    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, mappings: [{ nodeId: "hero-title", figmaComponent: "Heading", codeComponent: "Heading", importPath: "@/components/Heading", props: {}, confidence: .8, status: "review", evidence: [] }] } });
+    const response = await app.inject({ method: "POST", url: "/api/production/runs", payload: {
+      ...payload,
+      mappings: [{ nodeId: "hero-title", figmaComponent: "Heading", codeComponent: "Injected", importPath: "@/unknown", props: {}, confidence: 1, status: "accepted", evidence: [] }],
+    } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("MAPPING_FORBIDDEN");
+  });
+
+  it("applies spec edits to the stored run", async () => {
+    const { app } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
     const runId = created.json().runId;
     await waitTerminal(app, runId);
-
-    const confirmed = await app.inject({ method: "POST", url: `/api/production/runs/${runId}/confirm-mapping`, payload: { nodeId: "hero-title", status: "accepted" } });
-    expect(confirmed.statusCode).toBe(200);
-    expect(confirmed.json().mappings[0].status).toBe("accepted");
 
     const edited = await app.inject({ method: "POST", url: `/api/production/runs/${runId}/edit`, payload: { editOps: [{ nodeId: "hero-title", kind: "set-content", text: "夏日好物节 · 全场 5 折" }] } });
     expect(edited.statusCode).toBe(200);
     expect(edited.json().spec.nodes.find((node: { id: string }) => node.id === "hero-title")?.content?.text).toBe("夏日好物节 · 全场 5 折");
   });
 
-  it("passes an injected semantic review score through to the evaluator", async () => {
+  it("uses the server-registered semantic review score", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "d2c-semreview-"));
     roots.push(dataRoot);
     const seen: Array<number | undefined> = [];
@@ -199,11 +216,11 @@ describe("production routes", () => {
         },
       },
     });
-    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, semanticReviewScore: 55 } });
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
     const runId = created.json().runId;
     await waitTerminal(app, runId);
     expect(seen.length).toBeGreaterThanOrEqual(1);
-    expect(seen.every((score) => score === 55)).toBe(true);
+    expect(seen.every((score) => score === 95)).toBe(true);
   });
 
   it("regenerates code on repair after a spec edit (no stale-code mismatch)", async () => {
@@ -271,6 +288,8 @@ describe("production routes", () => {
         expect(body.mode).toBe("production");
         expect(body.status).toBe("completed");
         expect(body.state).toBe("COMPLETED");
+        expect(body.events.length).toBeGreaterThan(0);
+        expect(body.latestEvaluation?.finalScore).toBe(92);
         const repair = await restarted.inject({ method: "POST", url: `/api/production/runs/${runId}/repair` });
         expect(repair.statusCode).toBe(409);
         return;

@@ -82,6 +82,8 @@
       "layout": {
         "mode": "flex",
         "direction": "column",
+        "gap": 44,
+        "padding": { "top": 80, "right": 60, "bottom": 60, "left": 60 },
         "width": {
           "mode": "fill"
         },
@@ -93,7 +95,8 @@
       },
       "responsive": [{ "viewport": "mobile", "rule": "resize", "value": 390 }],
       "visual": {
-        "opacity": 1
+        "opacity": 1,
+        "background": { "type": "solid", "value": "#f7f8f4" }
       },
       "tokenRefs": [
         "color/accent"
@@ -137,10 +140,11 @@
       "responsive": [],
       "visual": {
         "opacity": 1,
+        "color": "#ff5000",
         "fontSize": 40,
         "fontWeight": 700
       },
-      "tokenRefs": [],
+      "tokenRefs": ["color/accent"],
       "content": {
         "text": "限时体验官招募 · 填写即领券"
       },
@@ -171,18 +175,19 @@
         "mode": "flex",
         "direction": "column",
         "gap": 24,
+        "padding": { "top": 24, "right": 24, "bottom": 24, "left": 24 },
         "width": {
           "mode": "fixed",
           "value": 520
         },
-        "height": {
-          "mode": "hug"
-        },
+        "height": { "mode": "fixed", "value": 260 },
         "rationale": "表单字段纵向排列"
       },
-      "responsive": [],
+      "responsive": [{ "viewport": "mobile", "rule": "resize", "value": 390 }],
       "visual": {
-        "opacity": 1
+        "opacity": 1,
+        "background": { "type": "solid", "value": "#ffffff" },
+        "border": "1px solid #e3e5de"
       },
       "tokenRefs": [],
       "evidence": [
@@ -225,6 +230,7 @@
       "responsive": [],
       "visual": {
         "opacity": 1,
+        "color": "#4a4f46",
         "fontSize": 18
       },
       "tokenRefs": [],
@@ -267,6 +273,7 @@
       "responsive": [],
       "visual": {
         "opacity": 1,
+        "color": "#4a4f46",
         "fontSize": 18
       },
       "tokenRefs": [],
@@ -309,6 +316,7 @@
       "responsive": [],
       "visual": {
         "opacity": 1,
+        "color": "#ff5000",
         "fontSize": 20,
         "fontWeight": 700
       },

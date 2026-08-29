@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Puck, type Config, type Data } from "@measured/puck";
 import "@measured/puck/puck.css";
 import type { ActivitySpec, SpecEditOp } from "@d2c/contracts";
@@ -53,9 +53,7 @@ export function buildPuckConfig(spec: ActivitySpec): PuckAdapterConfig {
 export function buildPuckData(spec: ActivitySpec): PuckAdapterData {
   return {
     root: { props: { title: spec.page.name } },
-    content: spec.nodes
-      .filter((node) => !node.parentId)
-      .map((node) => ({
+    content: spec.nodes.map((node) => ({
         type: node.role,
         props: {
           // Puck 0.20 的条目身份/LayerTree key 取自 props.id
@@ -74,12 +72,6 @@ export function PrototypeEditor({ spec, onEdit }: PrototypeEditorProps) {
   const [data, setData] = useState<PuckAdapterData>(initialData);
   const textNodes = useMemo(() => spec.nodes.filter((node) => node.role === "text" && node.content?.text !== undefined), [spec]);
   const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(textNodes.map((node) => [node.id, node.content?.text ?? ""])));
-  const specRef = useRef(spec);
-  if (specRef.current !== spec) {
-    specRef.current = spec;
-    setDrafts(Object.fromEntries(textNodes.map((node) => [node.id, node.content?.text ?? ""])));
-  }
-
   return (
     <div className="prototype-editor">
       <div className="prototype-fields" data-testid="prototype-fields">

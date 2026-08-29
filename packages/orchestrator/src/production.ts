@@ -16,6 +16,7 @@ import { inspectTargetProject, type ProjectIndex } from "@d2c/asset-indexer";
 import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput } from "@d2c/codegen";
 import {
   attributeDiffClusters,
+  compareImageArtifacts,
   evaluateProductionRun,
   type ImageComparison,
   type ProductionEvaluationInput,
@@ -31,6 +32,7 @@ import {
   seedWorkspaceFrom,
   shouldContinueRepair,
   type ApplyPatchOptions,
+  type ApplyPatchResult,
   type CommandResult,
   type FileArtifactStore,
   type RepairPlanningInput,
@@ -51,7 +53,7 @@ export interface ProductionWorkflowAdapters {
   evaluate: (input: ProductionEvaluationInput) => ProductionEvaluationReport | Promise<ProductionEvaluationReport>;
   attribute: typeof attributeDiffClusters;
   planRepair: (input: RepairPlanningInput) => Promise<PatchPlan>;
-  applyRepair: (plan: PatchPlan, workspace: RunWorkspace, store: FileArtifactStore, options?: ApplyPatchOptions) => Promise<string[]>;
+  applyRepair: (plan: PatchPlan, workspace: RunWorkspace, store: FileArtifactStore, options?: ApplyPatchOptions) => Promise<ApplyPatchResult>;
   maxRounds?: number;
 }
 
@@ -71,6 +73,8 @@ export interface ProductionWorkflowInput {
   assetEvidence?: Array<{ id: string; pHashDistance: number }>;
   engineeringOverride?: Partial<ProductionEvaluationInput["engineering"]>;
   semanticReviewScore?: number;
+  /** spec.assets 相对该服务端可信目录解析。 */
+  assetSourceRoot?: string;
   /** spec 补丁在工作区内的落盘路径；不提供则 spec 类补丁报错 */
   specWorkspacePath?: string;
 }
@@ -99,7 +103,7 @@ export function createRealAdapters(deps: {
     typecheck: () => runAllowedCommand(deps.profile.commands.typecheck, { cwd: deps.workspace.root, allowedCommands }),
     build: () => runAllowedCommand(deps.profile.commands.build, { cwd: deps.workspace.root, allowedCommands }),
     render: (input) => renderPage(input),
-    compareImages: undefined,
+    compareImages: (reference, current) => compareImageArtifacts(reference, current),
     evaluate: (input) => evaluateProductionRun(input),
     attribute: (clusters, geometry, sourceMap) => attributeDiffClusters(clusters, geometry, sourceMap),
     planRepair: (input) => planTargetedRepair(input),
@@ -206,8 +210,8 @@ export async function* runProductionWorkflow(
     yield event("GENERATED", "工作区已播种目标仓库", `复制 ${seeded.length} 个顶层条目并安装依赖`, { artifactId: prepareArtifact.id, entries: seeded });
   }
 
-  await input.workspace.apply({ files: generated.files, assets: generated.plan.assets });
-  const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files) });
+  await input.workspace.apply({ files: generated.files, assetSourceRoot: input.assetSourceRoot, assets: generated.plan.assets });
+  const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files), assets: generated.plan.assets });
   yield event("GENERATED", "真实代码已写入工作区", `${Object.keys(generated.files).length} 个文件落盘`, { artifactId: manifestArtifact.id, files: Object.keys(generated.files) });
 
   const typecheck = await adapters.typecheck();
@@ -240,6 +244,9 @@ export async function* runProductionWorkflow(
     const canonical = render.viewports.find((viewport) => viewport.width === spec.page.canonicalViewport.width) ?? render.viewports[0];
     // Mobile 视口联合：任一视口横向溢出 → 评测按 overflow 计入 P1 硬门槛，不能单看 canonical 蒙混过关
     const anyHorizontalOverflow = render.viewports.some((viewport) => viewport.horizontalOverflow);
+    // 文本证据：spec 里 role=text 节点的 content.text vs 渲染 DOM 的 textContent；同步进 EVALUATED 事件
+    // 让工作台「评测分构成」面板能展开逐项对比，证明 100 分不是凭空给的
+    const textEvidence = input.textEvidence ?? deriveTextEvidence(spec, render.viewports);
     // renderedNodes 用 canonical 为主、其它视口填补：评测关心真实节点几何，不限视口
     const mergedNodes: Record<string, RenderedNode> = {};
     for (const viewport of render.viewports) Object.assign(mergedNodes, viewport.nodes);
@@ -253,15 +260,14 @@ export async function* runProductionWorkflow(
       renderedNodes,
       horizontalOverflow: anyHorizontalOverflow,
       image: comparison,
-      // 文本证据从渲染产物中提取：expected 来自 spec.text 节点，actual 来自渲染 DOM 的 textContent
-      text: input.textEvidence ?? deriveTextEvidence(spec, render.viewports),
+      text: textEvidence,
       assets: input.assetEvidence ?? [],
       engineering: { ...deriveEngineering(spec, generated.plan), ...input.engineeringOverride },
       sourceMap: generated.sourceMap,
       ...(input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
     });
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
-    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore, metrics: evaluation.metrics });
+    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore, metrics: evaluation.metrics, text: textEvidence });
 
     const attributed = attribute(comparison.diffClusters, (canonical?.nodes ?? {}) as Parameters<typeof attribute>[1], generated.sourceMap);
     const violations = mergeViolations([evaluation.violations, attributed]);
@@ -299,19 +305,24 @@ export async function* runProductionWorkflow(
     const patchArtifact = await input.artifacts.writeJson("repair", `patch-plan-${round}`, patchPlan);
     yield event("REPAIR_PLANNED", `第 ${round} 轮定向修复已规划`, `${patchPlan.operations.length} 个操作 · 仅触碰 ${patchPlan.allowedFiles.length} 个文件`, { artifactId: patchArtifact.id, allowedFiles: patchPlan.allowedFiles });
 
-    const repairApplyResult = await applyRepair(patchPlan, input.workspace, input.artifacts, input.specWorkspacePath ? { specPath: input.specWorkspacePath } : undefined);
-    // 末位元素（若有）是 rollback 快照的绝对路径；保留以便修复后失败时自动回滚
-    const rollbackPath = repairApplyResult.at(-1);
+    const repairApplyResult = await applyRepair(patchPlan, input.workspace, input.artifacts, {
+      ...(input.specWorkspacePath ? { specPath: input.specWorkspacePath } : {}),
+      ...(input.assetSourceRoot ? { assetSourceRoot: input.assetSourceRoot } : {}),
+    });
+    const rollbackPath = repairApplyResult.rollbackPath;
     const appliedArtifact = await input.artifacts.writeJson("repair", `applied-${round}`, { files: patchPlan.allowedFiles });
     yield event("REPAIR_APPLIED", `第 ${round} 轮修复已应用`, "回滚快照与补丁均已存档", { artifactId: appliedArtifact.id, files: patchPlan.allowedFiles });
 
     const typecheckAgain = await adapters.typecheck();
     const typecheckArtifactAgain = await input.artifacts.writeJson("command", `typecheck-${round}`, typecheckAgain);
     if (typecheckAgain.exitCode !== 0) {
-      // 修复后类型失败 → 撤回本轮变更，保持工作区可用
-      if (rollbackPath) { try { await restoreRollback(rollbackPath, input.workspace); } catch { /* 路径缺失时继续上报失败 */ } }
+      let rollbackDetail = "未生成回滚快照";
+      if (rollbackPath) {
+        try { await restoreRollback(rollbackPath, input.workspace); rollbackDetail = "已自动回滚到修复前快照"; }
+        catch (cause) { rollbackDetail = `回滚失败：${cause instanceof Error ? cause.message : "未知错误"}`; }
+      }
       yield event("TYPECHECKED", "修复后类型检查失败", typecheckAgain.stderr.slice(0, 200), { artifactId: typecheckArtifactAgain.id, exitCode: typecheckAgain.exitCode });
-      yield event("FAILED", "生产闭环失败", "修复引入类型错误，已自动回滚到修复前快照", { exitCode: typecheckAgain.exitCode });
+      yield event("FAILED", "生产闭环失败", `修复引入类型错误，${rollbackDetail}`, { exitCode: typecheckAgain.exitCode, rollbackSucceeded: rollbackDetail.startsWith("已自动") });
       return;
     }
     yield event("TYPECHECKED", "修复后类型检查通过", `耗时 ${typecheckAgain.durationMs}ms`, { artifactId: typecheckArtifactAgain.id });
@@ -319,9 +330,13 @@ export async function* runProductionWorkflow(
     const buildAgain = await adapters.build();
     const buildArtifactAgain = await input.artifacts.writeJson("command", `build-${round}`, buildAgain);
     if (buildAgain.exitCode !== 0) {
-      if (rollbackPath) { try { await restoreRollback(rollbackPath, input.workspace); } catch { /* 同上 */ } }
+      let rollbackDetail = "未生成回滚快照";
+      if (rollbackPath) {
+        try { await restoreRollback(rollbackPath, input.workspace); rollbackDetail = "已自动回滚到修复前快照"; }
+        catch (cause) { rollbackDetail = `回滚失败：${cause instanceof Error ? cause.message : "未知错误"}`; }
+      }
       yield event("BUILT", "修复后构建失败", buildAgain.stderr.slice(0, 200), { artifactId: buildArtifactAgain.id, exitCode: buildAgain.exitCode });
-      yield event("FAILED", "生产闭环失败", "修复引入构建错误，已自动回滚到修复前快照", { exitCode: buildAgain.exitCode });
+      yield event("FAILED", "生产闭环失败", `修复引入构建错误，${rollbackDetail}`, { exitCode: buildAgain.exitCode, rollbackSucceeded: rollbackDetail.startsWith("已自动") });
       return;
     }
     yield event("BUILT", "修复后构建通过", `exitCode 0 · 耗时 ${buildAgain.durationMs}ms`, { artifactId: buildArtifactAgain.id, exitCode: 0 });

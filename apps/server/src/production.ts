@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -8,7 +8,6 @@ import {
   productionMetricsSchema,
   productionRunSchema,
   rectSchema,
-  targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
   type ComponentMapping,
@@ -26,7 +25,7 @@ import {
 import type { GeneratedProductionOutput } from "@d2c/codegen";
 import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
-import { ACTIVITY_TARGET_PROFILE, resolveProfileBySampleId } from "./profiles";
+import { resolveTargetBySampleId } from "./profiles";
 
 export interface ProductionRouteOptions {
   /** 运行数据（runs/、workspaces/、artifacts/、renders/）落盘根目录 */
@@ -44,7 +43,10 @@ export interface ProductionRunRecord {
   profile: TargetProjectProfile;
   mappings: ComponentMapping[];
   referenceNodes: Record<string, { x: number; y: number; width: number; height: number }>;
-  /** VLM 语义评审分（0-100）；缺省时评测用保守默认值，真实 VLM 接入后经此注入 */
+  sampleId: string;
+  assetSourceRoot: string;
+  referenceScreenshot: string;
+  /** 仅来自服务端注册/服务端评审适配器，公共请求不能注入。 */
   semanticReviewScore?: number;
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
@@ -53,6 +55,8 @@ export interface ProductionRunRecord {
   specEdited?: boolean;
   /** 最近一轮评测指标：每次 EVALUATED 事件覆盖；GET /runs/:id 透传给工作台展示证据构成 */
   latestEvaluation?: ProductionMetrics;
+  /** 最近一轮文本证据（spec.text vs 渲染 DOM.textContent）：让工作台能展示逐项对比 */
+  latestTextEvidence?: { expected: string[]; actual: string[] };
 }
 
 type RunListener = (event: TraceEvent) => void;
@@ -72,6 +76,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   const allowedTargetRoots = (options.allowedTargetRoots ?? [join(repoRoot, "examples")]).map((root) => resolve(root));
   const records = new Map<string, ProductionRunRecord>();
   const listeners = new Map<string, Set<RunListener>>();
+  const persistChains = new Map<string, Promise<void>>();
 
   // 启动重载：把历史 run 的元数据读回内存（只读状态；无工作区，repair 会如实 409）
   void (async () => {
@@ -80,7 +85,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       const ids = await readdir(runsDirectory).catch(() => [] as string[]);
       for (const id of ids) {
         try {
-          const parsed = JSON.parse(await readFile(join(runsDirectory, id, "run.json"), "utf8")) as { run?: unknown; mappings?: ComponentMapping[]; spec?: unknown; profile?: unknown; referenceNodes?: ProductionRunRecord["referenceNodes"] };
+          const parsed = JSON.parse(await readFile(join(runsDirectory, id, "run.json"), "utf8")) as Partial<ProductionRunRecord>;
           if (!parsed.run || records.has(id)) continue;
           // 旧版 run.json 只持久化 {run, mappings}——缺 spec/profile 的历史记录跳过，
           // 否则 /edit 会在 undefined 上抛 TypeError
@@ -92,11 +97,19 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
             run.state = "FAILED";
           }
           records.set(id, {
-            run, events: [],
-            spec: parsed.spec as ActivitySpec,
+            run,
+            events: Array.isArray(parsed.events) ? parsed.events.map((event) => traceEventSchema.parse(event)) : [],
+            spec: activitySpecSchema.parse(parsed.spec),
             profile: parsed.profile as TargetProjectProfile,
             mappings: parsed.mappings ?? [],
             referenceNodes: parsed.referenceNodes ?? {},
+            sampleId: parsed.sampleId ?? "campaign",
+            assetSourceRoot: parsed.assetSourceRoot ?? "",
+            referenceScreenshot: parsed.referenceScreenshot ?? "",
+            ...(parsed.semanticReviewScore !== undefined ? { semanticReviewScore: parsed.semanticReviewScore } : {}),
+            ...(parsed.latestEvaluation ? { latestEvaluation: productionMetricsSchema.parse(parsed.latestEvaluation) } : {}),
+            ...(parsed.latestTextEvidence ? { latestTextEvidence: parsed.latestTextEvidence as { expected: string[]; actual: string[] } } : {}),
+            ...(parsed.specEdited ? { specEdited: true } : {}),
           });
         } catch {
           // 单个损坏的 run.json 跳过，不阻塞其余重载
@@ -109,15 +122,41 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
 
   async function persistRun(record: ProductionRunRecord): Promise<void> {
     const directory = join(dataRoot, "runs", record.run.id);
-    await mkdir(directory, { recursive: true });
-    // 全量持久化：重启后重载需要 spec/profile/mappings/referenceNodes 才能查状态与重新编辑
-    await writeFile(join(directory, "run.json"), `${JSON.stringify({ run: record.run, spec: record.spec, profile: record.profile, mappings: record.mappings, referenceNodes: record.referenceNodes }, null, 2)}\n`, "utf8");
+    const target = join(directory, "run.json");
+    const temporary = join(directory, `run.${randomUUID()}.tmp`);
+    const snapshot = `${JSON.stringify({
+      run: record.run,
+      events: record.events,
+      spec: record.spec,
+      profile: record.profile,
+      mappings: record.mappings,
+      referenceNodes: record.referenceNodes,
+      sampleId: record.sampleId,
+      assetSourceRoot: record.assetSourceRoot,
+      referenceScreenshot: record.referenceScreenshot,
+      semanticReviewScore: record.semanticReviewScore,
+      latestEvaluation: record.latestEvaluation,
+      latestTextEvidence: record.latestTextEvidence,
+      specEdited: record.specEdited,
+    }, null, 2)}\n`;
+    const previous = persistChains.get(record.run.id) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(async () => {
+      await mkdir(directory, { recursive: true });
+      await writeFile(temporary, snapshot, "utf8");
+      await rename(temporary, target);
+    });
+    persistChains.set(record.run.id, current);
+    try {
+      await current;
+    } finally {
+      if (persistChains.get(record.run.id) === current) persistChains.delete(record.run.id);
+    }
   }
 
   const productionStates = new Set<string>(productionRunSchema.shape.state.options);
   const isProductionState = (state: string): state is ProductionRun["state"] => productionStates.has(state);
 
-  function publish(record: ProductionRunRecord, event: TraceEvent): void {
+  async function publish(record: ProductionRunRecord, event: TraceEvent): Promise<void> {
     record.events.push(event);
     if (isProductionState(event.state)) record.run.state = event.state;
     if (event.state === "COMPLETED") record.run.status = "completed";
@@ -132,12 +171,20 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       const parsed = productionMetricsSchema.safeParse((event.data as { metrics?: unknown }).metrics);
       if (parsed.success) record.latestEvaluation = parsed.data;
     }
-    void persistRun(record);
+    // 文本证据透传：spec 文本节点 vs 渲染产物 textContent，让工作台能展开「spec 怎么说 / render 显示什么」
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "text" in event.data) {
+      const text = (event.data as { text?: unknown }).text;
+      if (text && typeof text === "object" && Array.isArray((text as { expected?: unknown }).expected) && Array.isArray((text as { actual?: unknown }).actual)) {
+        record.latestTextEvidence = text as { expected: string[]; actual: string[] };
+      }
+    }
     for (const listener of listeners.get(record.run.id) ?? []) listener(event);
+    await persistRun(record);
   }
 
   async function startWorkflow(record: ProductionRunRecord, reuseGenerated: boolean): Promise<void> {
     if (!record.workspace || !record.artifactStore) return;
+    const workflowSpec = record.spec;
     const renderInput: ProductionWorkflowInput["render"] = {
       url: record.profile.previewUrl,
       viewports: [
@@ -179,50 +226,62 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         artifacts: record.artifactStore,
         render: renderInput,
         referenceNodes: record.referenceNodes,
+        assetSourceRoot: record.assetSourceRoot,
+        referenceScreenshot: record.referenceScreenshot,
         ...(record.semanticReviewScore !== undefined ? { semanticReviewScore: record.semanticReviewScore } : {}),
       }, adapters)) {
-        publish(record, event);
+        await publish(record, event);
       }
       // 闭环正常走完（含编辑后的重新生成），spec 已体现在代码中
-      record.specEdited = false;
+      // 终态事件发出后用户可能立即提交新编辑；只清除本次实际消费的 spec 标记。
+      if (record.spec === workflowSpec) record.specEdited = false;
     } catch (error) {
-      publish(record, traceEventSchema.parse({
+      const failure = traceEventSchema.parse({
         id: `${record.run.id}-failed`,
         runId: record.run.id,
         timestamp: new Date().toISOString(),
         state: "FAILED",
         title: "生产闭环执行失败",
         detail: error instanceof Error ? error.message : "未知错误",
-      }));
+      });
+      try { await publish(record, failure); } catch { /* SSE 已收到持久化失败事件；避免后台未处理拒绝 */ }
     }
   }
 
   app.post<{ Body: { spec?: unknown; profile?: unknown; mappings?: unknown; referenceNodes?: unknown; semanticReviewScore?: unknown; sampleId?: unknown } }>(
     "/api/production/runs",
     async (request, reply) => {
+      if (request.body?.profile !== undefined) {
+        return reply.code(400).send({ code: "CLIENT_EXECUTION_CONFIG_FORBIDDEN", message: "profile 只能由服务端 sampleId 注册表决定" });
+      }
+      if (request.body?.semanticReviewScore !== undefined) {
+        return reply.code(400).send({ code: "CLIENT_SCORE_FORBIDDEN", message: "semanticReviewScore 必须由服务端评审器生成" });
+      }
       const specResult = activitySpecSchema.safeParse(request.body?.spec);
       if (!specResult.success) {
         return reply.code(400).send({ code: "INPUT_INVALID", message: `spec 不符合 ActivitySpec v2 schema：${specResult.error.issues[0]?.message ?? ""}` });
       }
       // sampleId 决定目标仓库 Profile；客户端不能传 commands / repositoryPath / allowedWriteGlobs
       // （白名单在 src/profiles.ts 注册），未注册 sampleId 直接 400。
-      const sampleId = typeof request.body?.sampleId === "string" && request.body.sampleId.trim() ? request.body.sampleId : "activity-target";
-      let profile: TargetProjectProfile;
+      if (typeof request.body?.sampleId !== "string" || !request.body.sampleId.trim()) {
+        return reply.code(400).send({ code: "SAMPLE_ID_REQUIRED", message: "sampleId 必填且必须来自服务端注册表" });
+      }
+      const sampleId = request.body.sampleId;
+      let registration: ReturnType<typeof resolveTargetBySampleId>;
       try {
-        profile = resolveProfileBySampleId(sampleId);
+        registration = resolveTargetBySampleId(sampleId);
       } catch (cause) {
         return reply.code(400).send({ code: "SAMPLE_ID_UNKNOWN", message: cause instanceof Error ? cause.message : "未知 sampleId" });
       }
+      const profile = registration.profile;
       // 防回归：注册 profile 自身必须位于允许的目标根（注册时一次校验，运行期不再依赖客户端）
       if (!allowedTargetRoots.some((root) => isInside(root, resolve(repoRoot, profile.repositoryPath)))) {
         return reply.code(500).send({ code: "REGISTERED_ROOT_FORBIDDEN", message: `注册的 profile.repositoryPath 越界：${profile.repositoryPath}` });
       }
-      // 兼容旧 body.profile：服务端忽略其值，但若客户端显式提供必须能 parse（提示字段被忽略）
-      if (request.body?.profile !== undefined) {
-        const legacy = targetProjectProfileSchema.safeParse(request.body.profile);
-        if (!legacy.success) {
-          return reply.code(400).send({ code: "INPUT_INVALID", message: `profile 字段已废弃并由服务端注册，提交的值需可解析为 TargetProjectProfile：${legacy.error.issues[0]?.message ?? ""}` });
-        }
+      const assetSourceRoot = resolve(repoRoot, registration.assetSourceRoot);
+      const referenceScreenshot = resolve(repoRoot, registration.referenceScreenshot);
+      if (!isInside(repoRoot, assetSourceRoot) || !isInside(assetSourceRoot, referenceScreenshot)) {
+        return reply.code(500).send({ code: "REGISTERED_EVIDENCE_FORBIDDEN", message: "注册的素材或参考图路径越界" });
       }
       // 强校验 mappings / referenceNodes，杜绝裸 unknown 进入 record
       const mappingsRaw = request.body?.mappings;
@@ -235,6 +294,13 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
           const parsed = componentMappingSchema.safeParse(item);
           if (!parsed.success) {
             return reply.code(400).send({ code: "INPUT_INVALID", message: `mappings[${index}] 不符合 schema：${parsed.error.issues[0]?.message ?? ""}` });
+          }
+          if (!specResult.data.nodes.some((node) => node.id === parsed.data.nodeId)) {
+            return reply.code(400).send({ code: "INPUT_INVALID", message: `mappings[${index}].nodeId 不属于当前 ActivitySpec` });
+          }
+          const allowed = registration.allowedMappings.some((entry) => entry.codeComponent === parsed.data.codeComponent && entry.importPath === parsed.data.importPath);
+          if (parsed.data.status !== "unmapped" && !allowed) {
+            return reply.code(400).send({ code: "MAPPING_FORBIDDEN", message: `mappings[${index}] 不在目标仓库组件白名单` });
           }
           mappings.push(parsed.data);
         }
@@ -258,11 +324,11 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         createdAt: new Date().toISOString(), iteration: 0, artifacts: [], violations: [],
       });
       const record: ProductionRunRecord = {
-        run, events: [], spec: specResult.data, profile, mappings,
+        run, events: [], spec: specResult.data, profile, mappings, sampleId,
         referenceNodes,
-        ...(typeof request.body?.semanticReviewScore === "number" && Number.isFinite(request.body.semanticReviewScore)
-          ? { semanticReviewScore: Math.max(0, Math.min(100, request.body.semanticReviewScore)) }
-          : {}),
+        assetSourceRoot,
+        referenceScreenshot,
+        semanticReviewScore: registration.semanticReviewScore,
       };
       records.set(id, record);
       while (records.size > MAX_RUNS) {
@@ -282,7 +348,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       artifactStore.writeJson = async (kind: string, name: string, value: unknown) => {
         const artifact = await originalWriteJson(kind, name, value);
         record.run.artifacts.push({ id: artifact.id, kind: artifact.kind, path: artifact.path, createdAt: artifact.createdAt });
-        void persistRun(record);
+        await persistRun(record);
         return artifact;
       };
       void startWorkflow(record, false);
@@ -293,7 +359,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   app.get<{ Params: { id: string } }>("/api/production/runs/:id", async (request, reply) => {
     const record = records.get(request.params.id);
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
-    return { ...record.run, events: record.events, mappings: record.mappings, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}) };
+    return { ...record.run, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {

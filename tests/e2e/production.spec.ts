@@ -32,3 +32,15 @@ test("activity page production loop builds, evaluates, attributes and repairs", 
     await expect(page.getByTestId("violation-detail")).toContainText("CampaignPage.module.css");
   }
 });
+
+test("summer form golden sample completes without mobile horizontal overflow", async ({ page }) => {
+  test.setTimeout(420_000);
+  await page.goto("/");
+  await page.getByRole("button", { name: /活动页生产/ }).click();
+  await page.getByRole("button", { name: "载入黄金样例" }).click();
+  await page.getByRole("button", { name: /体验官招募/ }).click();
+  await page.getByRole("button", { name: "运行生产闭环" }).click();
+  await expect(page.getByText("真实构建通过").first()).toBeVisible({ timeout: 300_000 });
+  await expect(page.getByText("COMPLETED")).toBeVisible({ timeout: 300_000 });
+  await expect(page.getByText("responsive_error")).toHaveCount(0);
+});

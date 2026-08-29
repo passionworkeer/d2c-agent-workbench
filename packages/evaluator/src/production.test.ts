@@ -27,6 +27,7 @@ const baseInput = {
     semanticNodeRatio: .9, accessibleNodeRatio: .9, complexityScore: 92,
   },
   sourceMap,
+  semanticReviewScore: 92,
 };
 
 describe("evaluateProductionRun", () => {
@@ -52,15 +53,15 @@ describe("evaluateProductionRun", () => {
     expect(report.outcome).not.toBe("passed");
   });
 
-  it("does not silently award 100 when no perceptual evidence is available", () => {
-    // 关键：删掉 image 后 perceptualDiff 必须为 null + available=false，并产出 P2 提示违规
+  it("blocks passed when no perceptual evidence is available", () => {
+    // 关键：删掉 image 后 perceptualDiff 必须为 null + available=false，并产出 P1 硬门槛
     const { image: _omitted, ...rest } = baseInput;
     const report = evaluateProductionRun({ ...rest, image: { differentPixels: 0, totalPixels: 0, diffClusters: [] } });
     expect(report.metrics.visual.perceptualDiff).toBeNull();
     expect(report.metrics.visual.perceptualDiffAvailable).toBe(false);
     expect(report.metrics.visual.colorEffects).toBeNull();
-    expect(report.violations.some((item) => item.id === "evidence:perceptual-diff-missing" && item.severity === "P2")).toBe(true);
-    // P2 不阻塞 passed；只要分数足够高、无 P0/P1 仍能 passed
+    expect(report.violations.some((item) => item.id === "evidence:perceptual-diff-missing" && item.severity === "P1")).toBe(true);
+    expect(report.outcome).not.toBe("passed");
   });
 
   it("does not silently award 100 when no text evidence is available", () => {
