@@ -3,6 +3,10 @@ import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, 
 import commerceFeedSpecJson from "../../../../examples/activity-pages/commerce-feed/activity-spec.json?raw";
 import gameFestivalSpecJson from "../../../../examples/activity-pages/summer-game-festival/activity-spec.json?raw";
 import petRedPacketSpecJson from "../../../../examples/activity-pages/pet-red-packet/activity-spec.json?raw";
+// 图集原图以 Vite 资产 URL 引入：下载 Figma 导入包时按需 fetch 成 base64 随包携带
+import commerceFeedAtlasUrl from "../../../../examples/activity-pages/commerce-feed/reference.jpg?url";
+import gameFestivalAtlasUrl from "../../../../examples/activity-pages/summer-game-festival/reference.jpg?url";
+import petRedPacketAtlasUrl from "../../../../examples/activity-pages/pet-red-packet/reference.jpg?url";
 
 // 生产模式 API client：ActivitySpec → 真实构建/渲染/评测/修复闭环。
 // 与 lib/api.ts 同模式：readJson 统一错误处理，SSE 订阅复用 EventSource。
@@ -117,6 +121,42 @@ export async function repairProductionRun(runId: string): Promise<{ runId: strin
 
 export async function getProductionArtifact(runId: string, artifactId: string): Promise<{ artifact: { id: string; kind: string; path: string }; content: unknown }> {
   return readJson(await fetch(`/api/production/runs/${runId}/artifacts/${artifactId}`));
+}
+
+/** Figma 导入包的自包含素材（base64 随包携带，见 figma-patcher v2） */
+export interface EmbeddedSampleAsset {
+  id: string;
+  path: string;
+  mimeType: string;
+  data: string;
+}
+
+// 真实样例的图集即整页原图（单一 reference.jpg）；campaign/summer-form 纯语义组件无素材
+const SAMPLE_ATLAS_URL: Record<string, string> = {
+  "commerce-feed": commerceFeedAtlasUrl,
+  "summer-game-festival": gameFestivalAtlasUrl,
+  "pet-red-packet": petRedPacketAtlasUrl,
+};
+
+async function fetchAssetAsBase64(url: string): Promise<{ mimeType: string; data: string }> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`素材加载失败（HTTP ${response.status}）`);
+  const blob = await response.blob();
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("素材读取失败"));
+    reader.readAsDataURL(blob);
+  });
+  return { mimeType: blob.type || "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
+}
+
+/** 按样例加载自包含素材：真实样例取整页图集，黄金样例返回空表 */
+export async function loadEmbeddedAssets(sampleId: string): Promise<EmbeddedSampleAsset[]> {
+  const url = SAMPLE_ATLAS_URL[sampleId];
+  if (!url) return [];
+  const { mimeType, data } = await fetchAssetAsBase64(url);
+  return [{ id: "reference", path: "reference.jpg", mimeType, data }];
 }
 
 /** 黄金样例：不同结构的活动页共享同一目标仓库骨架（含可修复的基线间距问题） */

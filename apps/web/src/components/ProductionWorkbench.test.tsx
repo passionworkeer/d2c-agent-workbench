@@ -1,5 +1,5 @@
 import type { TraceEvent } from "@d2c/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProductionWorkbench } from "./ProductionWorkbench";
@@ -11,12 +11,14 @@ const apiMocks = vi.hoisted(() => ({
   getProductionArtifact: vi.fn(),
   editProductionRun: vi.fn(),
   repairProductionRun: vi.fn(),
+  loadEmbeddedAssets: vi.fn(),
 }));
 
 vi.mock("../lib/production-api", () => ({
   GOLDEN_SAMPLES: [
-    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
-    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
+    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
+    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
+    { id: "commerce-feed", label: "快手商城（信息流页·真实截图）", targetRepository: "examples/activity-target", payload: { sampleId: "commerce-feed", spec: { page: { id: "page", name: "CommerceFeed", route: "/campaign/commerce", canonicalViewport: { width: 390, height: 867 } }, assets: [{ id: "banner-art", path: "reference.jpg", mimeType: "image/jpeg" }], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 390, height: 867 }, children: ["banner-art"] }, { id: "banner-art", role: "image", name: "氛围图", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 208, width: 390, height: 67 }, parentId: "page", children: [], content: { assetId: "banner-art", alt: "氛围图" } }] } } },
   ],
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
@@ -24,6 +26,7 @@ vi.mock("../lib/production-api", () => ({
   getProductionArtifact: apiMocks.getProductionArtifact,
   editProductionRun: apiMocks.editProductionRun,
   repairProductionRun: apiMocks.repairProductionRun,
+  loadEmbeddedAssets: apiMocks.loadEmbeddedAssets,
 }));
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
@@ -85,6 +88,7 @@ beforeEach(() => {
   apiMocks.createProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.editProductionRun.mockReset().mockResolvedValue({ spec: {} });
   apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
+  apiMocks.loadEmbeddedAssets.mockReset().mockResolvedValue([]);
   apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
     content: { viewports: [
@@ -185,10 +189,46 @@ describe("ProductionWorkbench", () => {
     render(<ProductionWorkbench />);
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
-    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce())).toBeUndefined();
     expect(click).toHaveBeenCalledOnce();
     click.mockRestore();
     vi.unstubAllGlobals();
+  });
+
+  it("embeds the atlas as a self-contained asset when exporting a real sample to Figma", async () => {
+    const user = userEvent.setup();
+    // 真实样例：loadEmbeddedAssets 返回整页图集的 base64，随导入包自包含携带
+    apiMocks.loadEmbeddedAssets.mockResolvedValue([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    let captured: Blob | undefined;
+    const createObjectUrl = vi.fn((blob: Blob) => { captured = blob; return "blob:figma-bundle"; });
+    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    // 切到真实截图样例（快手商城）：spec 素材全是整页图集的裁切
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
+    expect(await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce())).toBeUndefined();
+    expect(apiMocks.loadEmbeddedAssets).toHaveBeenCalledWith("commerce-feed");
+    const bundle = JSON.parse(await captured!.text()) as { version: string; assets: Array<{ id: string; mimeType: string; data: string }> };
+    expect(bundle.version).toBe("2.0");
+    expect(bundle.assets).toEqual([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("disables the Figma export with an explicit message when the atlas cannot be loaded", async () => {
+    const user = userEvent.setup();
+    apiMocks.loadEmbeddedAssets.mockRejectedValue(new Error("素材加载失败（HTTP 404）"));
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
+    const error = await screen.findByTestId("figma-export-error");
+    expect(error.textContent).toContain("素材加载失败");
+    expect(error.textContent).toContain("404");
+    // 素材断链后按钮禁用，避免下载断链的导入包
+    expect(screen.getByRole("button", { name: "下载 Figma 导入包" })).toBeDisabled();
   });
 
   it("keeps the sample switcher available after a completed run and resets state on switch", async () => {

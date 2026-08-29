@@ -7,6 +7,7 @@ import {
   editProductionRun,
   getProductionArtifact,
   getProductionRun,
+  loadEmbeddedAssets,
   repairProductionRun,
   subscribeToProductionRun,
 } from "../lib/production-api";
@@ -60,6 +61,9 @@ export function ProductionWorkbench() {
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
+  // Figma 导入包（v2 自包含）：素材需在浏览器里 fetch 成 base64；加载失败时禁用下载并显式提示
+  const [figmaExporting, setFigmaExporting] = useState(false);
+  const [figmaExportError, setFigmaExportError] = useState<string | null>(null);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
@@ -75,6 +79,7 @@ export function ProductionWorkbench() {
     setEditableSpec(sample ? sample.payload.spec : null);
     savedSpecRef.current = null;
     setEditSaved(false);
+    setFigmaExportError(null);
   }, [selectedSampleId]);
 
   const pushEvent = useCallback((event: TraceEvent) => {
@@ -218,12 +223,29 @@ export function ProductionWorkbench() {
     setViewports([]);
     setLatestMetrics(null);
     setLatestTextEvidence(null);
+    setLatestSemanticReview(null);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "重跑失败");
       setRunning(false);
+    }
+  }
+
+  // Figma 导入包 v2：真实样例先把整页图集 fetch 成 base64 随包携带（自包含、离线可导入）
+  async function downloadFigmaBundle() {
+    if (!editableSpec || figmaExporting) return;
+    setFigmaExporting(true);
+    setFigmaExportError(null);
+    try {
+      const embedded = await loadEmbeddedAssets(selectedSampleId ?? editableSpec.page.id);
+      const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
+      downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}, embedded), `${editableSpec.page.id}-figma-import.json`);
+    } catch (cause) {
+      setFigmaExportError(cause instanceof Error ? cause.message : "导入包生成失败");
+    } finally {
+      setFigmaExporting(false);
     }
   }
 
@@ -417,10 +439,14 @@ export function ProductionWorkbench() {
               {editSaved && !running && (
                 <button className="button primary" onClick={() => void rerunAfterEdit()}>按编辑重跑闭环</button>
               )}
-              <button className="button secondary" disabled={running} onClick={() => {
-                const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
-                downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}), `${editableSpec.page.id}-figma-import.json`);
-              }}>下载 Figma 导入包</button>
+              <button
+                className="button secondary"
+                disabled={running || figmaExporting || figmaExportError !== null}
+                onClick={() => void downloadFigmaBundle()}
+              >{figmaExporting ? "生成导入包中…" : "下载 Figma 导入包"}</button>
+              {figmaExportError && (
+                <span className="figma-export-error" data-testid="figma-export-error">素材加载失败，Figma 导入包不可用：{figmaExportError}</span>
+              )}
             </div>
           </div>
           <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />

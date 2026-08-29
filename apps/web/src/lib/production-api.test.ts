@@ -1,5 +1,5 @@
 import { activitySpecSchema, assetCropSchema, type ActivitySpec } from "@d2c/contracts";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import campaignSpecJson from "../../../../examples/activity-pages/campaign/activity-spec.json?raw";
 import campaignProfileJson from "../../../../examples/activity-pages/campaign/target-profile.json?raw";
 import summerFormSpecJson from "../../../../examples/activity-pages/summer-form/activity-spec.json?raw";
@@ -13,7 +13,7 @@ import gameFestivalManifestJson from "../../../../examples/activity-pages/summer
 import petRedPacketSpecJson from "../../../../examples/activity-pages/pet-red-packet/activity-spec.json?raw";
 import petRedPacketProfileJson from "../../../../examples/activity-pages/pet-red-packet/target-profile.json?raw";
 import petRedPacketManifestJson from "../../../../examples/activity-pages/pet-red-packet/assets/manifest.json?raw";
-import { GOLDEN_SAMPLES } from "./production-api";
+import { GOLDEN_SAMPLES, loadEmbeddedAssets } from "./production-api";
 
 /** 三张真实移动活动页：spec / profile / 裁切清单以磁盘 fixture 为单一事实源 */
 const REAL_PAGE_FIXTURES = ["commerce-feed", "summer-game-festival", "pet-red-packet"] as const;
@@ -155,4 +155,28 @@ describe("真实移动活动页黄金样例（三张截图混合重建）", () =
       expect((mapping as Record<string, unknown>).sourceFile, `${fixtureId}: 客户端映射不得携带服务端专用字段`).toBeUndefined();
     });
   }
+});
+
+describe("loadEmbeddedAssets", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("fetches the real-sample atlas and returns it as a self-contained base64 entry", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, blob: async () => new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }) } as unknown as Response));
+    vi.stubGlobal("fetch", fetchMock);
+    const assets = await loadEmbeddedAssets("commerce-feed");
+    expect(assets).toEqual([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("returns an empty table for semantic-only golden samples without fetching", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await loadEmbeddedAssets("campaign")).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces load failures so the workbench can disable the Figma export", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404, blob: async () => new Blob() } as unknown as Response)));
+    await expect(loadEmbeddedAssets("pet-red-packet")).rejects.toThrow(/404/);
+  });
 });
