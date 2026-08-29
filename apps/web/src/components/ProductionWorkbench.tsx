@@ -194,10 +194,11 @@ export function ProductionWorkbench() {
     ? diffTextOps(editableSpec, editBaseline).length
     : 0;
 
-  // 已应用编辑基线（per text node）：当 savedSpecRef 已存在时，editableSpec 是用户改后保存的 spec；
-  // 这里把每个 text 节点对应到「保存前」的原文，用「基线 → spec → 渲染」三栏证明编辑真实落到代码
-  // 不使用 useMemo：savedSpecRef 是 ref，变更不触发 memo 失效；此数组极小，渲染期计算即可
-  const baselineTexts = !editableSpec || savedSpecRef.current === null
+  // 已应用编辑基线（per text node）：仅在「保存过编辑」后展开（editSaved）——未编辑时
+  // 基线 == spec == 渲染，三栏零信息还配「已应用编辑」标题会误导观众；
+  // 保存编辑的瞬间展开五列才是演示叙事的魔法时刻。savedSpecRef 只作 pendingCount 锚点。
+  // 不使用 useMemo：ref/状态混用时渲染期计算更直白；此数组极小
+  const baselineTexts = !editableSpec || !editSaved
     ? null
     : editableSpec.nodes
         .filter((node) => node.role === "text" && typeof node.content?.text === "string")
