@@ -27,6 +27,32 @@ export const ACTIVITY_TARGET_PROFILE: TargetProjectProfile = {
   tokenRoots: [],
 };
 
+/** 真实移动活动页样例的 Profile：与 examples/activity-pages/<fixture>/target-profile.json 逐字段一致，
+ *  但注册在本文件（服务端）才是执行事实源；fixture JSON 仅作对齐参考。 */
+const MOBILE_ACTIVITY_PROFILES: Record<string, TargetProjectProfile> = {
+  "commerce-feed": {
+    ...ACTIVITY_TARGET_PROFILE,
+    generatedRoot: "src/pages/commerce-feed",
+    assetRoot: "public/commerce-feed",
+    previewUrl: "http://127.0.0.1:4173/commerce/feed",
+    allowedWriteGlobs: ["src/pages/commerce-feed/**", "public/commerce-feed/**"],
+  },
+  "summer-game-festival": {
+    ...ACTIVITY_TARGET_PROFILE,
+    generatedRoot: "src/pages/game-festival",
+    assetRoot: "public/game-festival",
+    previewUrl: "http://127.0.0.1:4173/game/festival",
+    allowedWriteGlobs: ["src/pages/game-festival/**", "public/game-festival/**"],
+  },
+  "pet-red-packet": {
+    ...ACTIVITY_TARGET_PROFILE,
+    generatedRoot: "src/pages/pet-red-packet",
+    assetRoot: "public/pet-red-packet",
+    previewUrl: "http://127.0.0.1:4173/pet/red-packet",
+    allowedWriteGlobs: ["src/pages/pet-red-packet/**", "public/pet-red-packet/**"],
+  },
+};
+
 export interface ProductionTargetRegistration {
   profile: TargetProjectProfile;
   /** 素材 source 相对该服务端目录解析；客户端不能覆盖。 */
@@ -47,10 +73,22 @@ const target = (fixture: string): ProductionTargetRegistration => ({
   allowedMappings: [],
 });
 
+/** 真实移动活动页样例：各自 Profile + jpg 参考图（手机实拍）。 */
+const mobileTarget = (fixture: string): ProductionTargetRegistration => ({
+  profile: MOBILE_ACTIVITY_PROFILES[fixture]!,
+  assetSourceRoot: `examples/activity-pages/${fixture}`,
+  referenceScreenshot: `examples/activity-pages/${fixture}/reference.jpg`,
+  semanticReviewScore: 95,
+  allowedMappings: [],
+});
+
 /** 用 sampleId 查表：执行配置、证据与组件白名单全部由服务端持有。 */
 const PROFILE_REGISTRY: Record<string, ProductionTargetRegistration> = {
   campaign: target("campaign"),
   "summer-form": target("summer-form"),
+  "commerce-feed": mobileTarget("commerce-feed"),
+  "summer-game-festival": mobileTarget("summer-game-festival"),
+  "pet-red-packet": mobileTarget("pet-red-packet"),
 };
 
 export function resolveTargetBySampleId(sampleId: string): ProductionTargetRegistration {

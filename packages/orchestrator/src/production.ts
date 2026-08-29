@@ -253,9 +253,17 @@ export async function* runProductionWorkflow(
     const mergedNodes: Record<string, RenderedNode> = {};
     for (const viewport of render.viewports) Object.assign(mergedNodes, viewport.nodes);
     const renderedNodes = (canonical?.nodes ? { ...mergedNodes, ...canonical.nodes } : mergedNodes) as Record<string, RenderedNode>;
-    const comparison: ImageComparison = input.referenceScreenshot && adapters.compareImages
-      ? await adapters.compareImages(input.referenceScreenshot, canonical?.screenshotPath ?? "")
-      : { equal: false, differentPixels: 0, totalPixels: 0, diffClusters: [] };
+    // 像素 diff 是证据适配器：崩溃（如 looks-same 对特定 JPEG 的原生 panic）不该拖死
+    // 已构建渲染成功的 run——降级为「无对比证据」，评测按缺证据记 null 并产出
+    // evidence:perceptual-diff-missing P1 违规（工作台评测分构成面板会如实展示缺口）
+    let comparison: ImageComparison = { equal: false, differentPixels: 0, totalPixels: 0, diffClusters: [] };
+    if (input.referenceScreenshot && adapters.compareImages) {
+      try {
+        comparison = await adapters.compareImages(input.referenceScreenshot, canonical?.screenshotPath ?? "");
+      } catch {
+        // 证据缺失走既有降级路径，不伪造对比结果
+      }
+    }
     const evaluation = await evaluate({
       build: { exitCode: latestBuild.exitCode, runtimeErrors: render.runtimeErrors },
       referenceNodes: input.referenceNodes,

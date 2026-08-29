@@ -128,11 +128,26 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
   const cssPath = `${root}/${name}.module.css`;
   const sourceMapPath = `${root}/d2c-source-map.json`;
   const assetUrls = new Map<string, string>();
+  // 图集裁切样例：多个资产共享同一源文件（如 reference.jpg 整图 + 各自 crop），
+  // 此时按 asset id 派生落盘名，避免 target 归一化后重复；唯一源保持原文件名。
+  const sourceCounts = new Map<string, number>();
+  for (const asset of spec.assets) {
+    const key = normalizePath(asset.path).toLowerCase();
+    sourceCounts.set(key, (sourceCounts.get(key) ?? 0) + 1);
+  }
   const assets = spec.assets.map((asset) => {
     const relativeAssetPath = normalizePath(asset.path);
-    const target = `${normalizePath(profile.assetRoot).replace(/\/$/, "")}/${relativeAssetPath}`;
-    assetUrls.set(asset.id, `/${normalizePath(profile.assetRoot).replace(/^public\//, "").replace(/\/$/, "")}/${relativeAssetPath}`);
-    return { source: normalizePath(asset.path), target };
+    // 共享源（图集裁切）按 asset id 落盘避免 target 重复；唯一源保留完整相对路径（含子目录）。
+    // 扩展名用字符串截取而非 node:path —— 本模块经 orchestrator/replay 进入浏览器 bundle，
+    // node: 前缀导入会在浏览器侧炸掉整个应用（vite externalized）。
+    const dot = relativeAssetPath.lastIndexOf(".");
+    const extension = dot > relativeAssetPath.lastIndexOf("/") ? relativeAssetPath.slice(dot) : "";
+    const fileName = (sourceCounts.get(relativeAssetPath.toLowerCase()) ?? 1) > 1
+      ? `${asset.id}${extension}`
+      : relativeAssetPath;
+    const target = `${normalizePath(profile.assetRoot).replace(/\/$/, "")}/${fileName}`;
+    assetUrls.set(asset.id, `/${normalizePath(profile.assetRoot).replace(/^public\//, "").replace(/\/$/, "")}/${fileName}`);
+    return { source: relativeAssetPath, target };
   });
   if (new Set(assets.map((asset) => asset.target.toLowerCase())).size !== assets.length) {
     throw new Error("duplicate asset target after normalization");

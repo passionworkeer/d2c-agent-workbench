@@ -80,7 +80,9 @@ export function ProductionWorkbench() {
     if (event.state === "ATTRIBUTED" && Array.isArray(event.data?.violations)) {
       setViolations(event.data.violations as ProductionViolation[]);
     }
-    if (event.state === "COMPLETED" && typeof event.data?.finalScore === "number") {
+    // 终态都携带 finalScore：COMPLETED / NEEDS_REVIEW / FAILED 的分数同样要展示
+    // （真实样例跑出 NEEDS_REVIEW 90.6 分也是诚实结果，观众应看到分数与剩余违规并存）
+    if (["COMPLETED", "NEEDS_REVIEW", "FAILED"].includes(event.state) && typeof event.data?.finalScore === "number") {
       setFinalScore(event.data.finalScore as number);
     }
     // 评测完成时同步覆盖证据指标；服务端 schema 已校验，这里直接落

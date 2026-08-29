@@ -73,6 +73,27 @@ describe("generateProductionPage", () => {
     ]);
   });
 
+  it("derives per-asset target names when multiple assets share one atlas source", () => {
+    // 图集裁切样例（如 commerce-feed）：多个资产指向同一 reference.jpg，各自 crop 不同区域
+    const atlas = {
+      ...spec,
+      assets: [
+        { id: "banner-art", path: "reference.jpg", mimeType: "image/jpeg", evidence },
+        { id: "product-tissue", path: "reference.jpg", mimeType: "image/jpeg", evidence },
+        { id: "product-tea", path: "reference.jpg", mimeType: "image/jpeg", evidence },
+      ],
+      nodes: spec.nodes.map((node) => node.id === "hero-image" ? { ...node, content: { assetId: "product-tea", alt: "商品图" } } : node),
+    };
+    const output = generateProductionPage(atlas, profile, []);
+    expect(output.plan.assets).toEqual([
+      { source: "reference.jpg", target: "public/campaign/banner-art.jpg" },
+      { source: "reference.jpg", target: "public/campaign/product-tissue.jpg" },
+      { source: "reference.jpg", target: "public/campaign/product-tea.jpg" },
+    ]);
+    // img src 引用各自动独立文件名
+    expect(output.files["src/pages/campaign/CampaignPage.tsx"]).toContain("/campaign/product-tea.jpg");
+  });
+
   it("rejects mapping identifiers that could inject source code", () => {
     expect(() => generateProductionPage(spec, profile, [{
       nodeId: "hero",

@@ -46,3 +46,17 @@ test("summer form golden sample completes without mobile horizontal overflow", a
   await expect(page.getByText("COMPLETED")).toBeVisible({ timeout: 300_000 });
   await expect(page.getByText("responsive_error")).toHaveCount(0);
 });
+
+test("real mobile activity sample (commerce-feed) runs the production loop end to end", async ({ page }) => {
+  test.setTimeout(420_000);
+  await page.goto("/");
+  await page.getByRole("button", { name: /活动页生产/ }).click();
+  await page.getByRole("button", { name: "载入黄金样例" }).click();
+  await page.getByRole("button", { name: /快手商城/ }).click();
+  await expect(page.getByTestId("production-sample")).toContainText("快手商城");
+  await page.getByRole("button", { name: "运行生产闭环" }).click();
+  // 真实样例：手机实拍参考图（jpg）+ 真实素材；预期完成闭环并给出终局分数
+  await expect(page.getByText("真实构建通过").first()).toBeVisible({ timeout: 300_000 });
+  await expect(page.getByText(/COMPLETED|NEEDS_REVIEW/).first()).toBeVisible({ timeout: 300_000 });
+  await expect(page.getByTestId("production-final-score")).toHaveText(/\d+/, { timeout: 120_000 });
+});
