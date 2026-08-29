@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TargetProjectProfile } from "@d2c/contracts";
-import { buildPreviewSpawnOptions, getFreePort, seedWorkspaceFrom, type RunWorkspace } from "./index";
+import { buildPreviewSpawnOptions, getFreePort, seedWorkspaceFrom, startPreviewServer, type RunWorkspace } from "./index";
 import { RunWorkspace as Workspace } from "./workspace";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -59,5 +59,16 @@ describe("buildPreviewSpawnOptions", () => {
     } finally {
       delete process.env.D2C_TEST_SECRET;
     }
+  });
+
+  it("reports a preview process startup failure without waiting for the readiness timeout", async () => {
+    const started = Date.now();
+    await expect(startPreviewServer({
+      cwd: process.cwd(),
+      port: await getFreePort(),
+      executable: "d2c-preview-command-that-does-not-exist",
+      timeoutMs: 5_000,
+    })).rejects.toThrow(/启动失败/);
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 });

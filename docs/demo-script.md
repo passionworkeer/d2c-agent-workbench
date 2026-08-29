@@ -57,7 +57,7 @@
 - 点「载入黄金样例」→「运行生产闭环」。这不是演示管线，是**真的**：目标仓库复制进隔离工作区 → `pnpm install` → 真实 `tsc` typecheck → 真实 `vite build` → 自由端口起 `vite preview` → Playwright 渲染采集逐节点几何
 - 黄金样例内置一处可修复问题（目标仓库骨架 padding-left 48px vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` **P1** → 点击违规展开 **Region → Node → Source**（直接定位到 CampaignPage.module.css 的 .hero）→ **桌面截图上叠加红框圈出 hero 区域**（按节点几何等比缩放、按 severity 上色）→ 定向修复**只改这一个文件**（CSS 声明级补丁，回滚快照已存档）
 - 复评后 **COMPLETED，终局 93+ 分**。事件流里每个状态都带真实 Artifact ID；build 失败是 P0 硬门槛，任一视口横向溢出是 P1 硬门槛，分数刷不掉
-- **诚实评分一幕**：跑完后看右上「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；视觉子分里 perceptualDiff 由服务端注册的真实参考截图（`examples/activity-pages/{sample}/reference.png`）跑 pixel diff 给真实分，textConsistency 100 是从 spec 文本节点与渲染 DOM.textContent 逐项对比得出（展开面板可见每行 ✓），semanticReview 是服务端黄金基准 95——**每个分都有证据，不是默认 100 假装通过**
+- **诚实评分一幕**：跑完后看右上「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；视觉子分里 perceptualDiff 由服务端注册的真实参考截图（`examples/activity-pages/{sample}/reference.png`）跑 pixel diff 得出，textConsistency 100 是从 spec 文本节点与渲染 DOM.textContent 逐项对比得出（展开面板可见每行 ✓），semanticReview 则明确标为服务端本地黄金基准 95（公共请求不可覆盖），不冒充真实 VLM 结果。
 - **设计干预一幕**（60 秒内完成）：闭环完成后在「Puck 原型编辑」里把标题改成”全场 6 折”→ 点「保存编辑到 Run」（类型化 SpecEditOp 回写 ActivitySpec，不直接改代码）→ 点「按编辑重跑闭环」→ 重新生成 → 构建渲染复评 → 展开新代码看到新标题——“编辑意图直达代码，全程可追溯”
 - 收尾可切第二个黄金样例「体验官招募（表单页）」再跑一遍：**不同分数、不同修复文件**（表单页是 SummerFormPage.module.css）——不同页面结构、独立分数，证明评分非硬编码
 - 一句话收束：”前面五条亮点是可演示的链路，这一条是能落进研发流程的系统——每一步可追溯、可回滚、可评测、可被设计意图干预，**且评测本身不撒谎**。”
@@ -188,7 +188,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 
 ### 9. 主动说明当前边界：45 秒
 
-“这版把最不稳定的外部依赖放到了 Adapter 后面：默认使用浏览器内确定性管线，真实上传使用结构化离线 Bundle，LLM / 视觉模型默认演示链路（key 不进仓库、不进日志、不进下载报告），Figma 回写可选接真实 PAT。Asset Indexer 与 Figma 回写 Patch 已经落地（commit 10 / 11）；下一阶段会依次替换 Codex Adapter 和 Playwright Geometry / Visual Eval。核心协议和工作台无需重写。”
+“这版把最不稳定的外部依赖放到了 Adapter 后面：默认使用浏览器内确定性管线，真实上传使用结构化离线 Bundle，LLM / 视觉模型默认演示链路（key 不进仓库、不进日志、不进下载报告），Figma 回写可选接真实 PAT。Asset Indexer、Playwright Geometry、参考图像素 Diff 与 Figma 回写 Patch 已经落地；下一阶段是接入真实 VLM 语义评审、完成 Figma 插件实弹验证并扩充黄金样例。核心协议和工作台无需重写。”
 
 ### 10. 收尾 + JD 映射：45 秒
 

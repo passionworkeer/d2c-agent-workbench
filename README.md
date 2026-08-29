@@ -34,15 +34,15 @@
 - **真实代码生成**：`packages/codegen` 生成真正的 TSX + CSS Module（带 `data-d2c-node-id` / `data-d2c-ready` 稳定标记）与 `d2c-source-map.json`，而不是 JSX 字符串。
 - **隔离工作区**：目标仓库骨架（`examples/activity-target`）被复制进 `.data/production/workspaces/<runId>`，忽略 `node_modules/.git/dist`；所有写入都在 Profile `allowedWriteGlobs` 边界内，产物用 `wx` 一次性写入不可覆盖。
 - **Profile / 命令服务端注册**：`apps/server/src/profiles.ts` 按 `sampleId` 解析固定 Profile（commands、repositoryPath、allowedWriteGlobs 全部硬编码），客户端**不可**注入 commands——这是默认安全姿态；mappings / referenceNodes 在 POST 时经 Zod 严格校验后入库。
-- **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 在白名单内以 `spawn(shell:false)` 执行，子进程只继承最小化 env 白名单（PATH / Node / HOME 等），超时杀进程树，输出限幅。
+- **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 先按参数数组精确匹配服务端白名单，再由 `spawn` 执行；Windows 为兼容 `.CMD` 垫片启用 shell，其它平台关闭 shell。命令与 preview 子进程都只继承最小化 env 白名单（PATH / Node / HOME 等），超时终止完整进程树，输出限幅。
 - **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；**任一视口**（desktop / mobile）横向溢出 → P1 硬门槛，build 失败是 P0 硬门槛，任何分数不可覆盖。
-- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 阻塞 passed（黄金样例服务端注册了 reference.png + semanticReview=95 让 demo 可达 passed；真实 VLM 接入后由调用方覆盖）。
+- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；黄金样例由服务端注册 `reference.png` 和仅用于本地演示的 semanticReview=95 可信基准，公共请求不能覆盖。真实 VLM 仍需在服务端适配器中接入。
 - **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
 - **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
 - **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
-- **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（编辑发出类型化 SpecEditOp）；`buildFigmaImportBundle` 产出 html-to-figma 兼容节点 JSON，保留 `pluginData.d2cNodeId`。
+- **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
 
 黄金样例 `examples/activity-pages/campaign/` 内置一处可修复的 Hero 间距问题（目标仓库骨架 `padding-left: 48px` vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` P1，局部修复仅改生成的 Campaign CSS，复评后状态 `COMPLETED`、终局分数 ≥90。
 

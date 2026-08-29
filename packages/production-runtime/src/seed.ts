@@ -63,8 +63,28 @@ export async function startPreviewServer(input: {
   const executable = input.executable ?? "pnpm";
   const child = spawn(executable, ["exec", "vite", "preview", "--port", String(input.port), "--strictPort", "--host", "127.0.0.1"], buildPreviewSpawnOptions(input.cwd));
   const url = `http://127.0.0.1:${input.port}`;
+  let spawnError: Error | undefined;
+  let exited = false;
+  let exitCode: number | null = null;
+  let exitSignal: NodeJS.Signals | null = null;
+  let stderr = "";
+  child.once("error", (cause) => { spawnError = cause; });
+  child.once("close", (code, signal) => {
+    exited = true;
+    exitCode = code;
+    exitSignal = signal;
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    if (stderr.length < 2_000) stderr += chunk.toString("utf8").slice(0, 2_000 - stderr.length);
+  });
   const started = Date.now();
   while (Date.now() - started < (input.timeoutMs ?? 30_000)) {
+    if (spawnError || exited) {
+      await terminateProcessTree(child).catch(() => undefined);
+      const reason = spawnError?.message
+        ?? `exitCode=${exitCode ?? "null"}${exitSignal ? ` signal=${exitSignal}` : ""}${stderr.trim() ? ` · ${stderr.trim()}` : ""}`;
+      throw new Error(`vite preview 启动失败：${reason}`);
+    }
     const reachable = await fetch(url, { signal: AbortSignal.timeout(800) }).then((response) => response.ok || response.status === 404).catch(() => false);
     if (reachable) {
       return {
