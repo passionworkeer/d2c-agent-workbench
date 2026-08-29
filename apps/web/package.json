@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@d2c/canvas-ops": "workspace:*",
     "@d2c/codegen": "workspace:*",
     "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
@@ -17,7 +18,7 @@
     "@d2c/figma-importer": "workspace:*",
     "@d2c/orchestrator": "workspace:*",
     "@d2c/ui-compiler": "workspace:*",
-    "@d2c/canvas-ops": "workspace:*",
+    "@measured/puck": "^0.20.2",
     "fflate": "^0.8.2",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.6",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",

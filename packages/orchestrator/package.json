@@ -3,17 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./replay": "./src/replay.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@d2c/asset-indexer": "workspace:*",
     "@d2c/codegen": "workspace:*",
     "@d2c/component-matcher": "workspace:*",
     "@d2c/contracts": "workspace:*",
-    "@d2c/evaluator": "workspace:*"
+    "@d2c/evaluator": "workspace:*",
+    "@d2c/production-runtime": "workspace:*"
   },
   "devDependencies": {
     "@d2c/figma-importer": "workspace:*",

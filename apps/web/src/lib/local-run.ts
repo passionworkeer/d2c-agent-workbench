@@ -3,7 +3,7 @@ import { zipSync, type Zippable } from "fflate";
 import { parseFigmaBundle } from "@d2c/figma-importer";
 import { compileUISpec } from "@d2c/ui-compiler";
 import { mapSdsComponents } from "@d2c/component-matcher";
-import { runReplayWorkflow } from "@d2c/orchestrator";
+import { runReplayWorkflow } from "@d2c/orchestrator/replay";
 
 // 浏览器内真实执行：直接 import fixture JSON / SVG，构建 zip → figma-importer → ui-compiler →
 // matcher → orchestrator.runReplayWorkflow。这条路径与上传到 server → SSE 的路径调用同一条

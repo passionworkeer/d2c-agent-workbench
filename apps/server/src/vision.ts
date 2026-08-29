@@ -224,6 +224,80 @@ export async function interpretReferenceImage(request: VisionRequest): Promise<V
     ],
   };
 
+  const result = await callAnthropicTool({
+    baseUrl: request.baseUrl,
+    apiKey: request.apiKey,
+    model: request.model,
+    maxTokens: 8192,
+    system: SYSTEM_PROMPT,
+    tools: [{ name: "emit_ui_spec", description: "把识别到的 UI 结构输出为 UISpec 设计稿。", input_schema: emitUiSpecToolSchema }],
+    toolChoice: { type: "tool", name: "emit_ui_spec" },
+    messages: body.messages,
+    timeoutMs,
+    fetchImpl,
+  });
+  if (!result.ok) {
+    return { ok: false, code: result.code, message: result.message };
+  }
+
+  const input = result.input as {
+    uiSpec?: Record<string, unknown>;
+    mappings?: unknown[];
+    tokens?: unknown[];
+    explanation?: unknown;
+  };
+  // 补 version（vision schema 不要求模型输出这个字段，服务端默认填 1）
+  const specCandidate = { version: 1, ...(input.uiSpec ?? {}) };
+  const specParse = uiSpecSchema.safeParse(specCandidate);
+  if (!specParse.success) {
+    return {
+      ok: false,
+      code: "VISION_BAD_REQUEST",
+      message: `视觉模型返回的 uiSpec 不符合 schema：${specParse.error.issues[0]?.message ?? "未知错误"}`,
+    };
+  }
+  const mappingsParse = componentMappingSchema.array().safeParse(input.mappings ?? []);
+  if (!mappingsParse.success) {
+    return {
+      ok: false,
+      code: "VISION_BAD_REQUEST",
+      message: "视觉模型返回的 mappings 不符合 schema",
+    };
+  }
+  const tokensParse = tokenDefinitionSchema.array().safeParse(input.tokens ?? []);
+  if (!tokensParse.success) {
+    return {
+      ok: false,
+      code: "VISION_BAD_REQUEST",
+      message: "视觉模型返回的 tokens 不符合 schema",
+    };
+  }
+  return {
+    ok: true,
+    uiSpec: specParse.data,
+    mappings: mappingsParse.data,
+    tokens: tokensParse.data,
+    explanation: typeof input.explanation === "string" ? input.explanation : "",
+    provider: "vision",
+    model: request.model,
+  };
+}
+
+// Anthropic /v1/messages 工具调用的共享骨架：vision（UISpec）与 vision-production（ActivitySpec）复用。
+export async function callAnthropicTool(request: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  maxTokens: number;
+  system: string;
+  tools: Array<{ name: string; description: string; input_schema: unknown }>;
+  toolChoice: { type: "tool"; name: string };
+  messages: unknown[];
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
+}): Promise<{ ok: true; input: unknown } | { ok: false; code: VisionErrorCode; message: string }> {
+  const fetchImpl = request.fetchImpl ?? fetch;
+  const timeoutMs = request.timeoutMs ?? 30000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -235,7 +309,14 @@ export async function interpretReferenceImage(request: VisionRequest): Promise<V
         "x-api-key": request.apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: request.model,
+        max_tokens: request.maxTokens,
+        tools: request.tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.input_schema })),
+        tool_choice: request.toolChoice,
+        system: request.system,
+        messages: request.messages,
+      }),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -252,53 +333,12 @@ export async function interpretReferenceImage(request: VisionRequest): Promise<V
       content?: Array<{ type: string; name?: string; input?: unknown }>;
     };
     const toolBlock = (json.content ?? []).find(
-      (block) => block.type === "tool_use" && block.name === "emit_ui_spec",
+      (block) => block.type === "tool_use" && block.name === request.toolChoice.name,
     );
     if (!toolBlock || !toolBlock.input) {
-      return { ok: false, code: "VISION_NO_TOOL", message: "视觉模型响应中没有 emit_ui_spec 工具调用" };
+      return { ok: false, code: "VISION_NO_TOOL", message: `视觉模型响应中没有 ${request.toolChoice.name} 工具调用` };
     }
-
-    const input = toolBlock.input as {
-      uiSpec?: Record<string, unknown>;
-      mappings?: unknown[];
-      tokens?: unknown[];
-      explanation?: unknown;
-    };
-    // 补 version（vision schema 不要求模型输出这个字段，服务端默认填 1）
-    const specCandidate = { version: 1, ...(input.uiSpec ?? {}) };
-    const specParse = uiSpecSchema.safeParse(specCandidate);
-    if (!specParse.success) {
-      return {
-        ok: false,
-        code: "VISION_BAD_REQUEST",
-        message: `视觉模型返回的 uiSpec 不符合 schema：${specParse.error.issues[0]?.message ?? "未知错误"}`,
-      };
-    }
-    const mappingsParse = componentMappingSchema.array().safeParse(input.mappings ?? []);
-    if (!mappingsParse.success) {
-      return {
-        ok: false,
-        code: "VISION_BAD_REQUEST",
-        message: "视觉模型返回的 mappings 不符合 schema",
-      };
-    }
-    const tokensParse = tokenDefinitionSchema.array().safeParse(input.tokens ?? []);
-    if (!tokensParse.success) {
-      return {
-        ok: false,
-        code: "VISION_BAD_REQUEST",
-        message: "视觉模型返回的 tokens 不符合 schema",
-      };
-    }
-    return {
-      ok: true,
-      uiSpec: specParse.data,
-      mappings: mappingsParse.data,
-      tokens: tokensParse.data,
-      explanation: typeof input.explanation === "string" ? input.explanation : "",
-      provider: "vision",
-      model: request.model,
-    };
+    return { ok: true, input: toolBlock.input };
   } catch (error) {
     clearTimeout(timer);
     const message = error instanceof Error ? error.message : "视觉模型调用失败";

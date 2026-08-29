@@ -1,0 +1,4 @@
+packages: []
+# 与主仓供应链策略一致：仅放行 esbuild 的安装脚本（vite 依赖），其余一律拦截
+allowBuilds:
+  esbuild: true

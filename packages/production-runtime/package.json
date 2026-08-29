@@ -1,0 +1,19 @@
+{
+  "name": "@d2c/production-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@d2c/contracts": "workspace:*",
+    "@playwright/test": "^1.55.0",
+    "ts-morph": "^28.0.0"
+  }
+}

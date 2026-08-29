@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./replay": "./src/replay.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -11,6 +14,8 @@
   },
   "dependencies": {
     "@d2c/codegen": "workspace:*",
-    "@d2c/contracts": "workspace:*"
+    "@d2c/contracts": "workspace:*",
+    "jimp": "^1.6.1",
+    "looks-same": "^10.0.1"
   }
 }

@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
+      // 子路径别名需在包根别名之前（rollup alias 按前缀匹配，先到先得）
+      "@d2c/orchestrator/replay": resolve(__dirname, "packages/orchestrator/src/replay.ts"),
+      "@d2c/evaluator/replay": resolve(__dirname, "packages/evaluator/src/replay.ts"),
       "@d2c/contracts": resolve(__dirname, "packages/contracts/src/index.ts"),
       "@d2c/figma-importer": resolve(__dirname, "packages/figma-importer/src/index.ts"),
       "@d2c/ui-compiler": resolve(__dirname, "packages/ui-compiler/src/index.ts"),
@@ -17,4 +20,3 @@ export default defineConfig({
   // 不显式限定 include —— 让每个 workspace 包各自的 vitest run 默认发现本目录下的 *.test.ts，
   // 同时 root scripts/*.test.ts 通过别名仍可解析 @d2c/* 源码。
 });
-

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./production";
+
 export const viewportSchema = z.object({
   width: z.number().positive(),
   height: z.number().positive(),
@@ -167,6 +169,18 @@ export const workflowStateSchema = z.enum([
   "SPEC_GENERATED",
   "CANVAS_EDITED",
   "SPEC_EXPORTED",
+  // 生产（ActivitySpec → 真实代码 → 构建渲染评测修复）链路状态，与 productionRunSchema 对齐
+  "CREATED",
+  "INPUT_VALIDATED",
+  "PROJECT_INSPECTED",
+  "VISUAL_DRAFTED",
+  "SPEC_VALIDATED",
+  "MAPPINGS_RESOLVED",
+  "TYPECHECKED",
+  "RENDERED",
+  "ATTRIBUTED",
+  "REPAIR_PLANNED",
+  "REPAIR_APPLIED",
 ]);
 
 export const traceEventSchema = z.object({
