@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   activitySpecSchema,
   targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
+  type CodePlan,
   type PatchPlan,
   type ProductionViolation,
   type Rect,
@@ -15,6 +16,7 @@ import { inspectTargetProject, type ProjectIndex } from "@d2c/asset-indexer";
 import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput, type SourcedComponentMapping } from "@d2c/codegen";
 import {
   attributeDiffClusters,
+  compareAssetPHash,
   compareImageArtifacts,
   evaluateProductionRun,
   type ImageComparison,
@@ -141,6 +143,29 @@ function deriveEngineering(spec: ActivitySpec, plan: GeneratedProductionOutput["
   };
 }
 
+/** 素材哈希证据：源素材（assetSourceRoot 内）vs 工作区拷贝逐资产 pHash。
+ *  路径全部来自服务端注册的 assetSourceRoot 与 code plan，客户端无法指定任意路径；
+ *  单个素材解码失败按缺证据跳过（该资产不参与 assetConsistency），不阻塞整轮评测。 */
+async function deriveAssetEvidence(
+  assets: CodePlan["assets"],
+  assetSourceRoot: string | undefined,
+  workspace: RunWorkspace,
+): Promise<Array<{ id: string; pHashDistance: number }>> {
+  if (!assetSourceRoot || !assets.length) return [];
+  const evidence: Array<{ id: string; pHashDistance: number }> = [];
+  for (const asset of assets) {
+    const source = resolve(assetSourceRoot, asset.source);
+    const target = resolve(workspace.root, asset.target);
+    if (!existsSync(source) || !existsSync(target)) continue;
+    try {
+      evidence.push({ id: asset.target, pHashDistance: await compareAssetPHash(source, target) });
+    } catch {
+      // 解码失败（损坏/不支持格式）→ 该素材按缺证据处理
+    }
+  }
+  return evidence;
+}
+
 function mergeViolations(groups: ProductionViolation[][]): ProductionViolation[] {
   const byId = new Map<string, ProductionViolation>();
   for (const violation of groups.flat()) {
@@ -179,7 +204,6 @@ export async function* runProductionWorkflow(
   const attribute = adapters.attribute ?? ((clusters: Parameters<typeof attributeDiffClusters>[0], geometry: Parameters<typeof attributeDiffClusters>[1], sourceMap: Parameters<typeof attributeDiffClusters>[2]) => attributeDiffClusters(clusters, geometry, sourceMap));
   const planRepair = adapters.planRepair ?? ((repairInput: RepairPlanningInput) => planTargetedRepair(repairInput));
   const applyRepair = adapters.applyRepair ?? ((plan: PatchPlan, workspace: RunWorkspace, store: FileArtifactStore, options?: ApplyPatchOptions) => applyPatchPlan(plan, workspace, store, options));
-
   let seq = 0;
   const event = (state: TraceEvent["state"], title: string, detail?: string, data?: Record<string, unknown>): TraceEvent =>
     traceEventSchema.parse({ id: `${input.runId}-${seq += 1}`, runId: input.runId, timestamp: new Date().toISOString(), state, title, detail, data });
@@ -213,6 +237,10 @@ export async function* runProductionWorkflow(
   await input.workspace.apply({ files: generated.files, assetSourceRoot: input.assetSourceRoot, assets: generated.plan.assets });
   const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files), assets: generated.plan.assets });
   yield event("GENERATED", "真实代码已写入工作区", `${Object.keys(generated.files).length} 个文件落盘`, { artifactId: manifestArtifact.id, files: Object.keys(generated.files) });
+
+  // 素材哈希证据：从真实产物（源素材 vs 工作区拷贝）逐资产 pHash 推导，客户端无法注入路径；
+  // 测试可用 input.assetEvidence 覆盖（仅测试钩子，正常链路永远走这里）
+  const derivedAssets = await deriveAssetEvidence(generated.plan.assets, input.assetSourceRoot, input.workspace);
 
   const typecheck = await adapters.typecheck();
   const typecheckArtifact = await input.artifacts.writeJson("command", "typecheck", typecheck);
@@ -261,7 +289,7 @@ export async function* runProductionWorkflow(
       horizontalOverflow: anyHorizontalOverflow,
       image: comparison,
       text: textEvidence,
-      assets: input.assetEvidence ?? [],
+      assets: input.assetEvidence ?? derivedAssets,
       engineering: { ...deriveEngineering(spec, generated.plan), ...input.engineeringOverride },
       sourceMap: generated.sourceMap,
       ...(input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),

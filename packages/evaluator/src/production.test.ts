@@ -1,6 +1,13 @@
 import type { D2CSourceMap } from "@d2c/contracts";
-import { describe, expect, it } from "vitest";
-import { evaluateProductionRun } from "./index";
+import { Jimp } from "jimp";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { compareImageArtifacts, evaluateProductionRun } from "./index";
+
+const imageRoots: string[] = [];
+afterEach(async () => Promise.all(imageRoots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
 
 const sourceMap: D2CSourceMap = {
   version: "1.0",
@@ -87,5 +94,52 @@ describe("evaluateProductionRun", () => {
     const availableWeight = .30 + .10; // layoutGeometry + asset
     const expected = report.metrics.visual.layoutGeometry * (.30 / availableWeight) + (report.metrics.visual.assetConsistency ?? 0) * (.10 / availableWeight);
     expect(report.metrics.visualScore).toBeCloseTo(expected, 1);
+  });
+});
+
+describe("compareImageArtifacts 尺寸归一化", () => {
+  /** 上半红下半蓝的双色图，宽度按倍数缩放 */
+  async function twoToneImage(width: number, height: number): Promise<Buffer> {
+    const image = new Jimp({ width, height, color: 0xff0000ff });
+    for (let y = Math.floor(height / 2); y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) image.setPixelColor(0x0000ffff, x, y);
+    }
+    return image.getBuffer("image/png");
+  }
+
+  it("把更宽的参考图等比缩放到渲染宽度后比对，等价图像差异应接近零", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "d2c-imgnorm-"));
+    imageRoots.push(dir);
+    const referencePath = join(dir, "reference.png");
+    const renderPath = join(dir, "render.png");
+    await writeFile(referencePath, await twoToneImage(400, 200));
+    await writeFile(renderPath, await twoToneImage(200, 100));
+    const result = await compareImageArtifacts(referencePath, renderPath, { normalizeWidth: 200 });
+    expect(result.totalPixels).toBeGreaterThan(0);
+    expect(result.differentPixels / result.totalPixels).toBeLessThan(0.01);
+  });
+
+  it("不传 normalizeWidth 时按渲染图宽度自适应归一化", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "d2c-imgnorm-"));
+    imageRoots.push(dir);
+    const referencePath = join(dir, "reference.png");
+    const renderPath = join(dir, "render.png");
+    // 纵横比一致：1260×200 缩到 390 宽 → 高 62，渲染图也取 390×62
+    await writeFile(referencePath, await twoToneImage(1260, 200));
+    await writeFile(renderPath, await twoToneImage(390, 62));
+    const result = await compareImageArtifacts(referencePath, renderPath);
+    expect(result.totalPixels).toBeGreaterThan(0);
+    expect(result.differentPixels / result.totalPixels).toBeLessThan(0.05);
+  });
+
+  it("拒绝非法的 normalizeWidth", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "d2c-imgnorm-"));
+    imageRoots.push(dir);
+    const referencePath = join(dir, "reference.png");
+    const renderPath = join(dir, "render.png");
+    await writeFile(referencePath, await twoToneImage(400, 200));
+    await writeFile(renderPath, await twoToneImage(200, 100));
+    await expect(compareImageArtifacts(referencePath, renderPath, { normalizeWidth: 0 })).rejects.toThrow(/normalizeWidth/);
+    await expect(compareImageArtifacts(referencePath, renderPath, { normalizeWidth: 999_999 })).rejects.toThrow(/normalizeWidth/);
   });
 });

@@ -1,6 +1,7 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   activitySpecSchema,
   productionMetricsSchema,
@@ -249,5 +250,35 @@ describe("runProductionWorkflow", () => {
     const eventText = evaluated?.data?.text as { expected: string[]; actual: string[] } | undefined;
     expect(eventText?.expected[0]).toBe("夏日好物节");
     expect(eventText?.actual[0]).toBe("夏日好物节");
+  });
+
+  it("derives asset pHash evidence from the real asset copy so assetConsistency becomes available", async () => {
+    const { root, workspace, artifacts } = await setup();
+    // 真实素材源：把仓库内既有 PNG 放进临时 assetSourceRoot，走真实 generate + workspace.apply 拷贝
+    const assetSourceRoot = join(root, "assets-src");
+    await mkdir(join(assetSourceRoot, "assets"), { recursive: true });
+    await copyFile(
+      join(dirname(fileURLToPath(import.meta.url)), "../../../examples/activity-pages/campaign/reference.png"),
+      join(assetSourceRoot, "assets", "atlas.png"),
+    );
+    const withAsset = activitySpecSchema.parse({
+      ...spec,
+      assets: [{ id: "hero-art", path: "assets/atlas.png", mimeType: "image/png", evidence: [evidence("golden", "参考图集")] }],
+    });
+    let seenAssets: Array<{ id: string; pHashDistance: number }> | undefined;
+    const events = await collect(runProductionWorkflow({ ...baseInput, spec: withAsset, assetSourceRoot, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => commandOk("build"),
+      render: async () => renderFake(0),
+      evaluate: async (input) => {
+        seenAssets = input.assets;
+        return { outcome: "passed", metrics: metrics(95), violations: [] };
+      },
+      attribute: () => [],
+    }));
+    expect(events.at(-1)?.state).toBe("COMPLETED");
+    // 素材证据从「源素材 vs 工作区拷贝」pHash 推导：字节级拷贝距离为 0
+    expect(seenAssets).toEqual([{ id: "public/campaign/assets/atlas.png", pHashDistance: 0 }]);
   });
 });

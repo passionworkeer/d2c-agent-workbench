@@ -64,15 +64,50 @@ export interface ImageComparison {
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value * 10) / 10));
 const ratio = (numerator: number, denominator: number, empty = 1) => denominator > 0 ? numerator / denominator : empty;
 
-export async function compareImageArtifacts(reference: string, current: string): Promise<ImageComparison> {
+// 解码上限：防止构造超大图像把评测进程拖垮（24MP ≈ 6000×4000）
+const MAX_DECODED_PIXELS = 24_000_000;
+const MAX_NORMALIZE_WIDTH = 4096;
+
+async function looksSameComparison(reference: string | Buffer, current: string | Buffer, fallbackTotalPixels?: number): Promise<ImageComparison> {
   const result = await looksSame(reference, current, { createDiffImage: true, shouldCluster: true, clustersSize: 12, tolerance: 2.3 });
+  // looks-same 在 equal 时短路省略像素统计：用图像实际尺寸补齐，保证指标始终可量化
   return {
     equal: result.equal,
-    differentPixels: result.differentPixels,
-    totalPixels: result.totalPixels,
-    diffClusters: result.diffClusters,
+    differentPixels: result.differentPixels ?? 0,
+    totalPixels: result.totalPixels ?? fallbackTotalPixels ?? 0,
+    diffClusters: result.equal ? [] : result.diffClusters ?? [],
     ...(result.equal ? {} : { diffBounds: result.diffBounds }),
   };
+}
+
+/** 参考图与渲染截图比对；尺寸不一致时（真实手机截图参考宽 1260 vs 渲染 390）
+ *  把参考图等比缩放到渲染宽度后在内存中比对，不落重复文件。 */
+export async function compareImageArtifacts(reference: string, current: string, options: { normalizeWidth?: number } = {}): Promise<ImageComparison> {
+  const [referenceImage, currentImage] = await Promise.all([Jimp.read(reference), Jimp.read(current)]);
+  for (const image of [referenceImage, currentImage]) {
+    if (image.width < 1 || image.height < 1 || image.width * image.height > MAX_DECODED_PIXELS) {
+      throw new Error(`拒绝解码比对超大/非法图像：${image.width}x${image.height}`);
+    }
+  }
+  if (referenceImage.width === currentImage.width && referenceImage.height === currentImage.height) {
+    return looksSameComparison(reference, current, referenceImage.width * referenceImage.height);
+  }
+  const normalizeWidth = options.normalizeWidth ?? currentImage.width;
+  if (!Number.isInteger(normalizeWidth) || normalizeWidth < 1 || normalizeWidth > MAX_NORMALIZE_WIDTH) {
+    throw new Error(`normalizeWidth 超出合理范围：${normalizeWidth}`);
+  }
+  const width = Math.min(normalizeWidth, currentImage.width);
+  const scaledHeight = Math.max(1, Math.round((width * referenceImage.height) / referenceImage.width));
+  // 高度不一致（fullPage 截图长度差）时取公共顶部区域比对
+  const height = Math.min(scaledHeight, currentImage.height);
+  const scaledReference = referenceImage.resize({ w: width, h: scaledHeight }).crop({ x: 0, y: 0, w: width, h: height });
+  const croppedCurrent = currentImage.width === width && currentImage.height === height
+    ? currentImage
+    : currentImage.crop({ x: 0, y: 0, w: width, h: height });
+  // 经结构化参数收窄后再调 getBuffer：直接在联合类型上调用会触发 jimp 泛型 overload 冲突
+  const asPng = (image: { getBuffer(mime: "image/png"): Promise<Buffer> }) => image.getBuffer("image/png");
+  const [referenceBuffer, currentBuffer] = await Promise.all([asPng(scaledReference), asPng(croppedCurrent)]);
+  return looksSameComparison(referenceBuffer, currentBuffer, width * height);
 }
 
 export async function compareAssetPHash(reference: string, current: string): Promise<number> {
