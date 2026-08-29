@@ -36,9 +36,8 @@
 - **Profile / 命令服务端注册**：`apps/server/src/profiles.ts` 按 `sampleId` 解析固定 Profile（commands、repositoryPath、allowedWriteGlobs 全部硬编码），客户端**不可**注入 commands——这是默认安全姿态；mappings / referenceNodes 在 POST 时经 Zod 严格校验后入库。
 - **真实命令执行**：`pnpm install` / `typecheck` / `vite build` 先按参数数组精确匹配服务端白名单，再由 `spawn` 执行；Windows 为兼容 `.CMD` 垫片启用 shell，其它平台关闭 shell。命令与 preview 子进程都只继承最小化 env 白名单（PATH / Node / HOME 等），超时终止完整进程树，输出限幅。
 - **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；**任一视口**（desktop / mobile）横向溢出 → P1 硬门槛，build 失败是 P0 硬门槛，任何分数不可覆盖。
-- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；闭环内 semanticReview 由服务端注册黄金基准 95（公共请求不能覆盖），**闭环外**可一键拉真视觉模型复核（见下）。
-- **闭环外 VLM 语义复核**：`POST /api/production/runs/:id/semantic-review` 让真视觉模型对比参考图与渲染截图，产出分数 + 逐条差异观察；key 走 `X-LLM-Key` 头仅本次请求生命周期，复核结果不写 run.json / 事件流 / 下载报告。工作台把「VLM 实测」与闭环黄金基准**并列展示但不计入 finalScore**——闭环评分保持无 key 也可复现，这是可部署工程的取舍：客观指标作门槛，智能评审作复核证据。
-- **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
+- **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；闭环内 semanticReview 优先接真实 MiniMax 双图评审，未配 key 或调用失败时回退服务端注册基准分并如实标注 provider；**闭环外**还可一键拉真视觉模型复核（见下）。
+- **闭环外 VLM 语义复核**：`POST /api/production/runs/:id/semantic-review` 让真视觉模型对比参考图与渲染截图，产出分数 + 逐条差异观察；key 走 `X-LLM-Key` 头仅本次请求生命周期，复核结果不写 run.json / 事件流 / 下载报告。工作台把「VLM 实测」与闭环内语义评审证据**并列展示但不计入 finalScore**——闭环评分保持无 key 也可复现，这是可部署工程的取舍：客观指标作门槛，智能评审作复核证据。- **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
 - **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。Puck 保存编辑后该面板自动展开，新增「基线（保存前）」列，差异列标「✓ 编辑已应用」，把"设计意图落到了 ActivitySpec"演给观众看。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
 - **工作台横向溢出标注**：mobile / 任一视口的 `documentElement.scrollWidth > clientWidth` 直接在工作台渲染截图上描红边 + 标注「⚠ 横向溢出 → P1」，把「任一视口也是 P1 硬门槛」演给观众看。
@@ -47,9 +46,12 @@
 - **启动即预热依赖**：服务端启动后后台把目标仓库播种进 `.data/production/warm/` 跑一次 install 填热 pnpm 全局 store——演示时首个生产闭环不再付冷启动下载，讲解前两条链路的时间刚好够热好；install 带 `--prefer-offline`，store 已热时跳过 registry 请求，会场断网也能跑完压轴环节（store 冷时自动回退联网）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
+- **三个真实手机活动页（压轴样例）**：三张真实移动端截图（快手商城信息流 / 夏日游戏节任务页 / 养萌宠红包养成页）经「方案 C 混合重建」落为 `examples/activity-pages/` fixture——原图作整页图集素材 + 语义化 React 组件重建导航 / 任务 / 奖励区，本地演示交互不接真实后台；样例带参考图缩略图并明示「390px 手机端 · 高保真整页还原」，E2E 从渲染 Artifact 的真实几何对照 spec sourceBox 逐节点复核（3% 容差）。
+- **语义评审证据（MiniMax 实时 / 基准回退）**：评测闭环接 MiniMax 双图语义评审（spec 文本 + 渲染截图 → 布局 / 文案 / 视觉 / 任务链路四维子分 + 区域化 issues）；未配 key 或调用失败时如实回退服务端注册基准分并标 `provider=registered-fallback`，证据随 run 持久化、重启可查，工作台「评测分构成」面板展开四维子分与 issues 列表。
+- **Figma 自包含导入包 v2**：`buildFigmaImportBundle` 产出 version 2.0 导入包——顶层 viewport、节点 layout（Auto Layout 方向 / gap / padding）、素材 base64 随包携带（真实样例即整页图集原图）、图节点 `imageCrop` 按 canonicalViewport 归一化（0-1）、缺渲染证据的节点进 `degradations` 如实降级。
+- **Figma 离线导入插件**：`apps/figma-importer-plugin` 零运行时依赖，手写结构校验（不用 zod），把导入包在真实 Figma 里重建为 Frame / Text / Rectangle / Image（crop 矩阵），`pluginData.d2cNodeId` 保留稳定 Node ID；`networkAccess.allowedDomains` 为空——**不联网、不读取任何令牌**。三份预生成导入包在 `examples/activity-pages/<样例>/figma-import.json`（生成时即用插件同款解析器校验）。插件在真实 Figma 桌面端的人工导入验证仍待完成。
 - **Run 报告下载**：闭环完成后一键下载 `production-run-<id>-report.json`——含完整事件流（每步 Artifact 引用）、终局分数、评测分构成、文本证据、违规清单与双视口逐节点几何，把「每一步可追溯」变成可带走的结构化证据链（与 D2C 模式的报告同一惯例，不含任何密钥）。
-
-黄金样例 `examples/activity-pages/campaign/` 内置一处可修复的 Hero 间距问题（目标仓库骨架 `padding-left: 48px` vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` P1，局部修复仅改生成的 Campaign CSS，复评后状态 `COMPLETED`、终局分数 ≥90。
+5 个黄金样例：`campaign`（主视觉页）与 `summer-form`（表单页）是演示骨架，`campaign` 内置一处可修复的 Hero 间距问题（目标仓库骨架 `padding-left: 48px` vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` P1，局部修复仅改生成的 Campaign CSS，复评后状态 `COMPLETED`、终局分数 ≥90。另外 3 个是真实手机截图样例（`commerce-feed` / `summer-game-festival` / `pet-red-packet`），目标仓库对应组件以 fixture spec 为单一事实源构建（`real-pages.test` 钉死逐节点文本一致），E2E 跑完整生产闭环并复核 390px 整页几何。
 
 外部依赖说明：三种模式边界清晰——**D2C**（浏览器内确定性管线，零依赖）、**I2D**（可选 MiniMax 视觉模型 / Figma PAT）、**PRODUCTION**（需要 pnpm 可用、目标仓库可安装构建；视觉草稿的模型调用可选）。
 
@@ -64,8 +66,7 @@ pnpm dev          # 同时启动前端 5173 与 API 8787
 
 1. **D2C（秒开）**：点「运行完整演示」→ 72→94 评测修复闭环，浏览器内确定性管线，零外部依赖
 2. **I2D**：切「参考图 → 设计稿」→ 自动播放 → （可选）填 key 接真视觉模型
-3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 93+ 分，工作台「评测分构成」面板显示每个证据项的可用性与具体分；切换第二个样例（表单页）再跑 → 不同分数与不同修复文件（评分非硬编码）；时间充裕可再切「快手商城」等真实移动样例（手机实拍 jpg 参考图，5 个样例已全部可跑，真实样例跑出 NEEDS_REVIEW 90.6 + 剩余违规并存也是诚实结果）
-
+3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 93+ 分，工作台「评测分构成」面板显示每个证据项的可用性与具体分；切换第二个样例（表单页）再跑 → 不同分数与不同修复文件（评分非硬编码）；再切三个真实截图样例（快手商城 / 夏日游戏节 / 养萌宠红包，带缩略图）→ 同一闭环跑 390px 手机端整页，实测 75-80 分过服务端声明的验收门槛（70，照片重采样 + 语义重建导航的像素对比天花板所致）、零横向溢出——分数诚实展示，门槛是服务端 Profile 按样例声明的显式参数
 完整话术见 `docs/demo-script.md`（含 3 分钟版七个亮点）。
 
 ## 立即运行
@@ -185,11 +186,13 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 | `packages/production-runtime` | 隔离工作区（seedWorkspaceFrom）、白名单命令执行（runAllowedCommand + 最小 env）、Playwright 渲染、回滚快照与定向修复（applyPatchPlan） |
 | `packages/canvas-ops` | 对话式画布编辑：`parseIntent` 中文规则 + `applyEditOps` 纯函数（set-prop / set-style / set-text / set-layout） |
 | `packages/asset-indexer` | 企业组件资产库扫描器：设计系统仓库（React + Storybook + Code Connect）→ matcher 可注入的 registry |
-| `packages/figma-patcher` | EditOp → Figma setNodeChanges：token 解字面量、GRID 降级记录、selector 复用 canvas-ops 语义 |
+| `packages/figma-patcher` | EditOp → Figma setNodeChanges：token 解字面量、GRID 降级记录、selector 复用 canvas-ops 语义；v2 自包含 Figma 导入包（viewport / layout / base64 素材 / 归一化 imageCrop / degradations） |
+| `apps/figma-importer-plugin` | Figma 离线导入插件：零运行时依赖手写解析器，导入包重建为 Frame / Text / Rectangle / Image（crop 矩阵），保留 `pluginData.d2cNodeId`；manifest 声明零网络访问 |
 | `apps/server` | Run 管理、上传 API、SSE 事件流、LLM / 视觉模型 / Figma 回写三个代理路由 |
 | `apps/web` | 单列分区块 Agent 工作台、SpecRenderer、TraceFeed（轨迹分组）、DiffView、ChatPanel、SettingsPopover、FigmaPatchPanel |
 | `examples/figma-bundles/product-grid` | 主 fixture：4 张商品卡 + 5 SDS 组件实例 + 12 typography |
 | `examples/figma-bundles/form-page` | 第二 fixture：表单 + Input + Checkbox（未映射）+ Button |
+| `examples/activity-pages` | 5 个黄金样例 fixture：campaign / summer-form 演示骨架 + 三个真实手机截图样例（activity-spec.json + 整页图集 reference.jpg + 预生成 figma-import.json） |
 | `examples/sample-design-system` | 企业设计系统样本：6 个真 React 组件 + Storybook + Code Connect，供 asset-indexer 扫描 |
 | `scripts/consistency.test.ts` | 浏览器本地真实执行 ≡ 服务端 SSE，逐字段 deepEqual |
 
@@ -204,6 +207,9 @@ FigmaPatchPanel ── POST /api/figma/patch (X-Figma-Token) ──→ Figma RES
 - **PRODUCTION 服务端注册**：客户端只允许传 `sampleId`，目标 Profile（commands / repositoryPath / allowedWriteGlobs）从 `apps/server/src/profiles.ts` 解析，**绝不**接受客户端注入的命令数组；POST 时 mappings / referenceNodes 经 Zod 严格校验后入库，非法输入直接 400。
 - **PRODUCTION 命令子进程 env 白名单**：仅继承 PATH / Node / HOME 等必要键，敏感环境变量不泄漏给目标仓库命令。
 - LLM key 仅存浏览器 localStorage（设置面板），代理通过 `X-LLM-Key` 请求头转发，仓库 / 日志 / 下载报告均不含 key。
+- **语义评审凭证只在服务端请求生命周期内**：MiniMax key 从 `.env`（已 gitignore）读取，不进 Run / Artifact / 前端响应与日志；失败回退注册基准分并如实标注 provider。
+- **Figma 导入插件零网络**：manifest `networkAccess.allowedDomains` 为空，插件不发起任何请求、不读取 PAT / 文件系统；唯一输入是用户显式选择的本地 JSON 导入包。
+- 真实样例的原始截图只作为本地演示素材与评测参考（随 fixture 提交），不上传任何第三方存储。
 - Figma PAT 与 LLM key 同模式：仅存 localStorage，代理通过 `X-Figma-Token` 请求头转发，仓库 / 日志 / 下载报告 / 响应体均不含 PAT（测试钉死）。
 
 ## 设计参考

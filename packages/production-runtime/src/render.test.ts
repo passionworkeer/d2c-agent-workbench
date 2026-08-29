@@ -3,10 +3,21 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { renderPage } from "./index";
+import { composeRenderUrl, renderPage } from "./index";
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
+
+describe("composeRenderUrl", () => {
+  it("自由端口只替换 origin，保留声明 URL 的路由路径", () => {
+    expect(composeRenderUrl("http://127.0.0.1:4173/commerce/feed", "http://127.0.0.1:9517")).toBe("http://127.0.0.1:9517/commerce/feed");
+  });
+
+  it("声明 URL 无路径时直接使用服务地址", () => {
+    expect(composeRenderUrl("http://127.0.0.1:4173/", "http://127.0.0.1:9517")).toBe("http://127.0.0.1:9517");
+    expect(composeRenderUrl("http://127.0.0.1:4173", "http://127.0.0.1:9517")).toBe("http://127.0.0.1:9517");
+  });
+});
 
 describe("renderPage", () => {
   it("captures screenshots, runtime state and geometry for stable node ids", async () => {

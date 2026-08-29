@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent } from "@d2c/contracts";
+import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, SemanticReviewEvidence } from "@d2c/contracts";
 import { buildFigmaImportBundle } from "@d2c/figma-patcher";
 import {
   GOLDEN_SAMPLES,
@@ -8,7 +8,7 @@ import {
   getProductionArtifact,
   getProductionRun,
   listProductionRuns,
-  repairProductionRun,
+  loadEmbeddedAssets,  repairProductionRun,
   requestSemanticReview,
   subscribeToProductionRun,
   type ProductionRunSummary,
@@ -59,6 +59,8 @@ export function ProductionWorkbench() {
   const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
   // 最近一轮文本证据（spec 文本 vs 渲染文本）：让 textConsistency 的 100 分附带逐项对比
   const [latestTextEvidence, setLatestTextEvidence] = useState<{ expected: string[]; actual: string[] } | null>(null);
+  // 最近一轮语义评审证据：provider 区分「MiniMax 实时评审」与「黄金基准回退」，子分与 issues 展开可查
+  const [latestSemanticReview, setLatestSemanticReview] = useState<SemanticReviewEvidence | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
   const [editSaved, setEditSaved] = useState(false);
@@ -72,6 +74,9 @@ export function ProductionWorkbench() {
   const [historyView, setHistoryView] = useState(false);
   // 当前展示 run 的样例 id：报告如实标注（回看历史 run 时不是当前选中的样例）
   const [reportSampleId, setReportSampleId] = useState<string | null>(null);
+  // Figma 导入包（v2 自包含）：素材需在浏览器里 fetch 成 base64；加载失败时禁用下载并显式提示
+  const [figmaExporting, setFigmaExporting] = useState(false);
+  const [figmaExportError, setFigmaExportError] = useState<string | null>(null);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
@@ -95,6 +100,7 @@ export function ProductionWorkbench() {
     setEditableSpec(sample ? sample.payload.spec : null);
     savedSpecRef.current = null;
     setEditSaved(false);
+    setFigmaExportError(null);
   }, [selectedSampleId]);
 
   const pushEvent = useCallback((event: TraceEvent) => {
@@ -115,6 +121,11 @@ export function ProductionWorkbench() {
     if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "text" in event.data) {
       const text = (event.data as { text?: { expected: string[]; actual: string[] } }).text;
       setLatestTextEvidence(text ?? null);
+    }
+    // 语义评审证据同步：provider 由服务端强制，前端只展示不回传
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "semanticReview" in event.data) {
+      const evidence = (event.data as { semanticReview?: SemanticReviewEvidence }).semanticReview;
+      setLatestSemanticReview(evidence ?? null);
     }
     // 渲染完成后拉取视口清单（含逐节点几何 + 横向溢出检测），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
@@ -138,6 +149,7 @@ export function ProductionWorkbench() {
             if (detail.violations.length) setViolations(detail.violations);
             if (detail.latestEvaluation) setLatestMetrics(detail.latestEvaluation);
             if (detail.latestTextEvidence) setLatestTextEvidence(detail.latestTextEvidence);
+            if (detail.latestSemanticReview) setLatestSemanticReview(detail.latestSemanticReview);
             setRunning(false);
             refreshHistory();
           })
@@ -310,12 +322,29 @@ export function ProductionWorkbench() {
     setSemanticReview(null);
     setSemanticReviewError(null);
     setHistoryView(false);
+    setLatestSemanticReview(null);
     try {
       await repairProductionRun(runId);
       subscribe(runId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "重跑失败");
       setRunning(false);
+    }
+  }
+
+  // Figma 导入包 v2：真实样例先把整页图集 fetch 成 base64 随包携带（自包含、离线可导入）
+  async function downloadFigmaBundle() {
+    if (!editableSpec || figmaExporting) return;
+    setFigmaExporting(true);
+    setFigmaExportError(null);
+    try {
+      const embedded = await loadEmbeddedAssets(selectedSampleId ?? editableSpec.page.id);
+      const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
+      downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}, embedded), `${editableSpec.page.id}-figma-import.json`);
+    } catch (cause) {
+      setFigmaExportError(cause instanceof Error ? cause.message : "导入包生成失败");
+    } finally {
+      setFigmaExporting(false);
     }
   }
 
@@ -381,12 +410,13 @@ export function ProductionWorkbench() {
         <div className="production-sample" data-testid="production-sample">
           <span>
             黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
-            目标仓库 {selectedSample?.targetRepository}（含一处可修复的基线间距问题）
+            {selectedSample?.fidelity}
           </span>
           <span className="sample-switcher">
             换个页面：
             {GOLDEN_SAMPLES.map((sample) => (
               <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => switchSample(sample.id)}>
+                {sample.thumbnailUrl && <img className="sample-thumb" src={sample.thumbnailUrl} alt="" data-testid={`sample-thumb-${sample.id}`} />}
                 {sample.label}
               </button>
             ))}
@@ -463,7 +493,12 @@ export function ProductionWorkbench() {
               <tr>
                 <td>semanticReview（VLM 语义评审）</td>
                 <td>{latestMetrics.visual.semanticReview === null ? "—" : latestMetrics.visual.semanticReview.toFixed(1)}</td>
-                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"}>{latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）" : "缺服务端语义评审 → evidence:semantic-review-missing 触发 P1"}</td>
+                <td className={latestMetrics.visual.semanticReviewAvailable ? "ok" : "gap"} data-testid="semantic-provider">
+                  {latestSemanticReview?.provider === "minimax" ? "有证据（MiniMax 实时评审）"
+                    : latestSemanticReview?.provider === "registered-fallback" ? "有证据（黄金基准回退）"
+                    : latestMetrics.visual.semanticReviewAvailable ? "有证据（服务端黄金基准）"
+                    : "缺服务端语义评审 → evidence:semantic-review-missing 触发 P1"}
+                </td>
                 <td></td><td></td>
               </tr>
             </tbody>
@@ -498,7 +533,38 @@ export function ProductionWorkbench() {
               </div>
             )}
           </div>
-          {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
+          {latestSemanticReview && (
+            <details className="semantic-review-evidence" data-testid="semantic-review-evidence">
+              <summary>
+                语义评审证据（{latestSemanticReview.provider === "minimax" ? "MiniMax 实时评审" : "黄金基准回退"} · 综合 {latestSemanticReview.score.toFixed(0)}）
+              </summary>
+              <p className="semantic-review-summary">{latestSemanticReview.summary}</p>
+              <table className="semantic-review-table">
+                <thead>
+                  <tr><th>维度</th><th>布局结构</th><th>文案内容</th><th>视觉风格</th><th>任务链路</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>分</td>
+                    <td>{latestSemanticReview.layout.toFixed(0)}</td>
+                    <td>{latestSemanticReview.content.toFixed(0)}</td>
+                    <td>{latestSemanticReview.visualTone.toFixed(0)}</td>
+                    <td>{latestSemanticReview.taskClarity.toFixed(0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {latestSemanticReview.issues.length > 0 && (
+                <ul className="semantic-review-issues">
+                  {latestSemanticReview.issues.map((issue, index) => (
+                    <li key={index} className={`issue-${issue.severity.toLowerCase()}`}>
+                      <span className="issue-severity">{issue.severity}</span> {issue.title}
+                      {issue.region && <small className="issue-region">（区域 {issue.region.x},{issue.region.y} {issue.region.width}×{issue.region.height}）</small>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          )}          {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
             <details className="text-evidence" data-testid="text-evidence" open={baselineTexts !== null}>
               <summary>{baselineTexts !== null ? "文本证据逐项对比（已应用编辑 · 基线 → spec → 渲染）" : "文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）"}</summary>
               <table className="text-evidence-table">
@@ -552,10 +618,14 @@ export function ProductionWorkbench() {
               {editSaved && !running && (
                 <button className="button primary" onClick={() => void rerunAfterEdit()}>按编辑重跑闭环</button>
               )}
-              <button className="button secondary" disabled={running} onClick={() => {
-                const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
-                downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}), `${editableSpec.page.id}-figma-import.json`);
-              }}>下载 Figma 导入包</button>
+              <button
+                className="button secondary"
+                disabled={running || figmaExporting || figmaExportError !== null}
+                onClick={() => void downloadFigmaBundle()}
+              >{figmaExporting ? "生成导入包中…" : "下载 Figma 导入包"}</button>
+              {figmaExportError && (
+                <span className="figma-export-error" data-testid="figma-export-error">素材加载失败，Figma 导入包不可用：{figmaExportError}</span>
+              )}
             </div>
           </div>
           <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />

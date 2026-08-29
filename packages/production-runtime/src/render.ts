@@ -53,6 +53,17 @@ export interface RenderPageInput {
   server?: { cwd: string; executable?: string };
 }
 
+/**
+ * preview 起在自由端口，只替换调用方声明 URL 的 origin；路径必须原样保留——
+ * 真实活动页样例渲染在注册路由（如 /commerce/feed），丢掉路径会落到根路由，
+ * SPA 骨架的基线 padding 会把整页几何与像素对比全部带偏。
+ */
+export function composeRenderUrl(declaredUrl: string, serverUrl: string): string {
+  const { pathname } = new URL(declaredUrl);
+  if (pathname === "/" || pathname === "") return serverUrl;
+  return `${serverUrl.replace(/\/$/, "")}${pathname}`;
+}
+
 export async function renderPage(input: RenderPageInput): Promise<RenderResult> {
   await mkdir(input.outputDir, { recursive: true });
   let baseUrl = input.url;
@@ -60,7 +71,7 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
   if (input.server) {
     const port = await getFreePort();
     server = await startPreviewServer({ cwd: input.server.cwd, port, executable: input.server.executable, timeoutMs: input.timeoutMs ?? 30_000 });
-    baseUrl = server.url;
+    baseUrl = composeRenderUrl(input.url, server.url);
   }
   const browser = await chromium.launch({ headless: true });
   const runtimeErrors: string[] = [];

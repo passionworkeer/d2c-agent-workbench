@@ -1,5 +1,5 @@
-import { activitySpecSchema, assetCropSchema } from "@d2c/contracts";
-import { describe, expect, it } from "vitest";
+import { activitySpecSchema, assetCropSchema, type ActivitySpec } from "@d2c/contracts";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import campaignSpecJson from "../../../../examples/activity-pages/campaign/activity-spec.json?raw";
 import campaignProfileJson from "../../../../examples/activity-pages/campaign/target-profile.json?raw";
 import summerFormSpecJson from "../../../../examples/activity-pages/summer-form/activity-spec.json?raw";
@@ -13,7 +13,7 @@ import gameFestivalManifestJson from "../../../../examples/activity-pages/summer
 import petRedPacketSpecJson from "../../../../examples/activity-pages/pet-red-packet/activity-spec.json?raw";
 import petRedPacketProfileJson from "../../../../examples/activity-pages/pet-red-packet/target-profile.json?raw";
 import petRedPacketManifestJson from "../../../../examples/activity-pages/pet-red-packet/assets/manifest.json?raw";
-import { GOLDEN_SAMPLES } from "./production-api";
+import { GOLDEN_SAMPLES, loadEmbeddedAssets } from "./production-api";
 
 /** 三张真实移动活动页：spec / profile / 裁切清单以磁盘 fixture 为单一事实源 */
 const REAL_PAGE_FIXTURES = ["commerce-feed", "summer-game-festival", "pet-red-packet"] as const;
@@ -22,6 +22,13 @@ const realFixtureSource: Record<(typeof REAL_PAGE_FIXTURES)[number], { spec: str
   "commerce-feed": { spec: commerceFeedSpecJson, profile: commerceFeedProfileJson, manifest: commerceFeedManifestJson },
   "summer-game-festival": { spec: gameFestivalSpecJson, profile: gameFestivalProfileJson, manifest: gameFestivalManifestJson },
   "pet-red-packet": { spec: petRedPacketSpecJson, profile: petRedPacketProfileJson, manifest: petRedPacketManifestJson },
+};
+
+/** 根节点可信映射的期望组件对与素材图集 URL（与服务端 profiles.ts 注册表对齐） */
+const REAL_PAGE_ROOT_MAPPINGS: Record<(typeof REAL_PAGE_FIXTURES)[number], { component: string; atlasUrl: string }> = {
+  "commerce-feed": { component: "CommerceFeedExperience", atlasUrl: "/commerce-feed/reference.jpg" },
+  "summer-game-festival": { component: "SummerGameFestivalExperience", atlasUrl: "/game-festival/reference.jpg" },
+  "pet-red-packet": { component: "PetRedPacketExperience", atlasUrl: "/pet-red-packet/reference.jpg" },
 };
 
 describe("GOLDEN_SAMPLES", () => {
@@ -130,5 +137,46 @@ describe("真实移动活动页黄金样例（三张截图混合重建）", () =
       expect(JSON.parse(source.spec), `${fixtureId}: examples spec 与内嵌样例漂移`).toEqual(sample!.payload.spec);
       expect(JSON.parse(source.profile).repositoryPath, `${fixtureId}: profile 目标仓库漂移`).toBe(sample!.targetRepository);
     });
+
+    it(`${fixtureId}: 携带根节点可信映射且与目标组件对齐（不携带服务端 sourceFile）`, () => {
+      const expected = REAL_PAGE_ROOT_MAPPINGS[fixtureId]!;
+      const sample = GOLDEN_SAMPLES.find((item) => item.id === fixtureId);
+      const accepted = (sample!.payload.mappings ?? []).filter((mapping) => mapping.status === "accepted");
+      expect(accepted, `${fixtureId}: 应恰好一条可信映射`).toHaveLength(1);
+      const mapping = accepted[0]!;
+      const spec = JSON.parse(source.spec) as ActivitySpec;
+      const rootIds = spec.nodes.filter((node: { parentId?: string }) => !node.parentId).map((node: { id: string }) => node.id);
+      expect(rootIds, `${fixtureId}: 根节点应为 page`).toEqual(["page"]);
+      expect(mapping.nodeId).toBe("page");
+      expect(mapping.codeComponent).toBe(expected.component);
+      expect(mapping.importPath).toBe(`@/components/activity/${expected.component}`);
+      expect(mapping.props.atlasUrl).toBe(expected.atlasUrl);
+      expect(mapping.evidence.length).toBeGreaterThan(0);
+      expect((mapping as Record<string, unknown>).sourceFile, `${fixtureId}: 客户端映射不得携带服务端专用字段`).toBeUndefined();
+    });
   }
+});
+
+describe("loadEmbeddedAssets", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("fetches the real-sample atlas and returns it as a self-contained base64 entry", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, blob: async () => new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }) } as unknown as Response));
+    vi.stubGlobal("fetch", fetchMock);
+    const assets = await loadEmbeddedAssets("commerce-feed");
+    expect(assets).toEqual([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("returns an empty table for semantic-only golden samples without fetching", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await loadEmbeddedAssets("campaign")).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces load failures so the workbench can disable the Figma export", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404, blob: async () => new Blob() } as unknown as Response)));
+    await expect(loadEmbeddedAssets("pet-red-packet")).rejects.toThrow(/404/);
+  });
 });

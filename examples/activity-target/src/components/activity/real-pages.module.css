@@ -1,0 +1,451 @@
+/* 三张真实活动页的页面级样式：区块底色、渐变、药丸与浮层。
+   区块坐标与尺寸全部由组件内联（对应 spec 实测 sourceBox），这里只承载色彩与形态。 */
+
+/* ---------- 桌面端两侧深色（移动端画布占满不可见） ---------- */
+
+:global(body:has([data-activity-canvas-root])) {
+  background: #17181f;
+}
+
+/* ---------- 通用 ---------- */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 8px 16px;
+  border-radius: 18px;
+  background: rgba(17, 18, 24, 0.86);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- 商城信息流页 ---------- */
+
+.searchPill {
+  border-radius: 21px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(17, 18, 24, 0.06);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 11px;
+  width: 20px;
+  height: 20px;
+}
+
+.searchKeyword {
+  color: #17181f;
+  font-size: 15px;
+  line-height: 16px;
+}
+
+.searchSubmit {
+  border: none;
+  border-radius: 16px;
+  background: #ff1645;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quickActions {
+  background: #ffffff;
+}
+
+.quickActionItem {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 70px;
+  height: 51px;
+  border: none;
+  background: none;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #44464e;
+  cursor: pointer;
+}
+
+.quickActionItem svg {
+  width: 27px;
+  height: 27px;
+}
+
+.bannerTitle {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 18px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(90, 20, 60, 0.35);
+}
+
+.bannerLine {
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 12px;
+  text-shadow: 0 1px 2px rgba(90, 20, 60, 0.35);
+}
+
+.bannerPrice {
+  color: #ffe08a;
+  font-size: 18px;
+  line-height: 22px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(90, 20, 60, 0.4);
+}
+
+.productGrid {
+  background: #f1f2f4;
+}
+
+.floatClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(17, 18, 24, 0.55);
+  cursor: pointer;
+}
+
+.floatClose svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ---------- 夏日游戏节任务页 ---------- */
+
+.heroDate {
+  color: #ffd76a;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+.starPill {
+  display: flex;
+  align-items: center;
+  border-radius: 11px;
+  background: rgba(18, 10, 40, 0.62);
+  border: 1px solid rgba(255, 215, 106, 0.35);
+  color: #ffd76a;
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.heroEntry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: rgba(18, 10, 40, 0.66);
+  border: 1px solid rgba(255, 215, 106, 0.3);
+  cursor: pointer;
+}
+
+.heroEntryLabel {
+  color: #ffe9b0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.collabHeader {
+  background: linear-gradient(90deg, #3a2470, #6f45ff 55%, #3a2470);
+}
+
+.collabTitle {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+
+.collabCountdown {
+  color: #ffd76a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.collabCalendar {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.taskListCard {
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(111, 69, 255, 0.32), rgba(111, 69, 255, 0.14));
+}
+
+.benefitPanel {
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2c1a56, #241546);
+}
+
+.benefitTitle {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.benefitExchange {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #ffd76a;
+  font-size: 11px;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.rewardCards {
+  border-radius: 14px;
+  background: #241546;
+}
+
+.rewardCardRed {
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff5c7a, #e02050);
+}
+
+.rewardCardGold {
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffc65c, #f09a2e);
+}
+
+.rewardCardGold .rewardCardTitle,
+.rewardCardGold .rewardCardSub {
+  color: #4a2c0a;
+}
+
+.rewardCardTitle {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.rewardCardSub {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.rewardCardAction {
+  border: none;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #e02050;
+  font-size: 11px;
+  line-height: 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dailyTasksCard {
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2c1a56, #241546);
+}
+
+.dailyTitle {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 800;
+}
+
+.dailyNote {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.dailyMineTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 215, 106, 0.16);
+  color: #ffd76a;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
+.activityTabs {
+  background: #1c1038;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.activityTabActive,
+.activityTab {
+  position: absolute;
+  border: none;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activityTabActive {
+  background: linear-gradient(180deg, #ffd76a, #ffb52e);
+  color: #4a2c0a;
+}
+
+.activityTab {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- 养萌宠红包养成页 ---------- */
+
+.petHero {
+  background: linear-gradient(180deg, #7a1f0a, #e04a10);
+}
+
+.petNotice {
+  border-radius: 11px;
+  background: rgba(70, 14, 2, 0.9);
+  color: #ffe9c8;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.petSideEntry {
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.petName {
+  color: #3c2000;
+  background: rgba(255, 235, 205, 0.92);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.petLevelBubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px 7px 7px 2px;
+  background: #ff8534;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.petHintBubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #3c2000;
+  font-size: 9px;
+  line-height: 13px;
+  box-shadow: 0 2px 6px rgba(74, 23, 4, 0.25);
+}
+
+.petBlindbox {
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ff9ec7, #f06fa8);
+  box-shadow: 0 4px 10px rgba(200, 60, 130, 0.35);
+  cursor: pointer;
+}
+
+.petBlindbox > span:first-child {
+  color: #7c2050;
+  font-size: 13px;
+  line-height: 14px;
+  font-weight: 800;
+}
+
+.petBlindboxCash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #19a974;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.petPk {
+  display: flex;
+  flex-direction: column;
+}
+
+.petPk > span {
+  align-self: flex-start;
+  border-radius: 6px;
+  background: #19a974;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.petPkAction {
+  border: none;
+  border-radius: 9px;
+  background: #ff6319;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.petTaskSection {
+  border-radius: 18px 18px 0 0;
+  background: #f5e8b8;
+}
+
+.petTaskTitle {
+  color: #4a2c0a;
+  font-size: 14px;
+  line-height: 15px;
+  font-weight: 800;
+}
+
+.petTaskLink {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #8a6a3a;
+  font-size: 10px;
+  line-height: 12px;
+  cursor: pointer;
+}

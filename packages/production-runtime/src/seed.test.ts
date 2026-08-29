@@ -29,6 +29,9 @@ describe("seedWorkspaceFrom", () => {
     await writeFile(join(target, "src", "App.tsx"), "export default function App() { return null; }");
     await writeFile(join(target, "node_modules", "react", "index.js"), "heavy");
     await writeFile(join(target, ".git", "HEAD"), "ref");
+    // 仓库测试文件不进工作区（相对路径引用仓库外 fixture 会挡住隔离 typecheck）
+    await mkdir(join(target, "src", "components", "activity"), { recursive: true });
+    await writeFile(join(target, "src", "components", "activity", "real-pages.test.tsx"), "broken");
 
     const workspace: RunWorkspace = await Workspace.create(join(root, "workspace"), profile);
     await seedWorkspaceFrom(target, workspace);
@@ -37,6 +40,7 @@ describe("seedWorkspaceFrom", () => {
     const { access } = await import("node:fs/promises");
     await expect(access(join(workspace.root, "node_modules"))).rejects.toThrow();
     await expect(access(join(workspace.root, ".git"))).rejects.toThrow();
+    await expect(access(join(workspace.root, "src", "components", "activity", "real-pages.test.tsx"))).rejects.toThrow();
   });
 });
 

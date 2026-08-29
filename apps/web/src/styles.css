@@ -698,6 +698,9 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .sample-switcher { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6a6f66; }
 .sample-chip { border: 1px solid #d7dad1; background: #fff; border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
 .sample-chip.active { border-color: rgba(31, 95, 63, .55); background: #f1f8f3; color: #1f5f3f; font-weight: 600; }
+/* 真实样例缩略图：整页参考图竖版小图，选中态随 chip 高亮 */
+.sample-chip { display: inline-flex; align-items: center; gap: 6px; }
+.sample-thumb { width: 14px; height: 30px; object-fit: cover; border-radius: 3px; border: 1px solid rgba(0, 0, 0, .12); display: inline-block; }
 
 .run-history { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding: 8px 12px; border-radius: 9px; background: #fff; border: 1px solid #eceee7; font-size: 12px; }
 .run-history-label { color: #6a6f66; }

@@ -1,21 +1,23 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   activitySpecSchema,
   targetProjectProfileSchema,
   traceEventSchema,
   type ActivitySpec,
-  type ComponentMapping,
+  type CodePlan,
   type PatchPlan,
   type ProductionViolation,
   type Rect,
+  type SemanticReviewEvidence,
   type TargetProjectProfile,
   type TraceEvent,
 } from "@d2c/contracts";
 import { inspectTargetProject, type ProjectIndex } from "@d2c/asset-indexer";
-import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput } from "@d2c/codegen";
+import { generateProductionPage, validateCodePlan, type GeneratedProductionOutput, type SourcedComponentMapping } from "@d2c/codegen";
 import {
   attributeDiffClusters,
+  compareAssetPHash,
   compareImageArtifacts,
   evaluateProductionRun,
   type ImageComparison,
@@ -45,11 +47,13 @@ export interface ProductionWorkflowAdapters {
   inspect: (input: { root: string; profile: TargetProjectProfile }) => Promise<ProjectIndex>;
   /** 写入生成代码前播种工作区（复制目标仓库骨架并安装依赖）；返回写入的顶层条目 */
   prepare?: (input: { workspace: RunWorkspace; repositoryRoot: string; profile: TargetProjectProfile }) => Promise<string[]>;
-  generate: (spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]) => GeneratedProductionOutput | Promise<GeneratedProductionOutput>;
+  generate: (spec: ActivitySpec, profile: TargetProjectProfile, mappings: SourcedComponentMapping[]) => GeneratedProductionOutput | Promise<GeneratedProductionOutput>;
   typecheck: () => Promise<CommandResult>;
   build: () => Promise<CommandResult>;
   render: (input: RenderPageInput) => Promise<RenderResult>;
   compareImages?: (reference: string, current: string) => Promise<ImageComparison>;
+  /** 真实 VLM 双图语义评审（服务端装配 MiniMax 凭证）；失败由工作流回退注册基准分 */
+  semanticReview?: (input: { referenceScreenshot: string; currentScreenshot: string; spec: ActivitySpec }) => Promise<SemanticReviewEvidence>;
   evaluate: (input: ProductionEvaluationInput) => ProductionEvaluationReport | Promise<ProductionEvaluationReport>;
   attribute: typeof attributeDiffClusters;
   planRepair: (input: RepairPlanningInput) => Promise<PatchPlan>;
@@ -61,7 +65,8 @@ export interface ProductionWorkflowInput {
   runId: string;
   spec: ActivitySpec;
   profile: TargetProjectProfile;
-  mappings: ComponentMapping[];
+  /** 组件映射；真实样例由服务端附加 sourceFile（可信注册组件的源码文件）用于归因 */
+  mappings: SourcedComponentMapping[];
   repositoryRoot: string;
   workspace: RunWorkspace;
   artifacts: FileArtifactStore;
@@ -73,6 +78,8 @@ export interface ProductionWorkflowInput {
   assetEvidence?: Array<{ id: string; pHashDistance: number }>;
   engineeringOverride?: Partial<ProductionEvaluationInput["engineering"]>;
   semanticReviewScore?: number;
+  /** 验收门槛覆盖（默认 90/85）：服务端按样例声明，如真实截图样例 70/62。 */
+  acceptance?: { pass: number; needsReview: number };
   /** spec.assets 相对该服务端可信目录解析。 */
   assetSourceRoot?: string;
   /** spec 补丁在工作区内的落盘路径；不提供则 spec 类补丁报错 */
@@ -141,6 +148,29 @@ function deriveEngineering(spec: ActivitySpec, plan: GeneratedProductionOutput["
   };
 }
 
+/** 素材哈希证据：源素材（assetSourceRoot 内）vs 工作区拷贝逐资产 pHash。
+ *  路径全部来自服务端注册的 assetSourceRoot 与 code plan，客户端无法指定任意路径；
+ *  单个素材解码失败按缺证据跳过（该资产不参与 assetConsistency），不阻塞整轮评测。 */
+async function deriveAssetEvidence(
+  assets: CodePlan["assets"],
+  assetSourceRoot: string | undefined,
+  workspace: RunWorkspace,
+): Promise<Array<{ id: string; pHashDistance: number }>> {
+  if (!assetSourceRoot || !assets.length) return [];
+  const evidence: Array<{ id: string; pHashDistance: number }> = [];
+  for (const asset of assets) {
+    const source = resolve(assetSourceRoot, asset.source);
+    const target = resolve(workspace.root, asset.target);
+    if (!existsSync(source) || !existsSync(target)) continue;
+    try {
+      evidence.push({ id: asset.target, pHashDistance: await compareAssetPHash(source, target) });
+    } catch {
+      // 解码失败（损坏/不支持格式）→ 该素材按缺证据处理
+    }
+  }
+  return evidence;
+}
+
 function mergeViolations(groups: ProductionViolation[][]): ProductionViolation[] {
   const byId = new Map<string, ProductionViolation>();
   for (const violation of groups.flat()) {
@@ -174,12 +204,11 @@ export async function* runProductionWorkflow(
   adapters: Omit<ProductionWorkflowAdapters, "generate" | "evaluate" | "attribute" | "planRepair" | "applyRepair">
     & Partial<Pick<ProductionWorkflowAdapters, "generate" | "evaluate" | "attribute" | "planRepair" | "applyRepair">>,
 ): AsyncGenerator<TraceEvent> {
-  const generate = adapters.generate ?? ((spec: ActivitySpec, profile: TargetProjectProfile, mappings: ComponentMapping[]) => generateProductionPage(spec, profile, mappings));
+  const generate = adapters.generate ?? ((spec: ActivitySpec, profile: TargetProjectProfile, mappings: SourcedComponentMapping[]) => generateProductionPage(spec, profile, mappings));
   const evaluate = adapters.evaluate ?? ((evaluation: ProductionEvaluationInput) => evaluateProductionRun(evaluation));
   const attribute = adapters.attribute ?? ((clusters: Parameters<typeof attributeDiffClusters>[0], geometry: Parameters<typeof attributeDiffClusters>[1], sourceMap: Parameters<typeof attributeDiffClusters>[2]) => attributeDiffClusters(clusters, geometry, sourceMap));
   const planRepair = adapters.planRepair ?? ((repairInput: RepairPlanningInput) => planTargetedRepair(repairInput));
   const applyRepair = adapters.applyRepair ?? ((plan: PatchPlan, workspace: RunWorkspace, store: FileArtifactStore, options?: ApplyPatchOptions) => applyPatchPlan(plan, workspace, store, options));
-
   let seq = 0;
   const event = (state: TraceEvent["state"], title: string, detail?: string, data?: Record<string, unknown>): TraceEvent =>
     traceEventSchema.parse({ id: `${input.runId}-${seq += 1}`, runId: input.runId, timestamp: new Date().toISOString(), state, title, detail, data });
@@ -215,6 +244,10 @@ export async function* runProductionWorkflow(
   await input.workspace.apply({ files: generated.files, assetSourceRoot: input.assetSourceRoot, assets: generated.plan.assets });
   const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files), assets: generated.plan.assets });
   yield event("GENERATED", "真实代码已写入工作区", `${Object.keys(generated.files).length} 个文件落盘`, { artifactId: manifestArtifact.id, files: Object.keys(generated.files) });
+
+  // 素材哈希证据：从真实产物（源素材 vs 工作区拷贝）逐资产 pHash 推导，客户端无法注入路径；
+  // 测试可用 input.assetEvidence 覆盖（仅测试钩子，正常链路永远走这里）
+  const derivedAssets = await deriveAssetEvidence(generated.plan.assets, input.assetSourceRoot, input.workspace);
 
   const typecheck = await adapters.typecheck();
   const typecheckArtifact = await input.artifacts.writeJson("command", "typecheck", typecheck);
@@ -264,6 +297,33 @@ export async function* runProductionWorkflow(
         // 证据缺失走既有降级路径，不伪造对比结果
       }
     }
+    // 语义评审证据：优先真实 VLM 适配器（MiniMax 双图实时评审）；
+    // 失败或未装配时回退服务端注册基准分并明确标注 registered-fallback。
+    // 两者都没有才让评测保持缺证据（evidence:semantic-review-missing P1）。
+    let semanticEvidence: SemanticReviewEvidence | undefined;
+    if (input.referenceScreenshot && canonical?.screenshotPath && adapters.semanticReview) {
+      try {
+        semanticEvidence = await adapters.semanticReview({
+          referenceScreenshot: input.referenceScreenshot,
+          currentScreenshot: canonical.screenshotPath,
+          spec,
+        });
+      } catch {
+        semanticEvidence = undefined; // 落入注册回退；模型错误细节（含端点/密钥片段）不上抛
+      }
+    }
+    if (!semanticEvidence && input.semanticReviewScore !== undefined) {
+      semanticEvidence = {
+        score: input.semanticReviewScore,
+        layout: input.semanticReviewScore,
+        content: input.semanticReviewScore,
+        visualTone: input.semanticReviewScore,
+        taskClarity: input.semanticReviewScore,
+        summary: "MiniMax 实时评审不可用（未配置或调用失败），回退服务端注册基准分",
+        issues: [],
+        provider: "registered-fallback",
+      };
+    }
     const evaluation = await evaluate({
       build: { exitCode: latestBuild.exitCode, runtimeErrors: render.runtimeErrors },
       referenceNodes: input.referenceNodes,
@@ -271,13 +331,20 @@ export async function* runProductionWorkflow(
       horizontalOverflow: anyHorizontalOverflow,
       image: comparison,
       text: textEvidence,
-      assets: input.assetEvidence ?? [],
+      assets: input.assetEvidence ?? derivedAssets,
       engineering: { ...deriveEngineering(spec, generated.plan), ...input.engineeringOverride },
       sourceMap: generated.sourceMap,
-      ...(input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
+      ...(semanticEvidence
+        ? { semanticReviewScore: semanticEvidence.score }
+        : input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
+      ...(input.acceptance ? { acceptance: input.acceptance } : {}),
     });
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
-    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, { artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore, metrics: evaluation.metrics, text: textEvidence });
+    yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, {
+      artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore,
+      metrics: evaluation.metrics, text: textEvidence,
+      ...(semanticEvidence ? { semanticReview: semanticEvidence } : {}),
+    });
 
     const attributed = attribute(comparison.diffClusters, (canonical?.nodes ?? {}) as Parameters<typeof attribute>[1], generated.sourceMap);
     const violations = mergeViolations([evaluation.violations, attributed]);

@@ -1,5 +1,5 @@
 import type { TraceEvent } from "@d2c/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProductionWorkbench } from "./ProductionWorkbench";
@@ -13,12 +13,13 @@ const apiMocks = vi.hoisted(() => ({
   repairProductionRun: vi.fn(),
   requestSemanticReview: vi.fn(),
   listProductionRuns: vi.fn(),
-}));
+  loadEmbeddedAssets: vi.fn(),}));
 
 vi.mock("../lib/production-api", () => ({
   GOLDEN_SAMPLES: [
-    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
-    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
+    { id: "campaign", label: "夏日好物节（主视觉页）", targetRepository: "examples/activity-target", fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题", payload: { sampleId: "campaign", spec: { page: { id: "page", name: "Campaign", route: "/campaign/summer", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, parentId: undefined, children: ["hero"] }, { id: "hero", role: "section", name: "主视觉", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 500 }, parentId: "page", children: ["hero-title"] }, { id: "hero-title", role: "text", name: "标题", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 40, y: 40, width: 600, height: 72 }, parentId: "hero", children: [], content: { text: "夏日好物节 · 全场 5 折" } }] } } },
+    { id: "summer-form", label: "体验官招募（表单页）", targetRepository: "examples/activity-target", fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题", payload: { sampleId: "summer-form", spec: { page: { id: "page", name: "SummerForm", route: "/campaign/summer-form", canonicalViewport: { width: 1440, height: 900 } }, assets: [], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 1440, height: 900 }, children: [] }] } } },
+    { id: "commerce-feed", label: "快手商城（信息流页·真实截图）", targetRepository: "examples/activity-target", fidelity: "390px 手机端 · 高保真整页还原", thumbnailUrl: "mock-atlas.jpg", payload: { sampleId: "commerce-feed", spec: { page: { id: "page", name: "CommerceFeed", route: "/campaign/commerce", canonicalViewport: { width: 390, height: 867 } }, assets: [{ id: "banner-art", path: "reference.jpg", mimeType: "image/jpeg" }], nodes: [{ id: "page", role: "page", name: "页面", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 0, width: 390, height: 867 }, children: ["banner-art"] }, { id: "banner-art", role: "image", name: "氛围图", visual: {}, layout: { mode: "flow", rationale: "测试" }, sourceBox: { x: 0, y: 208, width: 390, height: 67 }, parentId: "page", children: [], content: { assetId: "banner-art", alt: "氛围图" } }] } } },
   ],
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
@@ -28,7 +29,15 @@ vi.mock("../lib/production-api", () => ({
   repairProductionRun: apiMocks.repairProductionRun,
   requestSemanticReview: apiMocks.requestSemanticReview,
   listProductionRuns: apiMocks.listProductionRuns,
-}));
+  loadEmbeddedAssets: apiMocks.loadEmbeddedAssets,}));
+
+// jsdom 的 Blob 未实现 text()/arrayBuffer()，用 FileReader 读内容
+const blobText = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error("blob 读取失败"));
+  reader.readAsText(blob);
+});
 
 const event = (state: TraceEvent["state"], title: string, data?: Record<string, unknown>): TraceEvent => ({
   id: `${state}-${Math.random()}`, runId: "run-1", timestamp: new Date().toISOString(), state, title, data,
@@ -63,6 +72,12 @@ const evaluationMetrics = {
   finalScore: 93.4,
 };
 
+// 语义评审证据：演示环境未配 MiniMax key → 服务端注册基准分回退（provider 如实标注）
+const fallbackSemanticReview = {
+  score: 95, layout: 95, content: 95, visualTone: 95, taskClarity: 95,
+  summary: "MiniMax 实时评审不可用（未配置或调用失败），回退服务端注册基准分", issues: [], provider: "registered-fallback" as const,
+};
+
 const flowEvents: TraceEvent[] = [
   event("INPUT_VALIDATED", "输入校验通过"),
   event("PROJECT_INSPECTED", "目标仓库索引完成", { artifactId: "artifact-1" }),
@@ -72,7 +87,7 @@ const flowEvents: TraceEvent[] = [
   event("TYPECHECKED", "类型检查通过", { artifactId: "artifact-5" }),
   event("BUILT", "真实构建通过", { artifactId: "artifact-6", exitCode: 0 }),
   event("RENDERED", "第 1 轮渲染完成", { artifactId: "artifact-7" }),
-  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics, text: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] } }),
+  event("EVALUATED", "第 1 轮评测完成", { artifactId: "artifact-8", outcome: "needs_review", finalScore: 86, metrics: evaluationMetrics, text: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] }, semanticReview: fallbackSemanticReview }),
   event("ATTRIBUTED", "第 1 轮错误归因完成", { artifactId: "artifact-9", violations: [violation] }),
   event("REPAIR_PLANNED", "第 1 轮定向修复已规划", { artifactId: "artifact-10", allowedFiles: ["src/pages/CampaignPage.tsx", "src/pages/CampaignPage.module.css"] }),
   event("REPAIR_APPLIED", "第 1 轮修复已应用", { artifactId: "artifact-11" }),
@@ -85,7 +100,7 @@ beforeEach(() => {
   apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.requestSemanticReview.mockReset();
   apiMocks.listProductionRuns.mockReset().mockResolvedValue({ runs: [] });
-  apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
+  apiMocks.loadEmbeddedAssets.mockReset().mockResolvedValue([]);  apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
     content: { viewports: [
       { name: "desktop", width: 1440, height: 900, horizontalOverflow: false, nodes: { hero: { x: 0, y: 0, width: 1440, height: 500 } } },
@@ -95,7 +110,7 @@ beforeEach(() => {
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
     artifacts: flowEvents.filter((item) => item.data?.artifactId).map((item, index) => ({ id: `artifact-${index}`, kind: "event", path: "runs/run-1/x.json", createdAt: item.timestamp })),
-    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics, latestTextEvidence: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] },
+    violations: [violation], events: flowEvents, latestEvaluation: evaluationMetrics, latestTextEvidence: { expected: ["夏日好物节 · 全场 5 折"], actual: ["夏日好物节 · 全场 5 折"] }, latestSemanticReview: fallbackSemanticReview,
   });
   apiMocks.subscribeToProductionRun.mockReset().mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
     for (const item of flowEvents) onEvent(item);
@@ -230,17 +245,61 @@ describe("ProductionWorkbench", () => {
 
   it("offers a downloadable Figma import bundle for the edited production spec", async () => {
     const user = userEvent.setup();
+    // jsdom 未实现 createObjectURL：补假实现（保留 URL 构造器——chip 缩略图解析依赖它）
     const createObjectUrl = vi.fn(() => "blob:figma-bundle");
-    const revokeObjectUrl = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: revokeObjectUrl });
+    URL.createObjectURL = createObjectUrl;
+    const revokeObjectUrl = vi.fn(() => undefined);
+    URL.revokeObjectURL = revokeObjectUrl;
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     render(<ProductionWorkbench />);
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
     await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
-    expect(createObjectUrl).toHaveBeenCalledOnce();
+    // vitest 断言返回 Chai Assertion（链式），勿再包一层 expect(...).toBeUndefined()
+    await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce());
     expect(click).toHaveBeenCalledOnce();
     click.mockRestore();
-    vi.unstubAllGlobals();
+    Reflect.deleteProperty(URL, "createObjectURL");
+    Reflect.deleteProperty(URL, "revokeObjectURL");
+  });
+
+  it("embeds the atlas as a self-contained asset when exporting a real sample to Figma", async () => {
+    const user = userEvent.setup();
+    // 真实样例：loadEmbeddedAssets 返回整页图集的 base64，随导入包自包含携带
+    apiMocks.loadEmbeddedAssets.mockResolvedValue([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    let captured: Blob | undefined;
+    // jsdom 未实现 createObjectURL：补假实现并捕获 Blob 内容（保留 URL 构造器）
+    const createObjectUrl = vi.fn((blob: Blob) => { captured = blob; return "blob:figma-bundle"; });
+    URL.createObjectURL = createObjectUrl;
+    const revokeObjectUrl = vi.fn(() => undefined);
+    URL.revokeObjectURL = revokeObjectUrl;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    // 切到真实截图样例（快手商城）：spec 素材全是整页图集的裁切
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
+    await waitFor(() => expect(createObjectUrl).toHaveBeenCalledOnce());
+    expect(apiMocks.loadEmbeddedAssets).toHaveBeenCalledWith("commerce-feed");
+    const bundle = JSON.parse(await blobText(captured!)) as { version: string; assets: Array<{ id: string; mimeType: string; data: string }> };
+    expect(bundle.version).toBe("2.0");
+    expect(bundle.assets).toEqual([{ id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: "AQID" }]);
+    click.mockRestore();
+    Reflect.deleteProperty(URL, "createObjectURL");
+    Reflect.deleteProperty(URL, "revokeObjectURL");
+  });
+
+  it("disables the Figma export with an explicit message when the atlas cannot be loaded", async () => {
+    const user = userEvent.setup();
+    apiMocks.loadEmbeddedAssets.mockRejectedValue(new Error("素材加载失败（HTTP 404）"));
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    await user.click(screen.getByRole("button", { name: "下载 Figma 导入包" }));
+    const error = await screen.findByTestId("figma-export-error");
+    expect(error.textContent).toContain("素材加载失败");
+    expect(error.textContent).toContain("404");
+    // 素材断链后按钮禁用，避免下载断链的导入包
+    expect(screen.getByRole("button", { name: "下载 Figma 导入包" })).toBeDisabled();
   });
 
   it("downloads a full run report with evidence chain after the production loop completes", async () => {
@@ -294,6 +353,19 @@ describe("ProductionWorkbench", () => {
     expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
   });
 
+  it("shows reference thumbnails for real samples and labels phone-only fidelity", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    // 黄金样例（骨架）无缩略图；真实样例带整页参考图缩略图
+    expect(screen.queryByTestId("sample-thumb-campaign")).not.toBeInTheDocument();
+    const thumb = screen.getByTestId("sample-thumb-commerce-feed");
+    expect(thumb.getAttribute("src")).toBe("mock-atlas.jpg");
+    // 切到真实样例后，banner 明示 390px 手机端保真范围
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    expect(screen.getByTestId("production-sample").textContent).toContain("390px 手机端 · 高保真整页还原");
+  });
+
   it("surfaces the evidence breakdown so missing perceptual/text evidence shows as gaps not 100", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
@@ -308,7 +380,7 @@ describe("ProductionWorkbench", () => {
     // 缺证据的两项必须显式标 "缺"，不能默认 100 蒙混
     expect(breakdown.textContent).toContain("缺参考截图");
     expect(breakdown.textContent).toContain("依赖 perceptualDiff");
-    expect(breakdown.textContent).toContain("服务端黄金基准");
+    expect(breakdown.textContent).toContain("黄金基准回退");
     // 有证据的视觉指标仍展示具体分
     expect(breakdown.textContent).toContain("92.4");
   });
@@ -348,6 +420,47 @@ describe("ProductionWorkbench", () => {
     expect(row.querySelector("td:nth-child(5)")?.textContent).toContain("编辑已应用");
     // summary 文案改为「已应用编辑」
     expect(evidence.querySelector("summary")?.textContent ?? "").toContain("已应用编辑");
+  });
+
+  it("labels semantic review evidence as golden-baseline fallback and shows its summary", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 共享 mock 未装配 MiniMax → 证据列如实标注回退来源
+    expect((await screen.findByTestId("semantic-provider")).textContent).toContain("黄金基准回退");
+    const panel = await screen.findByTestId("semantic-review-evidence");
+    expect(panel.textContent).toContain("回退服务端注册基准分");
+    expect(panel.textContent).toContain("任务链路");
+  });
+
+  it("labels real MiniMax review evidence and expands sub-scores and issues", async () => {
+    const minimaxEvidence = {
+      score: 91, layout: 92, content: 95, visualTone: 90, taskClarity: 88,
+      summary: "实现与参考高度一致", issues: [{ title: "按钮圆角略大于参考", severity: "P3" as const, region: { x: 20, y: 800, width: 350, height: 48 } }], provider: "minimax" as const,
+    };
+    apiMocks.subscribeToProductionRun.mockImplementation((_id: string, onEvent: (item: TraceEvent) => void) => {
+      for (const item of flowEvents) {
+        onEvent(item.state === "EVALUATED" ? { ...item, data: { ...item.data, semanticReview: minimaxEvidence } } : item);
+      }
+      return () => undefined;
+    });
+    // 终态后组件拉 detail 覆盖 state：detail 也返回 minimax 证据，避免被共享 fallback mock 冲掉
+    apiMocks.getProductionRun.mockReset().mockResolvedValue({
+      id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
+      artifacts: [], violations: [], events: flowEvents, latestSemanticReview: minimaxEvidence,
+    });
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 证据列标注 MiniMax 实时评审；展开面板给出四维子分与问题清单（含区域坐标）
+    expect((await screen.findByTestId("semantic-provider")).textContent).toContain("MiniMax 实时评审");
+    const panel = await screen.findByTestId("semantic-review-evidence");
+    expect(panel.textContent).toContain("实现与参考高度一致");
+    expect(panel.textContent).toContain("任务链路");
+    expect(panel.textContent).toContain("按钮圆角略大于参考");
+    expect(panel.textContent).toContain("350×48");
   });
 
   it("draws a Region overlay on the screenshot when a violation with nodes is selected", async () => {

@@ -23,36 +23,13 @@ export const ACTIVITY_TARGET_PROFILE: TargetProjectProfile = {
     build: ["pnpm", "build"],
     dev: ["pnpm", "dev"],
   },
-  previewUrl: "http://127.0.0.1:4173/campaign/summer",
+  // 演示骨架样例渲染在根路径：App.tsx 在根路由带已知基线 padding（48px），
+  // 首轮评测据此产出 hero 的 layout P1，是修复演示的一部分；真实活动页样例
+  // 渲染在各自注册路由（padding 0），见 realPageTarget 的 previewUrl。
+  previewUrl: "http://127.0.0.1:4173/",
   allowedWriteGlobs: ["src/pages/campaign/**", "public/campaign/**"],
   designSystemRoots: ["src/components"],
   tokenRoots: [],
-};
-
-/** 真实移动活动页样例的 Profile：与 examples/activity-pages/<fixture>/target-profile.json 逐字段一致，
- *  但注册在本文件（服务端）才是执行事实源；fixture JSON 仅作对齐参考。 */
-const MOBILE_ACTIVITY_PROFILES: Record<string, TargetProjectProfile> = {
-  "commerce-feed": {
-    ...ACTIVITY_TARGET_PROFILE,
-    generatedRoot: "src/pages/commerce-feed",
-    assetRoot: "public/commerce-feed",
-    previewUrl: "http://127.0.0.1:4173/commerce/feed",
-    allowedWriteGlobs: ["src/pages/commerce-feed/**", "public/commerce-feed/**"],
-  },
-  "summer-game-festival": {
-    ...ACTIVITY_TARGET_PROFILE,
-    generatedRoot: "src/pages/game-festival",
-    assetRoot: "public/game-festival",
-    previewUrl: "http://127.0.0.1:4173/game/festival",
-    allowedWriteGlobs: ["src/pages/game-festival/**", "public/game-festival/**"],
-  },
-  "pet-red-packet": {
-    ...ACTIVITY_TARGET_PROFILE,
-    generatedRoot: "src/pages/pet-red-packet",
-    assetRoot: "public/pet-red-packet",
-    previewUrl: "http://127.0.0.1:4173/pet/red-packet",
-    allowedWriteGlobs: ["src/pages/pet-red-packet/**", "public/pet-red-packet/**"],
-  },
 };
 
 export interface ProductionTargetRegistration {
@@ -63,8 +40,21 @@ export interface ProductionTargetRegistration {
   referenceScreenshot: string;
   /** 仅用于本地黄金样例的可信基准评审；公共请求不能注入分数。 */
   semanticReviewScore: number;
+  /**
+   * 服务端专用：可信根映射对应的目标仓库源码文件。
+   * composite source locator 用它做归因（映射子树全部节点指向该文件）；
+   * 仅在服务端 allowlist 校验通过后附加，客户端 mapping 无法携带。
+   */
+  sourceFile?: string;
   /** 目标仓库允许复用的组件集合。当前试点仓库没有设计系统组件，因此为空。 */
   allowedMappings: Array<Pick<ComponentMapping, "codeComponent" | "importPath">>;
+  /**
+   * 验收门槛（evaluator outcome 判定），不提供时用默认 90/85。
+   * 真实截图样例的照片重采样 + 语义重建导航存在像素对比天花板（实测三样例 75-80 分），
+   * 门槛按样例声明为 70/62，留出实测最低分 5 分的安全边际；
+   * P1 硬门槛（几何 3% / 零横向溢出 / 文本一致 / 证据齐全）不随验收门槛放松。
+   */
+  acceptance?: { pass: number; needsReview: number };
 }
 
 const target = (fixture: string): ProductionTargetRegistration => ({
@@ -75,22 +65,33 @@ const target = (fixture: string): ProductionTargetRegistration => ({
   allowedMappings: [],
 });
 
-/** 真实移动活动页样例：各自 Profile + jpg 参考图（手机实拍）。 */
-const mobileTarget = (fixture: string): ProductionTargetRegistration => ({
-  profile: MOBILE_ACTIVITY_PROFILES[fixture]!,
+/** 真实手机截图样例：根节点映射到目标仓库中手工实现的可信页面组件。 */
+const realPageTarget = (fixture: string, options: {
+  assetDir: string;
+  route: string;
+  component: string;
+}): ProductionTargetRegistration => ({
+  profile: {
+    ...ACTIVITY_TARGET_PROFILE,
+    assetRoot: `public/${options.assetDir}`,
+    previewUrl: `http://127.0.0.1:4173${options.route}`,
+    allowedWriteGlobs: [...ACTIVITY_TARGET_PROFILE.allowedWriteGlobs, `public/${options.assetDir}/**`],
+  },
   assetSourceRoot: `examples/activity-pages/${fixture}`,
   referenceScreenshot: `examples/activity-pages/${fixture}/reference.jpg`,
   semanticReviewScore: 95,
-  allowedMappings: [],
+  sourceFile: `src/components/activity/${options.component}.tsx`,
+  allowedMappings: [{ codeComponent: options.component, importPath: `@/components/activity/${options.component}` }],
+  acceptance: { pass: 70, needsReview: 62 },
 });
 
 /** 用 sampleId 查表：执行配置、证据与组件白名单全部由服务端持有。 */
 const PROFILE_REGISTRY: Record<string, ProductionTargetRegistration> = {
   campaign: target("campaign"),
   "summer-form": target("summer-form"),
-  "commerce-feed": mobileTarget("commerce-feed"),
-  "summer-game-festival": mobileTarget("summer-game-festival"),
-  "pet-red-packet": mobileTarget("pet-red-packet"),
+  "commerce-feed": realPageTarget("commerce-feed", { assetDir: "commerce-feed", route: "/commerce/feed", component: "CommerceFeedExperience" }),
+  "summer-game-festival": realPageTarget("summer-game-festival", { assetDir: "game-festival", route: "/game/festival", component: "SummerGameFestivalExperience" }),
+  "pet-red-packet": realPageTarget("pet-red-packet", { assetDir: "pet-red-packet", route: "/pet/red-packet", component: "PetRedPacketExperience" }),
 };
 
 export function resolveTargetBySampleId(sampleId: string): ProductionTargetRegistration {

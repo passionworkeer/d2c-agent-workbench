@@ -79,17 +79,20 @@ export function KwaiTopNavigation({
   tabs,
   activeTab,
   dark = false,
+  style,
   onTabClick,
 }: NodeProps & {
   tabs: ActivityTabItem[];
   activeTab?: string;
   dark?: boolean;
+  style?: CSSProperties;
   onTabClick?: (tab: ActivityTabItem) => void;
 }) {
   return (
     <header
       data-d2c-node-id={nodeId}
       className={[styles.topNav, dark ? styles.topNavDark : ""].filter(Boolean).join(" ")}
+      style={style}
     >
       <button type="button" className={styles.topNavMenu} aria-label="菜单">
         <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -134,14 +137,16 @@ const BOTTOM_TAB_ICONS = [
   "M10 4a3.2 3.2 0 1 1 0 6.4A3.2 3.2 0 0 1 10 4Zm-6 13.2c.8-3.1 3.1-4.8 6-4.8s5.2 1.7 6 4.8Z",
 ];
 
-/** 固定底部导航：首页 / 精选 / ＋发布（角标）/ 消息 / 我 */
+/** 画布内底部导航（absolute 贴底，随画布高度走）：首页 / 精选 / ＋发布（角标）/ 消息 / 我 */
 export function BottomTabBar({
   nodeId = "bottom-nav",
   publishBadge,
+  height = 65,
   activeTab = "home",
   onTabClick,
 }: Partial<NodeProps> & {
   publishBadge?: string;
+  height?: number;
   activeTab?: string;
   onTabClick?: (tabId: string) => void;
 }) {
@@ -166,7 +171,7 @@ export function BottomTabBar({
     </button>
   );
   return (
-    <nav data-d2c-node-id={nodeId} className={styles.bottomNav} aria-label="底部导航">
+    <nav data-d2c-node-id={nodeId} className={styles.bottomNav} style={height === 65 ? undefined : { height: `${height}px` }} aria-label="底部导航">
       {tabButton(tabs[0]!, 0)}
       {tabButton(tabs[1]!, 1)}
       <button type="button" className={styles.bottomPublish} aria-label={publishBadge ? `发布，${publishBadge} 条新内容` : "发布"}>

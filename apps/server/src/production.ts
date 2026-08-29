@@ -1,18 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, extname, join, relative, resolve, sep } from "node:path";
 import {
   activitySpecSchema,
   componentMappingSchema,
   productionMetricsSchema,
   productionRunSchema,
   rectSchema,
+  semanticReviewEvidenceSchema,
   traceEventSchema,
   type ActivitySpec,
   type ComponentMapping,
   type ProductionMetrics,
   type ProductionRun,
+  type SemanticReviewEvidence,
   type TargetProjectProfile,
   type TraceEvent,
 } from "@d2c/contracts";
@@ -26,7 +28,8 @@ import type { GeneratedProductionOutput } from "@d2c/codegen";
 import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
 import { resolveTargetBySampleId } from "./profiles";
-import { reviewSemanticFidelity } from "./semantic-review";
+import { loadModelConfig } from "./model-config";
+import { reviewActivitySemantics, reviewSemanticFidelity } from "./semantic-review";
 
 export interface ProductionRouteOptions {
   /** 运行数据（runs/、workspaces/、artifacts/、renders/）落盘根目录 */
@@ -49,6 +52,12 @@ export interface ProductionRunRecord {
   referenceScreenshot: string;
   /** 仅来自服务端注册/服务端评审适配器，公共请求不能注入。 */
   semanticReviewScore?: number;
+  /**
+   * 服务端注册的可信映射源码文件（composite 归因用）。
+   * 来自 profiles.ts 注册表，仅在 startWorkflow 里增强 mappings 副本传入 orchestrator；
+   * record.mappings 本体与 GET 响应不携带，客户端 schema 剥离后也无法注入。
+   */
+  sourceFile?: string;
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
   generated?: GeneratedProductionOutput;
@@ -58,6 +67,8 @@ export interface ProductionRunRecord {
   latestEvaluation?: ProductionMetrics;
   /** 最近一轮文本证据（spec.text vs 渲染 DOM.textContent）：让工作台能展示逐项对比 */
   latestTextEvidence?: { expected: string[]; actual: string[] };
+  /** 最近一轮语义评审证据（MiniMax 实时或注册回退）；不含任何模型凭证 */
+  latestSemanticReview?: SemanticReviewEvidence;
 }
 
 type RunListener = (event: TraceEvent) => void;
@@ -70,6 +81,22 @@ const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 function isInside(root: string, candidate: string): boolean {
   const rel = relative(resolve(root), resolve(candidate));
   return rel !== "" && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+// 截图文件 → base64 data URL（按扩展名定 mime；仅服务端内存使用，不落盘不外发）
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+};
+
+async function fileToDataUrl(path: string): Promise<string> {
+  const mime = IMAGE_MIME_BY_EXT[extname(path).toLowerCase()];
+  if (!mime) throw new Error(`不支持的截图格式：${extname(path) || path}`);
+  const buffer = await readFile(path);
+  return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
 export function registerProductionRoutes(app: FastifyInstance, options: ProductionRouteOptions = {}): void {
@@ -109,8 +136,10 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
             assetSourceRoot: parsed.assetSourceRoot ?? "",
             referenceScreenshot: parsed.referenceScreenshot ?? "",
             ...(parsed.semanticReviewScore !== undefined ? { semanticReviewScore: parsed.semanticReviewScore } : {}),
+          ...(parsed.sourceFile ? { sourceFile: parsed.sourceFile } : {}),
             ...(parsed.latestEvaluation ? { latestEvaluation: productionMetricsSchema.parse(parsed.latestEvaluation) } : {}),
             ...(parsed.latestTextEvidence ? { latestTextEvidence: parsed.latestTextEvidence as { expected: string[]; actual: string[] } } : {}),
+            ...(parsed.latestSemanticReview ? { latestSemanticReview: semanticReviewEvidenceSchema.parse(parsed.latestSemanticReview) } : {}),
             ...(parsed.specEdited ? { specEdited: true } : {}),
           });
           reloadedRuns.push({ id, createdAt: run.createdAt });
@@ -161,8 +190,10 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       assetSourceRoot: record.assetSourceRoot,
       referenceScreenshot: record.referenceScreenshot,
       semanticReviewScore: record.semanticReviewScore,
+      sourceFile: record.sourceFile,
       latestEvaluation: record.latestEvaluation,
       latestTextEvidence: record.latestTextEvidence,
+      latestSemanticReview: record.latestSemanticReview,
       specEdited: record.specEdited,
     }, null, 2)}\n`;
     const previous = persistChains.get(record.run.id) ?? Promise.resolve();
@@ -204,6 +235,11 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         record.latestTextEvidence = text as { expected: string[]; actual: string[] };
       }
     }
+    // 语义评审证据透传：schema 校验后入库（provider 已由服务端强制，不含模型凭证）
+    if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "semanticReview" in event.data) {
+      const parsed = semanticReviewEvidenceSchema.safeParse((event.data as { semanticReview?: unknown }).semanticReview);
+      if (parsed.success) record.latestSemanticReview = parsed.data;
+    }
     for (const listener of listeners.get(record.run.id) ?? []) listener(event);
     await persistRun(record);
   }
@@ -228,6 +264,20 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
     });
     const adapters = { ...defaults, ...options.adapters } as ProductionWorkflowAdapters;
+    // MiniMax 实时语义评审：服务端装配凭证（环境变量 / .env），双图 data URL 只在请求生命周期存在。
+    // 适配器抛错由工作流回退注册基准分；凭证不落入 Run / Artifact / 响应。
+    const modelConfig = loadModelConfig();
+    if (modelConfig.apiKey && !adapters.semanticReview) {
+      adapters.semanticReview = async ({ referenceScreenshot, currentScreenshot }) => {
+        const [referenceDataUrl, renderDataUrl] = await Promise.all([
+          fileToDataUrl(referenceScreenshot),
+          fileToDataUrl(currentScreenshot),
+        ]);
+        const result = await reviewActivitySemantics({ config: modelConfig, referenceDataUrl, renderDataUrl, timeoutMs: 60_000 });
+        if (!result.ok) throw new Error(`MiniMax 语义评审不可用（${result.code}）`);
+        return result.evidence;
+      };
+    }
     // spec 被编辑过后不能复用旧生成物（新 spec 与旧代码会错位），走完整重新生成
     if (reuseGenerated && record.generated && !record.specEdited) {
       // 修复迭代：复用已生成的 plan/sourceMap 且不重写文件，保留上一轮修复成果
@@ -242,11 +292,19 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       };
     }
     try {
+      // 服务端增强：可信映射副本附加注册的 sourceFile 供 composite 归因。
+      // POST 时非 unmapped 映射都已通过 allowedMappings 白名单校验，
+      // record.mappings 本体保持客户端原样（持久化与 GET 响应不受污染）。
+      const workflowMappings = record.sourceFile
+        ? record.mappings.map((mapping) => (mapping.status === "unmapped" ? mapping : { ...mapping, sourceFile: record.sourceFile }))
+        : record.mappings;
+      // 验收门槛以服务端注册表为唯一事实源（随 sampleId 查表），不随 Run 持久化漂移
+      const acceptance = resolveTargetBySampleId(record.sampleId).acceptance;
       for await (const event of runProductionWorkflow({
         runId: record.run.id,
         spec: record.spec,
         profile: record.profile,
-        mappings: record.mappings,
+        mappings: workflowMappings,
         repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
         workspace: record.workspace,
         artifacts: record.artifactStore,
@@ -255,6 +313,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         assetSourceRoot: record.assetSourceRoot,
         referenceScreenshot: record.referenceScreenshot,
         ...(record.semanticReviewScore !== undefined ? { semanticReviewScore: record.semanticReviewScore } : {}),
+        ...(acceptance ? { acceptance } : {}),
       }, adapters)) {
         await publish(record, event);
       }
@@ -355,6 +414,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         assetSourceRoot,
         referenceScreenshot,
         semanticReviewScore: registration.semanticReviewScore,
+        ...(registration.sourceFile ? { sourceFile: registration.sourceFile } : {}),
       };
       records.set(id, record);
       while (records.size > MAX_RUNS) {
@@ -403,7 +463,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     if (!record) return reply.code(404).send({ code: "RUN_NOT_FOUND", message: "Run not found" });
     // 终态已写入内存时，等待同一 run 的落盘链结束；否则客户端紧接着重启服务会把磁盘中的 running 快照改判 failed。
     if (record.run.status !== "running") await (persistChains.get(record.run.id) ?? Promise.resolve()).catch(() => undefined);
-    return { ...record.run, sampleId: record.sampleId, events: record.events, mappings: record.mappings, profile: record.profile, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}) };
+// referenceNodes 是服务端校验过的保真契约：详情响应透传给工作台与 E2E 复核
+    return { ...record.run, sampleId: record.sampleId, events: record.events, mappings: record.mappings, profile: record.profile, referenceNodes: record.referenceNodes, ...(record.latestEvaluation ? { latestEvaluation: record.latestEvaluation } : {}), ...(record.latestTextEvidence ? { latestTextEvidence: record.latestTextEvidence } : {}), ...(record.latestSemanticReview ? { latestSemanticReview: record.latestSemanticReview } : {}) };
   });
 
   app.get<{ Params: { id: string } }>("/api/production/runs/:id/events", async (request, reply) => {
