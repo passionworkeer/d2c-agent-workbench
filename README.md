@@ -23,6 +23,7 @@
 - **LLM 不可达自动降级规则解析** + ChatPanel 提示 + toolCalls 标记 `fallback:true`，不会让演示因网络或 key 失效而中断。
 - **企业组件资产库**：`packages/asset-indexer` 把设计系统仓库（React 组件 + Storybook + Code Connect）扫描成 matcher 可注入的 registry——`examples/sample-design-system/` 是 6 个真组件的样本，扫描结果与内置静态表在 product-grid 上产出逐字节一致的映射（测试钉死）。`GET /api/health?scan=dynamic` 实时返回动态 registry 大小。
 - **设计稿回写 Figma**：I2D 对话编辑累计的 EditOp 经 `packages/figma-patcher` 转成 Figma setNodeChanges（token 引用解析字面量、GRID 布局诚实降级记录），PAT 走 `X-Figma-Token` 头经代理 PUT 到 Figma REST；写权限不足自动降级为评论发布变更 JSON。
+- **可导出 D2C Skill**：顶栏一键下载离线 ZIP——完整 Agent Skill 包（`SKILL.md` 的输入检查、有无设计资产的降级分支、执行顺序与停止条件 + `references/` 方法文档 + 只读资产扫描脚本），把 Web 演示的方法沉淀为可迁移到其它 Agent 的能力包；ZIP 与 `skills/d2c-agent-workbench/` canonical 目录逐字节一致（测试钉死），不依赖后端。
 - 下载包含 Run、Trace、Mapping、Evaluation（含 `resolvedViolationIds`）和 toolCalls 的结构化报告，**不含 LLM key / Figma PAT**。
 
 > 默认演示的 Agent 输出是浏览器内确定性管线的真实执行（产物扫描、类型化修复、LCS Diff），不是字符串 Mock。LLM 通过 `POST /api/canvas/interpret` 可选接入；key 仅存浏览器 localStorage（设置面板），仓库任何文件、下载报告与日志都不含 key。
@@ -65,7 +66,7 @@ pnpm dev          # 同时启动前端 5173 与 API 8787
 
 打开 `http://127.0.0.1:5173`，按顺序点三条链路：
 
-1. **D2C（秒开）**：点「运行完整演示」→ 72→94 评测修复闭环，浏览器内确定性管线，零外部依赖
+1. **D2C（秒开）**：点「运行完整演示」→ 72→94 评测修复闭环，浏览器内确定性管线，零外部依赖；完成后点「导出 D2C Skill」带走可迁移到其它 Agent 的方法包（离线 ZIP）
 2. **I2D**：切「参考图 → 设计稿」→ 自动播放 → （可选）填 key 接真视觉模型
 3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 93+ 分，工作台「评测分构成」面板显示每个证据项的可用性与具体分；切换第二个样例（表单页）再跑 → 不同分数与不同修复文件（评分非硬编码）；再切三个真实截图样例（快手商城 / 夏日游戏节 / 养萌宠红包，带缩略图）→ 同一闭环跑 390px 手机端整页，实测 75-80 分过服务端声明的验收门槛（70，照片重采样 + 语义重建导航的像素对比天花板所致）、零横向溢出——分数诚实展示，门槛是服务端 Profile 按样例声明的显式参数
 完整话术见 `docs/demo-script.md`（含 3 分钟版七个亮点）。

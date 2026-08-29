@@ -69,6 +69,7 @@
 | 真实场景落地 | `product-grid.zip` + `form-page` 双 fixture + 真实上传链路 + 浏览器内真实执行（与 server SSE 等价） | 上传真实 zip / 切 fixture / 自动播放 | 浏览器内本地真实执行 + 上传到 server 走同一确定性管线，`scripts/consistency.test.ts` 守护两路逐字段一致 |
 | 文档 / 沟通 | `README.md` + `docs/demo-script.md` + `docs/jd-mapping.md` + 各包内中文注释 | 看仓库文档 + demo 脚本 | 注释用中文，commit message 用中文（commit 习惯）；讲稿与代码一一对应 |
 | 工程能力（CI / 测试 / 部署） | `pnpm test` / `pnpm typecheck` / `playwright.config.ts` / `pnpm e2e` | `pnpm test` 全仓 429 个用例 + `pnpm e2e` 8 条浏览器 e2e（含真实生产闭环 3 条） | 没有 mock 偷懒：figma-importer 拒绝伪造输入、evaluator violation 钉 id、consistency 钉 web ≡ server 逐字段、asset-indexer 钉扫描 ≡ 静态表、key/PAT 不落盘由路由测试钉死 |
+| 可复用 Skills / Tools | `skills/d2c-agent-workbench/`（SKILL.md + references + scan-design-assets.mjs）+ `scripts/build-skill-zip.mjs` + `scripts/skill-assets.test.ts` | 顶栏点「导出 D2C Skill」→ 下载 ZIP 解压看结构 | Web 把链路可视化，Skill 把方法迁移到其它 Agent：输入检查、有无设计资产的降级分支、执行顺序、证据与停止条件都在包里；ZIP 与 canonical 逐字节一致（测试钉死），不依赖后端 |
 
 ## 8. 压轴：活动页生产闭环（PRODUCTION）
 
@@ -106,6 +107,7 @@
 | 预热 + 孤儿清理 + 历史 Run 回看 | warm.ts + 启动清理 + `GET /runs` 清单 + install `--prefer-offline` | 要求 6 / 8 |
 | 闭环外 VLM 复核 | semantic-review.ts + `/runs/:id/semantic-review` 路由 | 职责 5 |
 | 真实样例分支合并（6351887） | 手工高保真三样例 + 验收门槛按样例参数化 + Figma 离线导入插件 + 闭环内 MiniMax 语义评审（registered-fallback） | 职责 2 / 5 / 6 + 要求 2 / 8 |
+| 可导出 D2C Skill（f31d1ea / 736bb68） | skills/d2c-agent-workbench + build-skill-zip.mjs + e2e 下载解压验证 | 要求 1 / 8（可复用 Skills / Tools） |
 
 ## 现场可验证（截图留证）
 
@@ -118,3 +120,4 @@
 7. PRODUCTION 跑「快手商城」真实移动样例 → COMPLETED + 实测 75–80 分，与黄金样例 93+ 同屏对比（照片重采样天花板如实写进分数，不调宽容度刷高）；语义评审证据来源标注 MiniMax 实时 / 黄金基准回退——评测不撒谎
 8. PRODUCTION 闭环完成 → 点「下载 Run 报告」→ JSON 里逐事件 artifactId 齐全、不含任何 key；重启服务端刷新页面 → 「历史 Run」回看同一 run，证据链完整
 9. 黄金样例跑完 → Puck 改标题「全场 6 折」→ 保存编辑 → 文本证据面板展开基线列 + 「✓ 编辑已应用」→ 按编辑重跑 → 渲染 DOM 列跟着变
+10. 顶栏「导出 D2C Skill」→ 下载 ZIP 解压 → SKILL.md / references/ / scripts/scan-design-assets.mjs 齐全，与仓库 `skills/d2c-agent-workbench/` 逐字节一致

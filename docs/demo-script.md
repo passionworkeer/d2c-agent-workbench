@@ -183,6 +183,7 @@ UPLOADED → VALIDATED → NORMALIZED → ASSETS_INDEXED
 
 - 页面不是最终截图，而是 React / TypeScript 交付物。
 - 报告包含完整 Run、Trace、组件映射证据、两轮 Eval 与分数变化、token compliance、violation id、toolCalls。
+- 顶栏「导出 D2C Skill」：一键下载离线 ZIP——完整 Agent Skill 包（SKILL.md 输入检查 / 资产降级分支 / 工作流与停止条件 + references + 只读扫描脚本），不依赖后端；ZIP 与 `skills/d2c-agent-workbench/` 逐字节一致（`scripts/skill-assets.test.ts` 钉死）。
 - 研发可以审查生成代码和 Diff，设计师可以追溯节点、Token 与视觉问题。
 - 现场断网时浏览器内确定性管线保证演示稳定；接 LLM 走同一份事件与 Artifact 协议。
 
@@ -222,6 +223,10 @@ Build 和 Eval 隔离上下文；关键门槛由 TypeScript、Build、页面加�
 ### Figma 回写是怎么做的？PAT 安全吗？
 
 对话编辑累计的 EditOp 经 `packages/figma-patcher` 转成 Figma setNodeChanges（selector 语义复用 canvas-ops，保证「画布怎么改、Figma 就改哪」），PAT 走 X-Figma-Token 请求头经本地代理 PUT 到 Figma REST 写端点。PAT 只存 localStorage，不进仓库 / 日志 / 下载报告 / 响应体（测试钉死）。写权限不足的 PAT 自动降级为评论发布变更 JSON——失败也诚实可见，不假装成功。
+
+### 为什么要导出 Skill，而不是把 Web 做完整？
+
+Web 负责把链路和证据可视化，Skill 负责把方法迁移到其它 Agent。导出的不是一段 System Prompt，而是带输入检查、有无设计资产的降级分支、执行顺序、证据与停止条件的完整能力包（SKILL.md + references + 只读资产扫描脚本）；ZIP 与仓库 canonical 目录逐字节一致由测试钉死，可离线安装、不依赖后端。
 
 ### 下一步最优先做什么？
 
