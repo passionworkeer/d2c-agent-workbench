@@ -166,10 +166,61 @@ describe("production routes", () => {
     expect(seen.every((score) => score === 55)).toBe(true);
   });
 
-  it("reloads persisted runs on startup for status queries", async () => {    const { app, dataRoot } = await createApp();
+  it("regenerates code on repair after a spec edit (no stale-code mismatch)", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-editrepair-"));
+    roots.push(dataRoot);
+    let generateCalls = 0;
+    const app = buildApp({
+      production: {
+        dataRoot,
+        adapters: {
+          ...adapters,
+          generate: async () => {
+            generateCalls += 1;
+            return {
+              plan: { route: "/campaign/summer", files: [{ path: "src/pages/campaign/CampaignPage.tsx", action: "create" as const, purpose: "页面", nodeIds: ["page"] }], reusedComponents: [], localComponents: [], assets: [], styleStrategy: "css-modules", risks: [] },
+              files: { "src/pages/campaign/CampaignPage.tsx": "export function CampaignPage() { return null; }" },
+              sourceMap: { version: "1.0" as const, locators: [] },
+            };
+          },
+        },
+      },
+    });
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
     const runId = created.json().runId;
     await waitTerminal(app, runId);
+    expect(generateCalls).toBe(1);
+
+    // 未编辑直接 repair：复用生成物，不再调用 generate
+    await app.inject({ method: "POST", url: `/api/production/runs/${runId}/repair` });
+    await waitTerminal(app, runId);
+    expect(generateCalls).toBe(1);
+
+    // 编辑 spec 后 repair：必须重新生成（否则新 spec 对旧代码错位）
+    const edited = await app.inject({ method: "POST", url: `/api/production/runs/${runId}/edit`, payload: { editOps: [{ nodeId: "hero-title", kind: "set-content", text: "新标题" }] } });
+    expect(edited.statusCode).toBe(200);
+    await app.inject({ method: "POST", url: `/api/production/runs/${runId}/repair` });
+    const detail = await waitTerminal(app, runId);
+    expect(generateCalls).toBe(2);
+    expect(detail.status).toBe("completed");
+  });
+
+  it("reloads persisted runs on startup for status queries", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    await waitTerminal(app, runId);
+
+    // persistRun 异步落盘：等 run.json 写到终态再模拟重启，避免读到中途的 running 快照被改判 failed
+    for (let attempt = 0; attempt < 250; attempt += 1) {
+      try {
+        const disk = JSON.parse(await readFile(join(dataRoot, "runs", runId, "run.json"), "utf8")).run;
+        if (disk.status !== "running") break;
+      } catch {
+        // 文件尚未出现
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
 
     // 同一 dataRoot 重建 app（模拟服务重启）：元数据可查，但无工作区不可修复
     const restarted = buildApp({ production: { dataRoot, adapters } });

@@ -44,6 +44,8 @@ export interface ProductionRunRecord {
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
   generated?: GeneratedProductionOutput;
+  /** /edit 修改过 spec：repair 必须重新生成代码，否则新 spec 与旧代码错位 */
+  specEdited?: boolean;
 }
 
 type RunListener = (event: TraceEvent) => void;
@@ -141,7 +143,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       repositoryRoot: resolve(repoRoot, record.profile.repositoryPath),
     });
     const adapters = { ...defaults, ...options.adapters } as ProductionWorkflowAdapters;
-    if (reuseGenerated && record.generated) {
+    // spec 被编辑过后不能复用旧生成物（新 spec 与旧代码会错位），走完整重新生成
+    if (reuseGenerated && record.generated && !record.specEdited) {
       // 修复迭代：复用已生成的 plan/sourceMap 且不重写文件，保留上一轮修复成果
       const generated = record.generated;
       adapters.generate = () => ({ plan: generated.plan, files: {}, sourceMap: generated.sourceMap });
@@ -168,6 +171,8 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       }, adapters)) {
         publish(record, event);
       }
+      // 闭环正常走完（含编辑后的重新生成），spec 已体现在代码中
+      record.specEdited = false;
     } catch (error) {
       publish(record, traceEventSchema.parse({
         id: `${record.run.id}-failed`,
@@ -308,6 +313,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         return reply.code(400).send({ code: "INPUT_INVALID", message: "编辑后的 spec 不合法" });
       }
       record.spec = reparsed.data;
+      record.specEdited = true;
       await persistRun(record);
       return { spec: record.spec };
     },

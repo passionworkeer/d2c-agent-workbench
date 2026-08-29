@@ -133,7 +133,7 @@ export function generateProductionPage(spec: ActivitySpec, profile: TargetProjec
     .map(([component, path]) => `import { ${component} } from ${JSON.stringify(path)};`).join("\n");
   const body = spec.nodes.filter((node) => !node.parentId).map((node) => renderNode(node, nodes, assetUrls, mappingByNode, 2, true)).join("\n");
   const code = `import styles from "./${name}.module.css";${imports ? `\n${imports}` : ""}\n\nexport function ${name}() {\n  return (\n${body}\n  );\n}\n\nexport default ${name};\n`;
-  const css = `${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
+  const css = `:global(body) {\n  margin: 0;\n}\n\n${spec.nodes.map(nodeCss).join("\n\n")}\n\n${responsiveCss(spec)}\n`;
   const sourceMap = sourceMapSchema.parse({ version: "1.0", locators: spec.nodes.map((node) => ({
     nodeId: node.id, file: tsxPath, componentName: name, styleFile: cssPath, styleSelector: `.${className(node.id)}`,
     ...(node.content?.assetId ? { assetPaths: assets.filter((asset) => asset.source === spec.assets.find((item) => item.id === node.content?.assetId)?.path).map((asset) => asset.target) } : {}),
