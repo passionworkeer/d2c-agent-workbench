@@ -14,6 +14,20 @@ export const rectSchema = z.object({
   height: z.number().nonnegative(),
 }).strict();
 
+export const assetCropSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0).max(1),
+  height: z.number().min(0).max(1),
+}).strict().superRefine((value, context) => {
+  if (value.x + value.width > 1) {
+    context.addIssue({ code: "custom", path: ["width"], message: "x + width must not exceed 1" });
+  }
+  if (value.y + value.height > 1) {
+    context.addIssue({ code: "custom", path: ["height"], message: "y + height must not exceed 1" });
+  }
+});
+
 export const evidenceRefSchema = z.object({
   type: z.enum(["pixel", "ocr", "prd", "asset", "repository", "user", "agent"]),
   sourceId: z.string().min(1),
@@ -195,6 +209,23 @@ export const sourceMapSchema = z.object({
   }).strict()),
 }).strict();
 
+const semanticReviewIssueSchema = z.object({
+  title: z.string().min(1),
+  severity: z.enum(["P1", "P2", "P3"]),
+  rect: rectSchema.optional(),
+}).strict();
+
+export const semanticReviewEvidenceSchema = z.object({
+  score: z.number().min(0).max(100),
+  layout: z.number().min(0).max(100),
+  content: z.number().min(0).max(100),
+  visualTone: z.number().min(0).max(100),
+  taskClarity: z.number().min(0).max(100),
+  summary: z.string().min(1),
+  issues: z.array(semanticReviewIssueSchema).max(5),
+  provider: z.enum(["minimax", "registered-fallback"]),
+}).strict();
+
 /**
  * 客观评测指标。
  * 视觉与语义类指标（perceptualDiff/textConsistency/assetConsistency/semanticReview）均来自外部证据
@@ -274,12 +305,14 @@ export const productionRunSchema = z.object({
 }).strict();
 
 export type Rect = z.infer<typeof rectSchema>;
+export type AssetCrop = z.infer<typeof assetCropSchema>;
 export type EvidenceRef = z.infer<typeof evidenceRefSchema>;
 export type ActivityNode = z.infer<typeof activityNodeSchema>;
 export type ActivitySpec = z.infer<typeof activitySpecSchema>;
 export type TargetProjectProfile = z.infer<typeof targetProjectProfileSchema>;
 export type CodePlan = z.infer<typeof codePlanSchema>;
 export type D2CSourceMap = z.infer<typeof sourceMapSchema>;
+export type SemanticReviewEvidence = z.infer<typeof semanticReviewEvidenceSchema>;
 export type ProductionMetrics = z.infer<typeof productionMetricsSchema>;
 export type ProductionViolation = z.infer<typeof productionViolationSchema>;
 export type PatchPlan = z.infer<typeof patchPlanSchema>;
