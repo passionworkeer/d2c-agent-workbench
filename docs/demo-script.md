@@ -55,13 +55,14 @@
 切到顶栏「**活动页生产**」模式（PRODUCTION）：
 
 - 点「载入黄金样例」→「运行生产闭环」。这不是演示管线，是**真的**：目标仓库复制进隔离工作区 → `pnpm install` → 真实 `tsc` typecheck → 真实 `vite build` → 自由端口起 `vite preview` → Playwright 渲染采集逐节点几何
-- 黄金样例内置一处可修复问题（目标仓库骨架 padding-left 48px vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` **P1** → 点击违规展开 **Region → Node → Source**（直接定位到 CampaignPage.module.css 的 .hero）→ 定向修复**只改这一个文件**（CSS 声明级补丁，回滚快照已存档）
-- 复评后 **COMPLETED，终局 96 分**。事件流里每个状态都带真实 Artifact ID；build 失败是 P0 硬门槛，分数刷不掉
-- **设计干预一幕**（60 秒内完成）：闭环完成后在「Puck 原型编辑」里把标题改成“全场 6 折”→ 点「保存编辑到 Run」（类型化 SpecEditOp 回写 ActivitySpec，不直接改代码）→ 点「按编辑重跑闭环」→ 重新生成 → 构建渲染复评 → 展开新代码看到新标题——“编辑意图直达代码，全程可追溯”
-- 收尾可切第二个黄金样例「体验官招募（表单页）」再跑一遍：**94.9 分、修复的是 SummerFormPage.module.css**——不同页面结构、独立分数，证明评分非硬编码
-- 一句话收束：“前面五条亮点是可演示的链路，这一条是能落进研发流程的系统——每一步可追溯、可回滚、可评测、可被设计意图干预。”
+- 黄金样例内置一处可修复问题（目标仓库骨架 padding-left 48px vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` **P1** → 点击违规展开 **Region → Node → Source**（直接定位到 CampaignPage.module.css 的 .hero）→ **桌面截图上叠加红框圈出 hero 区域**（按节点几何等比缩放、按 severity 上色）→ 定向修复**只改这一个文件**（CSS 声明级补丁，回滚快照已存档）
+- 复评后 **COMPLETED，终局 93+ 分**。事件流里每个状态都带真实 Artifact ID；build 失败是 P0 硬门槛，任一视口横向溢出是 P1 硬门槛，分数刷不掉
+- **诚实评分一幕**：跑完后看右上「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；视觉子分里 perceptualDiff 显示「缺参考截图」（黄金样例未注入参考图时如实记 null 并按可用项归一权重），semanticReview 显示「黄金样例默认 95 模拟」——**缺证据就是缺，不补 100 假装通过**
+- **设计干预一幕**（60 秒内完成）：闭环完成后在「Puck 原型编辑」里把标题改成”全场 6 折”→ 点「保存编辑到 Run」（类型化 SpecEditOp 回写 ActivitySpec，不直接改代码）→ 点「按编辑重跑闭环」→ 重新生成 → 构建渲染复评 → 展开新代码看到新标题——“编辑意图直达代码，全程可追溯”
+- 收尾可切第二个黄金样例「体验官招募（表单页）」再跑一遍：**不同分数、不同修复文件**（表单页是 SummerFormPage.module.css）——不同页面结构、独立分数，证明评分非硬编码
+- 一句话收束：”前面五条亮点是可演示的链路，这一条是能落进研发流程的系统——每一步可追溯、可回滚、可评测、可被设计意图干预，**且评测本身不撒谎**。”
 
-> 现场提示：首次运行含依赖安装（冷启动 1-2 分钟，热缓存约 20 秒）。面试前先跑一遍预热；万一现场翻车，事件流也会如实停在 FAILED，不假装成功——这本身就是卖点。
+> 现场提示：首次运行含依赖安装（冷启动 1-2 分钟，热缓存约 20 秒）。面试前先跑一遍预热；万一现场翻车，事件流也会如实停在 FAILED，不假装成功——这本身就是卖点。**Profile/命令注册在服务端，客户端无法注入 commands**——`apps/server/src/profiles.ts` 是唯一允许的目标仓库清单；这层安全姿态也是审计钉死的。
 
 ### 收尾 20 秒
 
@@ -232,14 +233,15 @@ Build 和 Eval 隔离上下文；关键门槛由 TypeScript、Build、页面加�
 1. 切到「活动页生产」模式，讲清定位：D2C 演示链路（确定性管线）、I2D（可选真视觉模型）、PRODUCTION（真实构建渲染评测修复）三者边界。
 2. 点击「载入黄金样例」：展示黄金 fixture（`examples/activity-pages/campaign/`——参考稿、PRD、ActivitySpec、目标 Profile 四件套）。
 3. 点击「运行生产闭环」，按事件流讲解：
-   - **工作区播种**：目标仓库 `examples/activity-target` 复制进隔离工作区（忽略 node_modules），`pnpm install` 真实安装依赖；
-   - **真实代码**：生成器写出 CampaignPage.tsx + CSS Module + source map，节点带稳定 id；
-   - **typecheck / build**：真实 `tsc` 与 `vite build`，白名单命令、超时杀树；失败即 P0，分数不可覆盖；
-   - **渲染评测**：`vite preview` 起服务，Playwright 1440×900 渲染，采集逐节点几何——首轮 hero 偏移 48px（目标仓库骨架的已知问题），产出 `layout:hero` P1；
-   - **归因与局部修复**：点击违规展示 Region → Node → Source（CampaignPage.module.css 的 .hero），修复仅触碰 1 个文件，CSS 声明级替换，回滚快照已存档；
+   - **工作区播种**：目标仓库 `examples/activity-target` 复制进隔离工作区（忽略 node_modules），`pnpm install` 真实安装依赖；Profile / 命令在 `apps/server/src/profiles.ts` 服务端注册，客户端 POST 时不可注入 commands
+   - **真实代码**：生成器写出 CampaignPage.tsx + CSS Module + source map，节点带稳定 id；workspace.apply 同步落 plan.assets
+   - **typecheck / build**：真实 `tsc` 与 `vite build`，白名单命令、最小 env 白名单（PATH/Node/HOME 等），超时杀树；失败即 P0，分数不可覆盖；**修复后失败自动 restoreRollback 到修复前快照**
+   - **渲染评测**：`vite preview` 起服务，Playwright 双视口（desktop 1440×900 + mobile 390×844）渲染，采集逐节点几何——首轮 hero 偏移 48px（目标仓库骨架的已知问题），产出 `layout:hero` P1；**任一视口横向溢出也是 P1 硬门槛**
+   - **归因与局部修复**：点击违规展示 Region → Node → Source（CampaignPage.module.css 的 .hero），**桌面截图上叠加红框圈出 hero 区域**（按节点几何等比缩放、按 severity 上色），修复仅触碰 1 个文件，CSS 声明级替换，回滚快照已存档
+   - **诚实评分**：复评后看「评测分构成」面板——总分 = 视觉 × .70 + 工程 × .30；缺证据项（perceptualDiff 未接入参考截图、semanticReview 黄金样例默认 95 模拟）显式标 null 而非默认 100，按可用证据归一权重——**评测本身不撒谎**
    - **复评通过**：修复后重新 typecheck/build/渲染评测，hero 回到 (0,0,1440,500)，终局分数 ≥90，状态 COMPLETED。
 4. 收尾追问点：
    - **为什么不重新生成整页？** 修复是文件级定向 patch（≤5 文件、幂等 CSS/AST 补丁），保留人工确认的映射与编辑。
-   - **怎么防刷分？** build 失败是硬门槛；评测输入全部来自真实渲染几何，不是自评。
-   - **企业仓库怎么接？** 换 `target-profile.json`（命令白名单 + 写入边界）即可，链路不动。
+   - **怎么防刷分？** build 失败是 P0 硬门槛；任一视口溢出是 P1 硬门槛；评测输入全部来自真实渲染几何；缺证据记 null 按可用项归一权重而非默认 100
+   - **怎么接我们公司仓库？** 在 `apps/server/src/profiles.ts` 注册 Profile（commands/allowedWriteGlobs/repositoryPath），客户端 POST 时只能选 sampleId 不能注入；commands 经最小 env 白名单过滤后执行
    - **怎么回到设计工具？** Puck 原型编辑（类型化 EditOp）与 Figma 导出（保留 d2cNodeId 的 html-to-figma 包）与代码共用同一份 ActivitySpec。
