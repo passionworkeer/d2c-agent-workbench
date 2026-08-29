@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   activitySpecSchema,
+  assetCropSchema,
   patchPlanSchema,
+  semanticReviewEvidenceSchema,
   targetProjectProfileSchema,
 } from "./index";
 
@@ -115,5 +117,46 @@ describe("patchPlanSchema", () => {
     expect(patchPlanSchema.parse(base).round).toBe(1);
     expect(() => patchPlanSchema.parse({ ...base, round: 4 })).toThrow();
     expect(() => patchPlanSchema.parse({ ...base, allowedFiles: ["1", "2", "3", "4", "5", "6"] })).toThrow();
+  });
+});
+
+describe("assetCropSchema", () => {
+  it("accepts normalized crops and rejects crops extending beyond an asset boundary", () => {
+    expect(assetCropSchema.parse({ x: 0.1, y: 0.2, width: 0.3, height: 0.4 })).toEqual({
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.4,
+    });
+    expect(() => assetCropSchema.parse({ x: 0.9, y: 0, width: 0.2, height: 0.1 })).toThrow();
+    expect(() => assetCropSchema.parse({ x: 0, y: 0, width: 0, height: 0.1 })).toThrow();
+    expect(() => assetCropSchema.parse({ x: 0, y: 0, width: 0.1, height: 0 })).toThrow();
+  });
+});
+
+describe("semanticReviewEvidenceSchema", () => {
+  const validEvidence = {
+    score: 91,
+    layout: 92,
+    content: 90,
+    visualTone: 89,
+    taskClarity: 94,
+    summary: "布局与任务表达均符合参考设计。",
+    issues: [{ title: "次要文字间距偏紧", severity: "P2", region: { x: 12, y: 34, width: 56, height: 20 } }],
+    provider: "minimax",
+  };
+
+  it("accepts bounded review evidence with an optional issue region", () => {
+    expect(semanticReviewEvidenceSchema.parse(validEvidence)).toMatchObject(validEvidence);
+    expect(semanticReviewEvidenceSchema.parse({ ...validEvidence, provider: "registered-fallback", issues: [{ title: "无定位问题", severity: "P3" }] }).provider).toBe("registered-fallback");
+  });
+
+  it("rejects invalid scores, empty summaries, and more than five issues", () => {
+    expect(() => semanticReviewEvidenceSchema.parse({ ...validEvidence, score: 101 })).toThrow();
+    expect(() => semanticReviewEvidenceSchema.parse({ ...validEvidence, summary: "" })).toThrow();
+    expect(() => semanticReviewEvidenceSchema.parse({
+      ...validEvidence,
+      issues: Array.from({ length: 6 }, (_, index) => ({ title: `问题 ${index + 1}`, severity: "P1" })),
+    })).toThrow();
   });
 });

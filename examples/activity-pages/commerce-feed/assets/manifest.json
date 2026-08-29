@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "atlas": "reference.jpg",
+  "atlasSize": { "width": 1260, "height": 2800 },
+  "atlasSha256": "64d1a32b58b4f3b28db3e6204d12382b20fc41c33833fc81973a153c2a8dcad1",
+  "notes": "crop 为整图归一化坐标（0-1）。导航/卡片/文字/按钮全部语义化重建，仅商品图与 Banner 氛围图从原图裁切。",
+  "assets": [
+    {
+      "id": "banner-art",
+      "nodeId": "banner-art",
+      "purpose": "Banner 粉红渐变背景与手机/茅台商品氛围图",
+      "alt": "快手818宠粉节粉红渐变 Banner，展示手机金豆与茅台一元起拍商品",
+      "crop": { "x": 0, "y": 0.228, "width": 1, "height": 0.082 }
+    },
+    {
+      "id": "product-tissue",
+      "nodeId": "product-tissue",
+      "purpose": "心相印抽纸商品主图",
+      "alt": "心相印抽纸商品图",
+      "crop": { "x": 0.02, "y": 0.318, "width": 0.458, "height": 0.102 }
+    },
+    {
+      "id": "product-tea",
+      "nodeId": "product-tea",
+      "purpose": "康师傅整箱饮料商品主图",
+      "alt": "康师傅多口味混合整箱饮料商品图",
+      "crop": { "x": 0.522, "y": 0.318, "width": 0.458, "height": 0.102 }
+    },
+    {
+      "id": "product-detergent",
+      "nodeId": "product-detergent",
+      "purpose": "大师香氛洗衣液商品主图",
+      "alt": "大师香氛洗衣液商品图",
+      "crop": { "x": 0.02, "y": 0.55, "width": 0.458, "height": 0.09 }
+    },
+    {
+      "id": "product-comb",
+      "nodeId": "product-comb",
+      "purpose": "迷你排骨梳商品主图",
+      "alt": "迷你排骨梳镂空按摩梳子商品图",
+      "crop": { "x": 0.522, "y": 0.51, "width": 0.458, "height": 0.09 }
+    }
+  ]
+}

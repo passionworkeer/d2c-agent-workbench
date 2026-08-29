@@ -3,11 +3,49 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { activitySpecSchema, type ActivitySpec, type TargetProjectProfile } from "@d2c/contracts";
 import type { RenderResult } from "@d2c/production-runtime";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
 
+const runJsonRenameGate = vi.hoisted(() => {
+  let blockNextRunJsonRename = false;
+  let release = () => {};
+  let started = Promise.resolve();
+  let resolveStarted = () => {};
+  let blocked = Promise.resolve();
+
+  return {
+    blockNext() {
+      blockNextRunJsonRename = true;
+      started = new Promise<void>((resolve) => { resolveStarted = resolve; });
+      blocked = new Promise<void>((resolve) => { release = resolve; });
+    },
+    waitForStart: () => started,
+    release: () => release(),
+    async wait(target: string) {
+      if (!blockNextRunJsonRename || !target.endsWith("run.json")) return;
+      blockNextRunJsonRename = false;
+      resolveStarted();
+      await blocked;
+    },
+  };
+});
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    rename: async (source: string, target: string) => {
+      await runJsonRenameGate.wait(target);
+      return actual.rename(source, target);
+    },
+  };
+});
+
 const roots: string[] = [];
-afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
+afterEach(async () => {
+  runJsonRenameGate.release();
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
 
 const profile: TargetProjectProfile = {
   repositoryPath: "examples/activity-target", framework: "react", language: "typescript", packageManager: "pnpm",
@@ -94,6 +132,42 @@ async function waitTerminal(app: ReturnType<typeof buildApp>, runId: string) {
 }
 
 describe("production routes", () => {
+  it("waits for a terminal run's pending persistence before returning its detail", async () => {
+    const { app } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    await waitTerminal(app, runId);
+
+    // 先等待一次编辑落盘，确保 workflow 的历史持久化链已经清空。
+    const initialEdit = await app.inject({
+      method: "POST",
+      url: `/api/production/runs/${runId}/edit`,
+      payload: { editOps: [{ nodeId: "hero-title", kind: "set-content", text: "已落盘标题" }] },
+    });
+    expect(initialEdit.statusCode).toBe(200);
+
+    runJsonRenameGate.blockNext();
+    const pendingEdit = app.inject({
+      method: "POST",
+      url: `/api/production/runs/${runId}/edit`,
+      payload: { editOps: [{ nodeId: "hero-title", kind: "set-content", text: "待落盘标题" }] },
+    });
+    await runJsonRenameGate.waitForStart();
+
+    let detailSettled = false;
+    const detail = app.inject({ method: "GET", url: `/api/production/runs/${runId}` }).then((response) => {
+      detailSettled = true;
+      return response;
+    });
+    // setImmediate 仅作为事件循环检查点：请求已可执行，但持久化闸门仍未放行。
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(detailSettled).toBe(false);
+
+    runJsonRenameGate.release();
+    expect((await pendingEdit).statusCode).toBe(200);
+    expect((await detail).json().status).toBe("completed");
+  });
+
   it("creates a production run and returns artifact-backed status", async () => {
     const { app, dataRoot } = await createApp();
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });

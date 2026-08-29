@@ -1,10 +1,28 @@
-import { activitySpecSchema } from "@d2c/contracts";
+import { activitySpecSchema, assetCropSchema } from "@d2c/contracts";
 import { describe, expect, it } from "vitest";
 import campaignSpecJson from "../../../../examples/activity-pages/campaign/activity-spec.json?raw";
 import campaignProfileJson from "../../../../examples/activity-pages/campaign/target-profile.json?raw";
 import summerFormSpecJson from "../../../../examples/activity-pages/summer-form/activity-spec.json?raw";
 import summerFormProfileJson from "../../../../examples/activity-pages/summer-form/target-profile.json?raw";
+import commerceFeedSpecJson from "../../../../examples/activity-pages/commerce-feed/activity-spec.json?raw";
+import commerceFeedProfileJson from "../../../../examples/activity-pages/commerce-feed/target-profile.json?raw";
+import commerceFeedManifestJson from "../../../../examples/activity-pages/commerce-feed/assets/manifest.json?raw";
+import gameFestivalSpecJson from "../../../../examples/activity-pages/summer-game-festival/activity-spec.json?raw";
+import gameFestivalProfileJson from "../../../../examples/activity-pages/summer-game-festival/target-profile.json?raw";
+import gameFestivalManifestJson from "../../../../examples/activity-pages/summer-game-festival/assets/manifest.json?raw";
+import petRedPacketSpecJson from "../../../../examples/activity-pages/pet-red-packet/activity-spec.json?raw";
+import petRedPacketProfileJson from "../../../../examples/activity-pages/pet-red-packet/target-profile.json?raw";
+import petRedPacketManifestJson from "../../../../examples/activity-pages/pet-red-packet/assets/manifest.json?raw";
 import { GOLDEN_SAMPLES } from "./production-api";
+
+/** 三张真实移动活动页：spec / profile / 裁切清单以磁盘 fixture 为单一事实源 */
+const REAL_PAGE_FIXTURES = ["commerce-feed", "summer-game-festival", "pet-red-packet"] as const;
+
+const realFixtureSource: Record<(typeof REAL_PAGE_FIXTURES)[number], { spec: string; profile: string; manifest: string }> = {
+  "commerce-feed": { spec: commerceFeedSpecJson, profile: commerceFeedProfileJson, manifest: commerceFeedManifestJson },
+  "summer-game-festival": { spec: gameFestivalSpecJson, profile: gameFestivalProfileJson, manifest: gameFestivalManifestJson },
+  "pet-red-packet": { spec: petRedPacketSpecJson, profile: petRedPacketProfileJson, manifest: petRedPacketManifestJson },
+};
 
 describe("GOLDEN_SAMPLES", () => {
   it("ships at least two structurally distinct samples sharing one target repo", () => {
@@ -59,4 +77,58 @@ describe("GOLDEN_SAMPLES", () => {
       }
     }
   });
+});
+
+describe("真实移动活动页黄金样例（三张截图混合重建）", () => {
+  it("GOLDEN_SAMPLES 按固定顺序注册全部五个样例", () => {
+    expect(GOLDEN_SAMPLES.map((sample) => sample.id)).toEqual([
+      "campaign",
+      "summer-form",
+      "commerce-feed",
+      "summer-game-festival",
+      "pet-red-packet",
+    ]);
+  });
+
+  for (const fixtureId of REAL_PAGE_FIXTURES) {
+    const source = realFixtureSource[fixtureId];
+
+    it(`${fixtureId}: ActivitySpec v2 解析通过且节点 id 唯一`, () => {
+      const spec = JSON.parse(source.spec);
+      expect(() => activitySpecSchema.parse(spec)).not.toThrow();
+      expect(spec.page.canonicalViewport.width).toBe(390);
+      expect(new Set(spec.nodes.map((node: { id: string }) => node.id)).size).toBe(spec.nodes.length);
+      for (const node of spec.nodes) {
+        expect(node.evidence.length, `${fixtureId}/${node.id}: 缺少证据`).toBeGreaterThan(0);
+      }
+    });
+
+    it(`${fixtureId}: 裁切清单全部在归一化界内且 nodeId 指向真实节点`, () => {
+      const spec = JSON.parse(source.spec);
+      const manifest = JSON.parse(source.manifest) as { assets: Array<{ id: string; nodeId: string; crop: unknown }> };
+      expect(manifest.assets.length).toBeGreaterThan(0);
+      const nodeIds = new Set(spec.nodes.map((node: { id: string }) => node.id));
+      for (const asset of manifest.assets) {
+        expect(() => assetCropSchema.parse(asset.crop), `${fixtureId}/${asset.id}: crop 越界`).not.toThrow();
+        expect(nodeIds.has(asset.nodeId), `${fixtureId}/${asset.id}: nodeId 不存在于 spec`).toBe(true);
+      }
+    });
+
+    it(`${fixtureId}: 每个 image 节点都引用裁切清单中的资产`, () => {
+      const spec = JSON.parse(source.spec);
+      const manifest = JSON.parse(source.manifest) as { assets: Array<{ id: string }> };
+      const cropIds = new Set(manifest.assets.map((asset) => asset.id));
+      for (const node of spec.nodes) {
+        if (node.role !== "image") continue;
+        expect(cropIds.has(node.content?.assetId), `${fixtureId}/${node.id}: image 节点未引用 manifest 资产`).toBe(true);
+      }
+    });
+
+    it(`${fixtureId}: 内嵌样例与磁盘 fixture 单一事实源同步`, () => {
+      const sample = GOLDEN_SAMPLES.find((item) => item.id === fixtureId);
+      expect(sample, `${fixtureId}: 未注册进 GOLDEN_SAMPLES`).toBeTruthy();
+      expect(JSON.parse(source.spec), `${fixtureId}: examples spec 与内嵌样例漂移`).toEqual(sample!.payload.spec);
+      expect(JSON.parse(source.profile).repositoryPath, `${fixtureId}: profile 目标仓库漂移`).toBe(sample!.targetRepository);
+    });
+  }
 });

@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "atlas": "reference.jpg",
+  "atlasSize": { "width": 1260, "height": 2660 },
+  "atlasSha256": "81cff7409565c2d99cffbca0fa2caa76b5d96d1fee47134ff21344cfcdaff3bd",
+  "notes": "crop 为整图归一化坐标（0-1）。夜晚瀑布场景与立体字主标题为复杂艺术素材，从原图裁切；任务卡/福利格/兑换卡/Tab 全部语义化重建。",
+  "assets": [
+    {
+      "id": "festival-hero-art",
+      "nodeId": "festival-hero-art",
+      "purpose": "顶部主视觉：夜晚瀑布与深色树林魔法场景（含人物立绘与灯笼装饰）",
+      "alt": "夏日游戏节夜晚瀑布魔法场景主视觉",
+      "crop": { "x": 0, "y": 0, "width": 1, "height": 0.357 }
+    },
+    {
+      "id": "festival-hero-title",
+      "nodeId": "festival-hero-title",
+      "purpose": "活动名立体金字：快手 · 夏日游音节 / SUMMER GAME FESTIVAL",
+      "alt": "夏日游音节立体金字标题",
+      "crop": { "x": 0.03, "y": 0.142, "width": 0.42, "height": 0.13 }
+    }
+  ]
+}
