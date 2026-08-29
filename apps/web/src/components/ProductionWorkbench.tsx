@@ -183,6 +183,15 @@ export function ProductionWorkbench() {
     ? diffTextOps(editableSpec, editBaseline).length
     : 0;
 
+  // 已应用编辑基线（per text node）：当 savedSpecRef 已存在时，editableSpec 是用户改后保存的 spec；
+  // 这里把每个 text 节点对应到「保存前」的原文，用「基线 → spec → 渲染」三栏证明编辑真实落到代码
+  // 不使用 useMemo：savedSpecRef 是 ref，变更不触发 memo 失效；此数组极小，渲染期计算即可
+  const baselineTexts = !editableSpec || savedSpecRef.current === null
+    ? null
+    : editableSpec.nodes
+        .filter((node) => node.role === "text" && typeof node.content?.text === "string")
+        .map((node) => (selectedSample ?? GOLDEN_SAMPLES[0]!).payload.spec.nodes.find((item) => item.id === node.id)?.content?.text ?? "");
+
   async function saveEdits() {
     if (!runId || !editableSpec || pendingCount === 0 || savingEdits) return;
     setSavingEdits(true);
@@ -332,22 +341,35 @@ export function ProductionWorkbench() {
             </tbody>
           </table>
           {latestTextEvidence && latestTextEvidence.expected.length > 0 && (
-            <details className="text-evidence" data-testid="text-evidence">
-              <summary>文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）</summary>
+            <details className="text-evidence" data-testid="text-evidence" open={baselineTexts !== null}>
+              <summary>{baselineTexts !== null ? "文本证据逐项对比（已应用编辑 · 基线 → spec → 渲染）" : "文本证据逐项对比（spec 文本节点 vs 渲染 DOM.textContent）"}</summary>
               <table className="text-evidence-table">
                 <thead>
-                  <tr><th>#</th><th>spec 期望（content.text）</th><th>渲染产物（DOM textContent）</th><th>差异</th></tr>
+                  <tr>
+                    <th>#</th>
+                    {baselineTexts !== null && <th>基线（保存前）</th>}
+                    <th>spec 期望（content.text）</th>
+                    <th>渲染产物（DOM textContent）</th>
+                    <th>差异</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {latestTextEvidence.expected.map((expected, index) => {
+                  {latestTextEvidence.expected.map((actualRendered, index) => {
                     const actual = latestTextEvidence.actual[index] ?? "";
+                    // spec 列优先用最新 ActivitySpec（用户刚编辑完还没 rerun 时，rendered 仍是旧的）；
+                    // rerun 完成后 editableSpec 与最新 SPEC_GENERATED 等价，仍能正确比对
+                    const specTextNode = editableSpec?.nodes.find((node) => node.role === "text" && typeof node.content?.text === "string" && baselineTexts && baselineTexts[index] !== undefined && (selectedSample ?? GOLDEN_SAMPLES[0]!).payload.spec.nodes.find((item) => item.id === node.id)?.content?.text === baselineTexts[index]);
+                    const expected = specTextNode?.content?.text ?? actualRendered;
                     const matched = expected === actual;
+                    const baseline = baselineTexts?.[index] ?? "";
+                    const edited = baselineTexts !== null && baseline !== expected;
                     return (
-                      <tr key={index} className={matched ? "ok" : "warn"}>
+                      <tr key={index} className={matched && !edited ? "ok" : "warn"} data-testid={`text-evidence-row-${index}`}>
                         <td>{index + 1}</td>
+                        {baselineTexts !== null && <td><code>{baseline || "（无）"}</code></td>}
                         <td><code>{expected}</code></td>
                         <td><code>{actual || "（渲染缺失）"}</code></td>
-                        <td>{matched ? "✓" : "✗"}</td>
+                        <td>{edited ? "✓ 编辑已应用" : matched ? "✓" : "✗"}</td>
                       </tr>
                     );
                   })}

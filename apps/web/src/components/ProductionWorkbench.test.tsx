@@ -234,6 +234,29 @@ describe("ProductionWorkbench", () => {
     expect(evidence.querySelector("tbody tr")?.classList.contains("ok")).toBe(true);
   });
 
+  it("shows a baseline column in the text-evidence panel after a saved edit so the demo audience can see design intent reached the code", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    const evidence = await screen.findByTestId("text-evidence");
+    // 跑完首轮后表头就有 5 列（# / 基线 / spec / 渲染 / 差异）
+    expect(evidence.querySelectorAll("thead th").length).toBe(5);
+    expect(evidence.querySelector("thead th:nth-child(2)")?.textContent).toContain("基线");
+
+    // 编辑 → 保存 → 基线列保留原文「全场 5 折」；spec 列变成「全场 6 折」并标 ✓ 编辑已应用
+    const input = screen.getByLabelText("hero-title 文本");
+    await user.clear(input);
+    await user.type(input, "夏日好物节 · 全场 6 折");
+    await user.click(screen.getByRole("button", { name: "保存编辑到 Run" }));
+    const row = await screen.findByTestId("text-evidence-row-0");
+    expect(row.querySelector("td:nth-child(2)")?.textContent).toContain("夏日好物节 · 全场 5 折");
+    expect(row.querySelector("td:nth-child(3)")?.textContent).toContain("夏日好物节 · 全场 6 折");
+    expect(row.querySelector("td:nth-child(5)")?.textContent).toContain("编辑已应用");
+    // summary 文案改为「已应用编辑」
+    expect(evidence.querySelector("summary")?.textContent ?? "").toContain("已应用编辑");
+  });
+
   it("draws a Region overlay on the screenshot when a violation with nodes is selected", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);

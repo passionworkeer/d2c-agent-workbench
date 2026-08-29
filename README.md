@@ -38,7 +38,7 @@
 - **真实渲染评测**：`vite preview` 起在自由端口，Playwright 按 1440×900 固定 DPR 渲染，采集截图、运行时错误与逐节点几何；**任一视口**（desktop / mobile）横向溢出 → P1 硬门槛，build 失败是 P0 硬门槛，任何分数不可覆盖。
 - **证据驱动评分**：视觉指标（perceptualDiff / textConsistency / colorEffects / assetConsistency / semanticReview）各自产出 `*Available` 布尔；缺证据记 `null` 而非默认 100，按可用项归一化权重，避免无声 100 蒙混通过。语义评审 / 像素 diff 缺为 P1 并阻塞 passed；黄金样例由服务端注册 `reference.png` 和仅用于本地演示的 semanticReview=95 可信基准，公共请求不能覆盖。真实 VLM 仍需在服务端适配器中接入。
 - **错误归因与局部修复**：几何/diff 违规映射到 Region → Node → Source；修复只允许 ≤5 个文件、CSS 声明级 / ts-morph AST 级补丁，每轮先写回滚快照，**修复后 typecheck/build 失败自动 restoreRollback** 到修复前快照，最多 3 轮、连续两轮提升 <1 分即停。
-- **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。
+- **工作台评测分构成**：EVALUATED 事件透传 `metrics` 与 `text` 证据，工作台渲染「评测分构成」面板——总分三栏 + 视觉/工程子分对照表，缺证据项显式标红（如「缺参考截图」「依赖 perceptualDiff」），并能展开 spec 文本节点 vs 渲染 DOM.textContent 的逐项对比，证明 100 分是逐项 ✓ 而非凭空给定。Puck 保存编辑后该面板自动展开，新增「基线（保存前）」列，差异列标「✓ 编辑已应用」，把"设计意图落到了 ActivitySpec"演给观众看。
 - **工作台 Region 叠加**：选中违规时在桌面截图上叠加定位框（按 `violation.nodeIds → viewport.nodes` 等比缩放，按 severity 上色 P0/P1/P2），把归因数据从文字落到真实页面区域。
 - **工作台横向溢出标注**：mobile / 任一视口的 `documentElement.scrollWidth > clientWidth` 直接在工作台渲染截图上描红边 + 标注「⚠ 横向溢出 → P1」，把「任一视口也是 P1 硬门槛」演给观众看。
 - **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
