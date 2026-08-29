@@ -12,8 +12,9 @@ export interface PrototypeEditorProps {
   onEdit: (ops: SpecEditOp[]) => void;
 }
 
-/** 每个 Puck 组件的渲染属性（与 ActivitySpec 节点字段对齐） */
+/** 每个 Puck 组件的渲染属性（与 ActivitySpec 节点字段对齐；id 供 Puck 做条目身份） */
 export interface PuckComponentProps {
+  id: string;
   nodeId: string;
   name: string;
   text?: string;
@@ -29,7 +30,7 @@ export interface PuckAdapterConfig {
 
 export interface PuckAdapterData {
   root: { props: { title: string } };
-  content: Array<{ type: string; id: string; props: PuckComponentProps }>;
+  content: Array<{ type: string; props: PuckComponentProps }>;
 }
 
 export function buildPuckConfig(spec: ActivitySpec): PuckAdapterConfig {
@@ -56,9 +57,9 @@ export function buildPuckData(spec: ActivitySpec): PuckAdapterData {
       .filter((node) => !node.parentId)
       .map((node) => ({
         type: node.role,
-        // Puck 的 LayerTree 用 id 作为列表 key，缺失会触发 React key 警告
-        id: node.id,
         props: {
+          // Puck 0.20 的条目身份/LayerTree key 取自 props.id
+          id: node.id,
           nodeId: node.id,
           name: node.name,
           ...(node.content?.text !== undefined ? { text: node.content.text } : {}),

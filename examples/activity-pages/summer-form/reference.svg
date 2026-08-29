@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <!-- 黄金样例参考稿：体验官招募表单页（桌面 1440×900）
+       form-section 从 x=0 起占满整行（1440×640），表单主体位于 (60,180)。 -->
+  <rect width="1440" height="900" fill="#ffffff"/>
+  <rect x="0" y="0" width="1440" height="640" fill="#f7f8f4"/>
+  <text x="60" y="124" font-family="PingFang SC" font-size="40" font-weight="700" fill="#ff5000">限时体验官招募 · 填写即领券</text>
+  <rect x="60" y="180" width="520" height="260" fill="#ffffff" stroke="#e3e5de"/>
+  <text x="84" y="220" font-family="PingFang SC" font-size="18" fill="#4a4f46">您的姓名</text>
+  <text x="84" y="292" font-family="PingFang SC" font-size="18" fill="#4a4f46">手机号（用于发放奖励）</text>
+  <text x="84" y="364" font-family="PingFang SC" font-size="20" font-weight="700" fill="#ff5000">立即报名 · 100% 中奖</text>
+  <text x="60" y="700" font-family="PingFang SC" font-size="20" fill="#8a8f85">参考基准：form-section (0,0,1440,640)</text>
+</svg>

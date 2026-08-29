@@ -61,14 +61,24 @@ export function subscribeToProductionRun(
   source.onmessage = (message) => {
     try {
       const event = JSON.parse(message.data) as TraceEvent;
-      if (TERMINAL_STATES.has(event.state)) sawTerminal = true;
+      if (TERMINAL_STATES.has(event.state)) {
+        sawTerminal = true;
+        // 终态即关流：服务端随后 end() 会触发 EventSource 自动重连，
+        // 重连会被服务端全量重放事件，导致前端事件列表成倍膨胀
+        onEvent(event);
+        source.close();
+        return;
+      }
       onEvent(event);
     } catch {
       // 忽略无法解析的心跳/坏帧
     }
   };
   source.onerror = () => {
-    if (sawTerminal) return;
+    if (sawTerminal) {
+      source.close();
+      return;
+    }
     onError?.();
     source.close();
   };
@@ -236,6 +246,3 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
     },
   },
 ];
-
-/** 兼容旧引用：默认第一个样例 */
-export const GOLDEN_PRODUCTION_SAMPLE: ProductionRunPayload = GOLDEN_SAMPLES[0]!.payload;

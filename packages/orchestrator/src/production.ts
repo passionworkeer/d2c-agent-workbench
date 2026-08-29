@@ -217,7 +217,7 @@ export async function* runProductionWorkflow(
     const render = await adapters.render(input.render);
     const renderArtifact = await input.artifacts.writeJson("render", `viewports-${round}`, {
       url: render.url,
-      viewports: render.viewports.map((viewport) => ({ name: viewport.name, width: viewport.width, height: viewport.height, screenshotPath: viewport.screenshotPath, horizontalOverflow: viewport.horizontalOverflow, nodes: Object.keys(viewport.nodes) })),
+      viewports: render.viewports.map((viewport) => ({ name: viewport.name, width: viewport.width, height: viewport.height, screenshotPath: viewport.screenshotPath, horizontalOverflow: viewport.horizontalOverflow, nodes: viewport.nodes })),
     });
     yield event("RENDERED", `第 ${round} 轮渲染完成`, `${render.viewports.length} 个视口 · 截图与几何已采集`, { artifactId: renderArtifact.id });
 

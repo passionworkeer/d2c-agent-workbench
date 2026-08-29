@@ -16,7 +16,6 @@ vi.mock("../lib/production-api", () => ({
     { id: "campaign", label: "夏日好物节（主视觉页）", payload: { spec: { page: { route: "/campaign/summer" }, nodes: [{ id: "page" }, { id: "hero" }, { id: "hero-title" }] }, profile: { repositoryPath: "examples/activity-target" } } },
     { id: "summer-form", label: "体验官招募（表单页）", payload: { spec: { page: { route: "/campaign/summer-form" }, nodes: [{ id: "page" }] }, profile: { repositoryPath: "examples/activity-target" } } },
   ],
-  GOLDEN_PRODUCTION_SAMPLE: { spec: { page: { route: "/campaign/summer" }, nodes: [] }, profile: { repositoryPath: "examples/activity-target" } },
   createProductionRun: apiMocks.createProductionRun,
   subscribeToProductionRun: apiMocks.subscribeToProductionRun,
   getProductionRun: apiMocks.getProductionRun,

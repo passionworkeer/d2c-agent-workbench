@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -110,13 +110,22 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const replayDelayMs = options.replayDelayMs ?? 260;
 
   // 诊断：未处理路由异常落盘（logger:false 时 fastify 默认静默，E2E 排障需要现场）
-  app.setErrorHandler((error: Error, request, reply) => {
+  app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
     try {
+      mkdirSync(join(process.cwd(), ".data"), { recursive: true });
       appendFileSync(join(process.cwd(), ".data", "server-errors.log"), `${new Date().toISOString()} ${request.method} ${request.url} :: ${error.stack ?? error.message}\n`);
     } catch {
       // 日志失败不影响响应
     }
-    reply.code(500).send({ code: "INTERNAL", message: error.message || "服务器内部错误" });
+    // SSE 等已 hijack 的响应不能再 send（FST_ERR_REP_ALREADY_SENT）
+    if (reply.raw.headersSent || reply.sent) {
+      reply.raw.end();
+      return;
+    }
+    // 保留 Fastify 自身的 4xx（非法 JSON 400 / multipart 超限 413 等），不吞成 500
+    const status = error.statusCode ?? 500;
+    const message = status >= 500 ? "服务器内部错误" : error.message;
+    reply.code(status).send({ code: status >= 500 ? "INTERNAL" : "BAD_REQUEST", message });
   });
 
   void app.register(multipart, {

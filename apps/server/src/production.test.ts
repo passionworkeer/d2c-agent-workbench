@@ -74,7 +74,8 @@ async function createApp() {
 }
 
 async function waitTerminal(app: ReturnType<typeof buildApp>, runId: string) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  // 并行测试负载下 workflow 推进可能超过 2s，放宽到 10s 仍远低于 CI 超时
+  for (let attempt = 0; attempt < 500; attempt += 1) {
     const response = await app.inject({ method: "GET", url: `/api/production/runs/${runId}` });
     const body = response.json();
     if (body.status !== "running") return body;

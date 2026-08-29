@@ -73,7 +73,15 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         try {
           const parsed = JSON.parse(await readFile(join(runsDirectory, id, "run.json"), "utf8")) as { run?: unknown; mappings?: ComponentMapping[]; spec?: unknown; profile?: unknown; referenceNodes?: ProductionRunRecord["referenceNodes"] };
           if (!parsed.run || records.has(id)) continue;
+          // 旧版 run.json 只持久化 {run, mappings}——缺 spec/profile 的历史记录跳过，
+          // 否则 /edit 会在 undefined 上抛 TypeError
+          if (!parsed.spec || !parsed.profile) continue;
           const run = productionRunSchema.parse(parsed.run);
+          // 崩溃遗留的 running 僵尸：无工作区不可能继续执行，如实改判 failed
+          if (run.status === "running") {
+            run.status = "failed";
+            run.state = "FAILED";
+          }
           records.set(id, {
             run, events: [],
             spec: parsed.spec as ActivitySpec,
