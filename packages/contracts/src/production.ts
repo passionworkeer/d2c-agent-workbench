@@ -212,7 +212,7 @@ export const sourceMapSchema = z.object({
 const semanticReviewIssueSchema = z.object({
   title: z.string().min(1),
   severity: z.enum(["P1", "P2", "P3"]),
-  rect: rectSchema.optional(),
+  region: rectSchema.optional(),
 }).strict();
 
 export const semanticReviewEvidenceSchema = z.object({

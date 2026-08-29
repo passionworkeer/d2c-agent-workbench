@@ -142,11 +142,11 @@ describe("semanticReviewEvidenceSchema", () => {
     visualTone: 89,
     taskClarity: 94,
     summary: "布局与任务表达均符合参考设计。",
-    issues: [{ title: "次要文字间距偏紧", severity: "P2", rect: { x: 12, y: 34, width: 56, height: 20 } }],
+    issues: [{ title: "次要文字间距偏紧", severity: "P2", region: { x: 12, y: 34, width: 56, height: 20 } }],
     provider: "minimax",
   };
 
-  it("accepts bounded review evidence with an optional issue rect", () => {
+  it("accepts bounded review evidence with an optional issue region", () => {
     expect(semanticReviewEvidenceSchema.parse(validEvidence)).toMatchObject(validEvidence);
     expect(semanticReviewEvidenceSchema.parse({ ...validEvidence, provider: "registered-fallback", issues: [{ title: "无定位问题", severity: "P3" }] }).provider).toBe("registered-fallback");
   });
