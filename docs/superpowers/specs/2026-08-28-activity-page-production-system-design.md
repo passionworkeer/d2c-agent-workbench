@@ -1063,7 +1063,7 @@ Eval Agent 不读取 Build Agent 的自我评价，降低确认偏误。
 - [x] 一个真实试点仓库完成隔离生成、typecheck、build 和 Playwright Render。（`examples/activity-target`，E2E `tests/e2e/production.spec.ts` 全链路通过，finalScore 96）
 - [x] 所有生产分数来自真实 Artifact，没有 Fixture 常量或伪造 Build 事件。（`runProductionWorkflow` 每状态携带 artifactId；工程指标从 spec/code plan 推导；build 失败为 P0 硬门槛）
 - [x] Desktop 和 Mobile 均有截图与 DOM Geometry。（server 渲染 desktop 1440×900 + mobile 390×844 双视口采集，落 render artifact；评测仍以 canonical 视口为准，mobile 评测维度是后续项）
-- [ ] Visual Eval 同时包含 Layout、Diff、OCR、Asset 和 VLM 语义指标。**部分落地**：Layout 几何 ✓；Diff/pHash 管线就绪但默认无参考图输入（compareImages 适配器留位）；OCR 因供应链策略未装 Tesseract，文本走 PRD 结构化证据注入；VLM 语义分当前为默认值 90，未接真实视觉模型评审。
+- [ ] Visual Eval 同时包含 Layout、Diff、OCR、Asset 和 VLM 语义指标。**部分落地**：Layout 几何 ✓；Diff/pHash 管线就绪但默认无参考图输入（compareImages 适配器留位）；OCR 因供应链策略未装 Tesseract，文本走 PRD 结构化证据注入；VLM 语义分经 `POST /runs` 的 `semanticReviewScore` 可注入透传（有测试），真实 VLM 评审待接 API key。
 - [x] Engineering Eval 包含组件复用、Token、绝对定位、硬编码、响应式和复杂度。（`evaluateProductionRun` engineering 九维，全部从真实产物推导）
 - [x] Diff Region 能定位到 ActivitySpec Node 与源码文件。（`attributeDiffClusters` 支持区域→最小节点→父容器归因并回填 SourceMap 定位；真实闭环当前由几何违规驱动归因，像素 diff 聚类归因待接参考图后启用）
 - [x] Repair 使用结构化 PatchPlan，最多三轮，并保存每轮前后结果。（≤5 文件白名单校验、CSS/AST/Spec 三类补丁、每轮 rollback 快照落 artifact、连续两轮 <1 分熔断）

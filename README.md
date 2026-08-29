@@ -44,6 +44,21 @@
 
 外部依赖说明：三种模式边界清晰——**D2C**（浏览器内确定性管线，零依赖）、**I2D**（可选 MiniMax 视觉模型 / Figma PAT）、**PRODUCTION**（需要 pnpm 可用、目标仓库可安装构建；视觉草稿的模型调用可选）。
 
+## 3 分钟快速演示（面试动线）
+
+```bash
+pnpm install
+pnpm dev          # 同时启动前端 5173 与 API 8787
+```
+
+打开 `http://127.0.0.1:5173`，按顺序点三条链路：
+
+1. **D2C（秒开）**：点「运行完整演示」→ 72→94 评测修复闭环，浏览器内确定性管线，零外部依赖
+2. **I2D**：切「参考图 → 设计稿」→ 自动播放 → （可选）填 key 接真视觉模型
+3. **PRODUCTION（压轴，~20s）**：切「活动页生产」→ 载入黄金样例 → 运行生产闭环 → 真实 install/typecheck/vite build/Playwright 渲染/评测/局部修复 → COMPLETED 96 分；切换第二个样例（表单页）再跑 → 94.9 分、修复文件不同（评分非硬编码）
+
+完整话术见 `docs/demo-script.md`（含 3 分钟版七个亮点）。
+
 ## 立即运行
 
 环境要求：Node.js 22+、pnpm 11+。
@@ -74,6 +89,10 @@ pnpm build
 pnpm exec playwright install chromium
 pnpm e2e
 ```
+
+> 跑 `pnpm e2e` 前先停掉本地 `pnpm dev`：Playwright 会复用已运行的 dev 服务
+> （`reuseExistingServer`），旧进程可能载着过期代码导致诡异失败；生产闭环测试
+> 与 demo 用例已配置串行（`workers: 1`），全套约 30 秒。
 
 ## LLM 设置（可选）
 

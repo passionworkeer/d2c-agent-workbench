@@ -40,21 +40,23 @@ const renderFake: RenderResult = {
   }],
 };
 
+const passedReport = {
+  outcome: "passed" as const,
+  metrics: {
+    visual: { layoutGeometry: 96, perceptualDiff: 100, textConsistency: 100, colorEffects: 98, assetConsistency: 100, semanticReview: 92 },
+    engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 95 },
+    visualScore: 93, engineeringScore: 91, finalScore: 92,
+  },
+  violations: [],
+};
+
 const adapters = {
   prepare: async () => [],
   inspect: async () => ({ version: "1.0" as const, root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
   typecheck: async () => ({ command: ["pnpm", "typecheck"], exitCode: 0, stdout: "", stderr: "", durationMs: 3, timedOut: false, truncated: false }),
   build: async () => ({ command: ["pnpm", "build"], exitCode: 0, stdout: "", stderr: "", durationMs: 5, timedOut: false, truncated: false }),
   render: async () => renderFake,
-  evaluate: async () => ({
-    outcome: "passed" as const,
-    metrics: {
-      visual: { layoutGeometry: 96, perceptualDiff: 100, textConsistency: 100, colorEffects: 98, assetConsistency: 100, semanticReview: 92 },
-      engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 95 },
-      visualScore: 93, engineeringScore: 91, finalScore: 92,
-    },
-    violations: [],
-  }),
+  evaluate: async () => passedReport,
   attribute: () => [],
 };
 
@@ -140,8 +142,30 @@ describe("production routes", () => {
     expect(edited.json().spec.nodes.find((node: { id: string }) => node.id === "hero-title")?.content?.text).toBe("夏日好物节 · 全场 5 折");
   });
 
-  it("reloads persisted runs on startup for status queries", async () => {
-    const { app, dataRoot } = await createApp();
+  it("passes an injected semantic review score through to the evaluator", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-semreview-"));
+    roots.push(dataRoot);
+    const seen: Array<number | undefined> = [];
+    const app = buildApp({
+      production: {
+        dataRoot,
+        adapters: {
+          ...adapters,
+          evaluate: async (input) => {
+            seen.push(input.semanticReviewScore);
+            return passedReport;
+          },
+        },
+      },
+    });
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload: { ...payload, semanticReviewScore: 55 } });
+    const runId = created.json().runId;
+    await waitTerminal(app, runId);
+    expect(seen.length).toBeGreaterThanOrEqual(1);
+    expect(seen.every((score) => score === 55)).toBe(true);
+  });
+
+  it("reloads persisted runs on startup for status queries", async () => {    const { app, dataRoot } = await createApp();
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
     const runId = created.json().runId;
     await waitTerminal(app, runId);

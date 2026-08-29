@@ -39,6 +39,8 @@ export interface ProductionRunRecord {
   profile: TargetProjectProfile;
   mappings: ComponentMapping[];
   referenceNodes: Record<string, { x: number; y: number; width: number; height: number }>;
+  /** VLM 语义评审分（0-100）；缺省时评测用保守默认值，真实 VLM 接入后经此注入 */
+  semanticReviewScore?: number;
   workspace?: RunWorkspace;
   artifactStore?: FileArtifactStore;
   generated?: GeneratedProductionOutput;
@@ -154,6 +156,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         artifacts: record.artifactStore,
         render: renderInput,
         referenceNodes: record.referenceNodes,
+        ...(record.semanticReviewScore !== undefined ? { semanticReviewScore: record.semanticReviewScore } : {}),
       }, adapters)) {
         publish(record, event);
       }
@@ -169,7 +172,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
     }
   }
 
-  app.post<{ Body: { spec?: unknown; profile?: unknown; mappings?: unknown; referenceNodes?: unknown } }>(
+  app.post<{ Body: { spec?: unknown; profile?: unknown; mappings?: unknown; referenceNodes?: unknown; semanticReviewScore?: unknown } }>(
     "/api/production/runs",
     async (request, reply) => {
       const specResult = activitySpecSchema.safeParse(request.body?.spec);
@@ -194,6 +197,9 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       const record: ProductionRunRecord = {
         run, events: [], spec: specResult.data, profile, mappings: mappingsResult,
         referenceNodes: (request.body?.referenceNodes ?? {}) as ProductionRunRecord["referenceNodes"],
+        ...(typeof request.body?.semanticReviewScore === "number" && Number.isFinite(request.body.semanticReviewScore)
+          ? { semanticReviewScore: Math.max(0, Math.min(100, request.body.semanticReviewScore)) }
+          : {}),
       };
       records.set(id, record);
       while (records.size > MAX_RUNS) {
