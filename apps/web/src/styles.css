@@ -652,6 +652,15 @@ footer { height: 32px; border-top: 1px solid var(--line); padding: 0 24px; displ
 .violation-detail code, .repair-scope code { font-size: 11px; background: #f4f5f0; padding: 2px 6px; border-radius: 5px; }
 .violation-style { margin-left: 6px; color: #6a6f66; }
 .violation-action { margin: 8px 0 0; color: #6a6f66; }
+.violation-overlay { margin-top: 12px; }
+.violation-overlay-title { font-size: 11px; color: #6a6f66; margin-bottom: 6px; }
+.violation-overlay-stage { position: relative; display: inline-block; line-height: 0; border: 1px solid #e3e5de; border-radius: 6px; overflow: hidden; }
+.violation-overlay-stage img { display: block; }
+.violation-overlay-rect { position: absolute; border: 2px solid #d8341f; box-shadow: 0 0 0 1px rgba(255,255,255,.6) inset; pointer-events: none; animation: violation-pulse 1.6s ease-in-out infinite; }
+.violation-overlay-rect.severity-p1 { border-color: #d8341f; background: rgba(216, 52, 31, .12); }
+.violation-overlay-rect.severity-p2 { border-color: #c98a16; background: rgba(201, 138, 22, .12); }
+.violation-overlay-rect.severity-p0 { border-color: #1f5f3f; background: rgba(31, 95, 63, .12); }
+@keyframes violation-pulse { 0%,100% { opacity: .85; } 50% { opacity: 1; box-shadow: 0 0 0 2px rgba(255,255,255,.85) inset; } }
 .repair-scope p { margin: 0 0 6px; color: #1f5f3f; font-weight: 600; }
 .eval-breakdown { margin-top: 14px; background: #fcfcfa; border: 1px solid #e3e5de; border-radius: 11px; padding: 14px 16px; }
 .eval-breakdown h3 { margin: 0 0 10px; font-size: 13px; }

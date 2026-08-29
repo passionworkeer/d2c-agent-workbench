@@ -38,7 +38,7 @@ export function ProductionWorkbench() {
   const [error, setError] = useState<string | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number }>>([]);
+  const [viewports, setViewports] = useState<Array<{ name: string; width: number; height: number; nodes: Record<string, { x: number; y: number; width: number; height: number }> }>>([]);
   // 最近一轮评测指标：让工作台可视化「证据构成」——审计修复后可看到 perceptualDiff 缺为 null 而非 100
   const [latestMetrics, setLatestMetrics] = useState<ProductionMetrics | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
@@ -74,13 +74,13 @@ export function ProductionWorkbench() {
     if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "metrics" in event.data) {
       setLatestMetrics((event.data as { metrics?: ProductionMetrics }).metrics ?? null);
     }
-    // 渲染完成后拉取视口清单，展示真实 Playwright 截图
+    // 渲染完成后拉取视口清单（含逐节点几何），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
       void getProductionArtifact(event.runId, artifactId)
         .then(({ content }) => {
-          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number }> }).viewports ?? [];
-          if (rendered.length) setViewports(rendered);
+          const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; nodes?: Record<string, { x: number; y: number; width: number; height: number }> }> }).viewports ?? [];
+          if (rendered.length) setViewports(rendered.map((v) => ({ name: v.name, width: v.width, height: v.height, nodes: v.nodes ?? {} })));
         })
         .catch(() => undefined);
     }
@@ -196,6 +196,22 @@ export function ProductionWorkbench() {
   const repairPlan = [...events].reverse().find((event) => event.state === "REPAIR_PLANNED");
   const repairFiles = Array.isArray(repairPlan?.data?.allowedFiles) ? repairPlan.data.allowedFiles as string[] : [];
   const completed = events.some((event) => event.state === "COMPLETED");
+
+  // 违规节点 → 桌面视口几何 → 截图叠加框；displayWidth=280 与下方 figure 对齐
+  const overlayRects = (() => {
+    if (!selectedViolation) return [] as Array<{ key: string; left: number; top: number; width: number; height: number }>;
+    const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
+    if (!desktop || !runId) return [];
+    const displayWidth = desktop.width >= 1024 ? 280 : 130;
+    const scale = displayWidth / desktop.width;
+    const rects: Array<{ key: string; left: number; top: number; width: number; height: number }> = [];
+    for (const nodeId of selectedViolation.nodeIds) {
+      const node = desktop.nodes[nodeId];
+      if (!node) continue;
+      rects.push({ key: nodeId, left: node.x * scale, top: node.y * scale, width: Math.max(2, node.width * scale), height: Math.max(2, node.height * scale) });
+    }
+    return rects;
+  })();
 
   return (
     <div className="production-workbench">
@@ -359,6 +375,26 @@ export function ProductionWorkbench() {
                 {selectedViolation.sourceLocators.length === 0 && <li>无源码定位（build 级违规）</li>}
               </ul>
               {selectedViolation.suggestedAction && <p className="violation-action">{selectedViolation.suggestedAction}</p>}
+              {runId && overlayRects.length > 0 && (
+                <div className="violation-overlay" data-testid="violation-overlay">
+                  <div className="violation-overlay-title">定位叠加 · 桌面视口</div>
+                  <div className="violation-overlay-stage">
+                    <img
+                      src={`/api/production/runs/${runId}/renders/${(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])?.name ?? "desktop"}`}
+                      alt="违规节点叠加截图"
+                      width={(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])!.width >= 1024 ? 280 : 130}
+                    />
+                    {overlayRects.map((rect) => (
+                      <span
+                        key={rect.key}
+                        className={`violation-overlay-rect severity-${selectedViolation.severity.toLowerCase()}`}
+                        style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+                        title={rect.key}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

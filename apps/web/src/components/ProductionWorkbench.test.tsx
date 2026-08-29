@@ -81,7 +81,10 @@ beforeEach(() => {
   apiMocks.repairProductionRun.mockReset().mockResolvedValue({ runId: "run-1" });
   apiMocks.getProductionArtifact.mockReset().mockResolvedValue({
     artifact: { id: "artifact-7", kind: "render", path: "render/viewports.json" },
-    content: { viewports: [{ name: "desktop", width: 1440, height: 900 }, { name: "mobile", width: 390, height: 844 }] },
+    content: { viewports: [
+      { name: "desktop", width: 1440, height: 900, horizontalOverflow: false, nodes: { hero: { x: 0, y: 0, width: 1440, height: 500 } } },
+      { name: "mobile", width: 390, height: 844, horizontalOverflow: false, nodes: { hero: { x: 0, y: 0, width: 390, height: 500 } } },
+    ] },
   });
   apiMocks.getProductionRun.mockReset().mockResolvedValue({
     id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 1,
@@ -185,5 +188,22 @@ describe("ProductionWorkbench", () => {
     expect(breakdown.textContent).toContain("黄金样例默认 95 模拟");
     // 有证据的视觉指标仍展示具体分
     expect(breakdown.textContent).toContain("92.4");
+  });
+
+  it("draws a Region overlay on the screenshot when a violation with nodes is selected", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 等 RENDERED 事件把节点几何落到 viewports state
+    await screen.findByTestId("render-shots");
+    // 选中违规 → 截图叠加面板出现；至少一个矩形
+    await user.click(screen.getByText("layout_error · hero"));
+    const overlay = await screen.findByTestId("violation-overlay");
+    expect(overlay.querySelectorAll(".violation-overlay-rect").length).toBe(1);
+    const rect = overlay.querySelector(".violation-overlay-rect") as HTMLElement;
+    expect(rect.title).toBe("hero");
+    // 缩放到 displayWidth=280（hero 占满 1440×500 → 280×97.2）
+    expect(rect.style.width).toBe("280px");
   });
 });
