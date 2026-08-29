@@ -1,0 +1,647 @@
+/* 活动页企业组件样式：390px 手机画布基准，所有尺寸按 CSS px。
+   页面级布局（区块间距/定位）在 real-pages.module.css；这里只管组件自身。 */
+
+.shell {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.canvas {
+  position: relative;
+  width: 390px;
+  max-width: 100vw;
+  overflow: hidden;
+  font-family: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 系统状态栏 ---------- */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 6px 14px 2px;
+  box-sizing: border-box;
+  color: #17181f;
+}
+
+.statusTime {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.statusIcons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statusSignal,
+.statusWifi {
+  height: 11px;
+  fill: #17181f;
+}
+
+.statusBattery {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 11px;
+  border: 1px solid #17181f;
+  border-radius: 3px;
+}
+
+.statusBattery::after {
+  content: "";
+  position: absolute;
+  right: -3.5px;
+  top: 3px;
+  width: 2px;
+  height: 5px;
+  border-radius: 0 1px 1px 0;
+  background: #17181f;
+}
+
+.statusBatteryFill {
+  position: absolute;
+  inset: 1.5px auto 1.5px 1.5px;
+  width: 14px;
+  border-radius: 1.5px;
+  background: #17181f;
+}
+
+/* ---------- App 顶部导航 ---------- */
+
+.topNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.topNavDark {
+  color: #fff;
+}
+
+.topNavMenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 15px;
+  background: rgba(17, 18, 24, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.topNavDark .topNavMenu {
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.topNavMenu svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.topNavBadge {
+  position: absolute;
+  top: -3px;
+  right: -6px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: #ff1645;
+  color: #fff;
+  font-size: 8px;
+  line-height: 13px;
+  font-weight: 600;
+}
+
+.topNavTabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 auto;
+}
+
+.topNavTab {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 6px 2px;
+  font-size: 15px;
+  line-height: 1.3;
+  color: #5c5e66;
+  cursor: pointer;
+}
+
+.topNavDark .topNavTab {
+  color: rgba(255, 244, 234, 0.85);
+}
+
+.topNavTabActive {
+  font-weight: 700;
+  color: #17181f;
+}
+
+.topNavDark .topNavTabActive {
+  color: #ffb27a;
+}
+
+.topNavTabActive::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -1px;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.topNavSearch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 15px;
+  background: rgba(17, 18, 24, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.topNavDark .topNavSearch {
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.topNavSearch svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- 底部导航 ---------- */
+
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 390px;
+  max-width: 100vw;
+  height: 65px;
+  padding: 8px 6px 6px;
+  box-sizing: border-box;
+  background: #ffffff;
+  box-shadow: 0 -2px 10px rgba(17, 18, 24, 0.06);
+  z-index: 30;
+}
+
+.bottomTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 46px;
+  border: none;
+  background: none;
+  font-size: 10px;
+  line-height: 1.2;
+  color: #6b6d75;
+  cursor: pointer;
+}
+
+.bottomTab svg {
+  width: 21px;
+  height: 21px;
+  fill: #9c9ca6;
+}
+
+.bottomTabActive,
+.bottomTabActive svg {
+  color: #17181f;
+  font-weight: 600;
+}
+
+.bottomTabActive svg {
+  fill: #17181f;
+}
+
+.bottomPublish {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #ffffff;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ff2e54, #ff1645);
+  box-shadow: 0 4px 12px rgba(255, 22, 69, 0.35);
+  cursor: pointer;
+}
+
+.bottomPublish svg {
+  width: 20px;
+  height: 20px;
+  fill: #ffffff;
+}
+
+.bottomPublishBadge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 1px solid #ffffff;
+  background: #ff1645;
+  color: #ffffff;
+  font-size: 9px;
+  line-height: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---------- 素材裁切 ---------- */
+
+.artwork {
+  position: relative;
+  overflow: hidden;
+}
+
+.artworkImage {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  max-width: none;
+}
+
+/* ---------- 商品卡 ---------- */
+
+.productCard {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: none;
+  background: #ffffff;
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+}
+
+.productArt {
+  width: 100%;
+}
+
+.productTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding: 6px 8px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #17181f;
+}
+
+.productPrice {
+  padding: 4px 8px 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ff3b30;
+}
+
+.productPrice::first-letter {
+  font-size: 12px;
+}
+
+.productBadge {
+  padding: 2px 8px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #9c9ca6;
+}
+
+/* ---------- 任务卡 ---------- */
+
+.taskCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.taskIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 18px;
+}
+
+.taskInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.taskTitle {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskReward {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #ffd76a;
+}
+
+.taskAction {
+  flex-shrink: 0;
+  min-width: 66px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffd76a, #ffb52e);
+  color: #4a2c0a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.taskActionDone {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: default;
+}
+
+/* ---------- 福利格 ---------- */
+
+.rewardTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.rewardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+}
+
+.rewardLabel {
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+}
+
+/* ---------- 进度卡 ---------- */
+
+.progressCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.progressHint {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  color: #2b2b33;
+}
+
+.progressBody {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.progressIncome {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.progressIncomeValue {
+  font-size: 16px;
+  font-weight: 800;
+  color: #e02020;
+}
+
+.progressIncomeLink {
+  font-size: 10px;
+  color: #9c9ca6;
+}
+
+.progressTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-height: 30px;
+}
+
+.progressRail {
+  position: absolute;
+  left: 6px;
+  right: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  border-radius: 2px;
+  background: #f0e3cd;
+}
+
+.progressRailFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 12%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ff8534, #f04b0c);
+}
+
+.progressMilestone {
+  position: relative;
+  z-index: 1;
+  margin-right: auto;
+  font-size: 10px;
+  color: #9c9ca6;
+}
+
+.progressMilestone:not(:first-child) {
+  margin-left: 0;
+}
+
+.progressMilestone:first-child {
+  margin-right: auto;
+}
+
+.progressMilestone:last-of-type {
+  margin-right: 0;
+}
+
+.progressMilestoneDone {
+  color: #e02020;
+  font-weight: 700;
+}
+
+.progressPrize {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 9px;
+  background: #e02020;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* ---------- 浮层入口 ---------- */
+
+.floatCircle {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 12px rgba(74, 23, 4, 0.22);
+  cursor: pointer;
+}
+
+.floatIcon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.floatLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #5c3a00;
+}
+
+.floatBadge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #19a974;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.floatPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 38px;
+  border: none;
+  border-radius: 19px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 12px rgba(17, 18, 24, 0.18);
+  cursor: pointer;
+}
+
+.floatPillIcon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.floatPillLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #17181f;
+  white-space: nowrap;
+}
+
+.floatPrimary {
+  background: #ff6319;
+}
+
+.floatPrimary .floatPillLabel {
+  color: #ffffff;
+}
+
+/* ---------- 主行动按钮 ---------- */
+
+.primaryAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ff8534, #f04b0c);
+  box-shadow: 0 4px 14px rgba(240, 75, 12, 0.4);
+  cursor: pointer;
+}
+
+.primaryActionTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.primaryActionSubtitle {
+  font-size: 11px;
+  color: #ffe9c8;
+}
+
+.primaryActionDisabled {
+  filter: saturate(0.55) brightness(0.92);
+}
