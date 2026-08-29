@@ -398,6 +398,21 @@ export function ProductionWorkbench() {
                 const desktop = viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0];
                 downloadJson(buildFigmaImportBundle(editableSpec, desktop?.nodes ?? {}), `${editableSpec.page.id}-figma-import.json`);
               }}>下载 Figma 导入包</button>
+              {runId && !running && (
+                <button className="button secondary" onClick={() => {
+                  // 完整证据链报告：事件流 + 分数 + 证据 + 违规 + 视口几何，全部来自真实执行
+                  downloadJson({
+                    runId,
+                    sampleId: selectedSampleId,
+                    finalScore,
+                    metrics: latestMetrics,
+                    textEvidence: latestTextEvidence,
+                    violations,
+                    viewports,
+                    events: events.map(({ state, title, data, timestamp }) => ({ state, title, data, timestamp })),
+                  }, `production-run-${runId}-report.json`);
+                }}>下载 Run 报告</button>
+              )}
             </div>
           </div>
           <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />

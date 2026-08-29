@@ -185,6 +185,39 @@ describe("ProductionWorkbench", () => {
     vi.unstubAllGlobals();
   });
 
+  it("downloads a full run report with evidence chain after the production loop completes", async () => {
+    const createObjectUrl = vi.fn((_blob: Blob) => "blob:run-report");
+    const revokeObjectUrl = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: createObjectUrl, revokeObjectURL: revokeObjectUrl });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    // 跑完才出现「下载 Run 报告」；报告包含事件流、分数、证据、违规与视口几何
+    const report = await screen.findByRole("button", { name: "下载 Run 报告" });
+    await user.click(report);
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    const blob = createObjectUrl.mock.calls[0]![0];
+    // jsdom 的 Blob 没有 .text()，用 FileReader 读取内容
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(blob);
+    });
+    const payload = JSON.parse(text);
+    expect(payload.runId).toBe("run-1");
+    expect(payload.finalScore).toBe(93);
+    expect(Array.isArray(payload.events)).toBe(true);
+    expect(payload.events.length).toBeGreaterThan(5);
+    expect(payload.violations.length).toBeGreaterThan(0);
+    expect(payload.viewports.length).toBe(2);
+    expect(payload.textEvidence.expected[0]).toContain("夏日好物节");
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the sample switcher available after a completed run and resets state on switch", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);

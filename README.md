@@ -44,6 +44,7 @@
 - **服务端 API**：`POST /api/production/runs` → SSE 事件流 → `confirm-mapping` / `edit` / `repair` / 产物读取，Run 元数据落盘可重载；启动自动重载历史 run 的 spec/profile/mappings/status（崩溃遗留的 running 僵尸如实改判 failed）。
 - **视觉草稿（可选）**：截图 + PRD 结构化事实 + OCR/素材证据合并为 ActivitySpec 草稿，PRD 覆盖冲突写入 unresolved；支持 `D2C_VISUAL_SIDECAR_URL` 切换 screenshot-to-code 兼容 Sidecar。
 - **Puck 可编辑原型与 Figma 导出**：ActivitySpec ↔ Puck 双向适配（完整节点进入编辑器，编辑发出类型化 SpecEditOp，运行前修改会进入本轮生成）；工作台可直接下载 `buildFigmaImportBundle` 产出的 html-to-figma 兼容节点 JSON，并保留 `pluginData.d2cNodeId`。插件端实际导入仍需在真实 Figma 环境验证。
+- **Run 报告下载**：闭环完成后一键下载 `production-run-<id>-report.json`——含完整事件流（每步 Artifact 引用）、终局分数、评测分构成、文本证据、违规清单与双视口逐节点几何，把「每一步可追溯」变成可带走的结构化证据链（与 D2C 模式的报告同一惯例，不含任何密钥）。
 
 黄金样例 `examples/activity-pages/campaign/` 内置一处可修复的 Hero 间距问题（目标仓库骨架 `padding-left: 48px` vs 参考稿 hero x=0）：首轮评测产出 `layout:hero` P1，局部修复仅改生成的 Campaign CSS，复评后状态 `COMPLETED`、终局分数 ≥90。
 
