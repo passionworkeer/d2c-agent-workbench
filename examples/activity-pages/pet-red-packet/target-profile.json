@@ -1,0 +1,20 @@
+{
+  "repositoryPath": "examples/activity-target",
+  "framework": "react",
+  "language": "typescript",
+  "packageManager": "pnpm",
+  "routeEntry": "src/App.tsx",
+  "generatedRoot": "src/pages/pet-red-packet",
+  "assetRoot": "public/pet-red-packet",
+  "styleStrategy": "css-modules",
+  "commands": {
+    "install": ["pnpm", "install"],
+    "typecheck": ["pnpm", "typecheck"],
+    "build": ["pnpm", "build"],
+    "dev": ["pnpm", "dev"]
+  },
+  "previewUrl": "http://127.0.0.1:4173/pet/red-packet",
+  "allowedWriteGlobs": ["src/pages/pet-red-packet/**", "public/pet-red-packet/**"],
+  "designSystemRoots": ["src/components"],
+  "tokenRoots": []
+}

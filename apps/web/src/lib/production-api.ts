@@ -1,4 +1,8 @@
 import type { ActivitySpec, ProductionMetrics, ProductionViolation, SpecEditOp, TraceEvent, ComponentMapping, Rect } from "@d2c/contracts";
+// 三张真实移动活动页：examples/activity-pages 下 fixture 是单一事实源，?raw 内联进前端包
+import commerceFeedSpecJson from "../../../../examples/activity-pages/commerce-feed/activity-spec.json?raw";
+import gameFestivalSpecJson from "../../../../examples/activity-pages/summer-game-festival/activity-spec.json?raw";
+import petRedPacketSpecJson from "../../../../examples/activity-pages/pet-red-packet/activity-spec.json?raw";
 
 // 生产模式 API client：ActivitySpec → 真实构建/渲染/评测/修复闭环。
 // 与 lib/api.ts 同模式：readJson 统一错误处理，SSE 订阅复用 EventSource。
@@ -244,6 +248,63 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
       },
       mappings: [],
       referenceNodes: { "form-section": { x: 0, y: 0, width: 1440, height: 640 } },
+    },
+  },
+  {
+    id: "commerce-feed",
+    label: "快手商城（信息流页·真实截图）",
+    targetRepository: "examples/activity-target",
+    payload: {
+      sampleId: "commerce-feed",
+      spec: JSON.parse(commerceFeedSpecJson) as ActivitySpec,
+      mappings: [],
+      referenceNodes: {
+        "top-nav": { x: 0, y: 30, width: 390, height: 46 },
+        "commerce-search": { x: 10, y: 84, width: 370, height: 36 },
+        "quick-actions": { x: 0, y: 126, width: 390, height: 44 },
+        "promo-banner": { x: 8, y: 206, width: 374, height: 80 },
+        "product-grid": { x: 0, y: 296, width: 390, height: 470 },
+        "product-tissue-card": { x: 8, y: 296, width: 187, height: 268 },
+        "product-tea-card": { x: 203, y: 296, width: 187, height: 228 },
+        "bottom-nav": { x: 0, y: 802, width: 390, height: 65 },
+      },
+    },
+  },
+  {
+    id: "summer-game-festival",
+    label: "夏日游戏节（任务页·真实截图）",
+    targetRepository: "examples/activity-target",
+    payload: {
+      sampleId: "summer-game-festival",
+      spec: JSON.parse(gameFestivalSpecJson) as ActivitySpec,
+      mappings: [],
+      referenceNodes: {
+        "festival-hero": { x: 0, y: 0, width: 390, height: 322 },
+        "collab-header": { x: 0, y: 272, width: 390, height: 38 },
+        "task-list": { x: 8, y: 318, width: 374, height: 116 },
+        "benefit-panel": { x: 8, y: 438, width: 374, height: 72 },
+        "reward-cards": { x: 8, y: 514, width: 374, height: 66 },
+        "daily-tasks": { x: 8, y: 586, width: 374, height: 158 },
+        "activity-tabs": { x: 0, y: 761, width: 390, height: 62 },
+      },
+    },
+  },
+  {
+    id: "pet-red-packet",
+    label: "养萌宠红包（养成页·真实截图）",
+    targetRepository: "examples/activity-target",
+    payload: {
+      sampleId: "pet-red-packet",
+      spec: JSON.parse(petRedPacketSpecJson) as ActivitySpec,
+      mappings: [],
+      referenceNodes: {
+        "pet-app-nav": { x: 0, y: 0, width: 390, height: 34 },
+        "level-progress": { x: 8, y: 146, width: 374, height: 84 },
+        "pet-stage": { x: 0, y: 234, width: 390, height: 300 },
+        "feed-action": { x: 8, y: 460, width: 374, height: 66 },
+        "pet-task-section": { x: 8, y: 557, width: 374, height: 182 },
+        "bottom-nav": { x: 0, y: 754, width: 390, height: 65 },
+      },
     },
   },
 ];

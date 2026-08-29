@@ -1,0 +1,20 @@
+{
+  "repositoryPath": "examples/activity-target",
+  "framework": "react",
+  "language": "typescript",
+  "packageManager": "pnpm",
+  "routeEntry": "src/App.tsx",
+  "generatedRoot": "src/pages/commerce-feed",
+  "assetRoot": "public/commerce-feed",
+  "styleStrategy": "css-modules",
+  "commands": {
+    "install": ["pnpm", "install"],
+    "typecheck": ["pnpm", "typecheck"],
+    "build": ["pnpm", "build"],
+    "dev": ["pnpm", "dev"]
+  },
+  "previewUrl": "http://127.0.0.1:4173/commerce/feed",
+  "allowedWriteGlobs": ["src/pages/commerce-feed/**", "public/commerce-feed/**"],
+  "designSystemRoots": ["src/components"],
+  "tokenRoots": []
+}

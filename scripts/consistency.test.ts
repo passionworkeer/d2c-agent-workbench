@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { BundleError, parseFigmaBundle } from "@d2c/figma-importer";
+import { activitySpecSchema, assetCropSchema, targetProjectProfileSchema } from "@d2c/contracts";
 import { compileUISpec } from "@d2c/ui-compiler";
 import { mapSdsComponents } from "@d2c/component-matcher";
 import { runReplayWorkflow } from "@d2c/orchestrator";
@@ -201,5 +202,60 @@ describe("examples/product-grid 与真实管线的跨包一致性", () => {
       .filter((event) => event.state === "EVALUATED")
       .map((event) => (event.data?.evaluation as { overall: number }).overall);
     expect(serverFormScores).toEqual(formScores);
+  });
+});
+
+describe("examples/activity-pages 真实样例 fixture 完整性", () => {
+  const realFixtures = ["commerce-feed", "summer-game-festival", "pet-red-packet"] as const;
+
+  for (const fixture of realFixtures) {
+    it(`${fixture}: reference.jpg 与三件套（spec/profile/manifest）齐备且相互一致`, () => {
+      const dir = join(root, "examples", "activity-pages", fixture);
+
+      // 原始截图按字节原样入库，不允许二次压缩
+      const referencePath = join(dir, "reference.jpg");
+      expect(existsSync(referencePath), `${fixture}: 缺少 reference.jpg`).toBe(true);
+      expect(statSync(referencePath).size, `${fixture}: reference.jpg 不应为空`).toBeGreaterThan(100_000);
+
+      const spec = activitySpecSchema.parse(JSON.parse(readFileSync(join(dir, "activity-spec.json"), "utf8")));
+      const profile = targetProjectProfileSchema.parse(JSON.parse(readFileSync(join(dir, "target-profile.json"), "utf8")));
+      const manifest = JSON.parse(readFileSync(join(dir, "assets", "manifest.json"), "utf8")) as {
+        atlas: string;
+        assets: Array<{ id: string; nodeId: string; crop: unknown }>;
+      };
+
+      // 手机端基准视口：三张真实截图都是 390 CSS px 宽
+      expect(spec.page.canonicalViewport.width).toBe(390);
+
+      // spec 与 manifest 的资产一一对应，crop 界内且 nodeId 真实存在
+      const nodeIds = new Set(spec.nodes.map((node) => node.id));
+      const manifestIds = new Set(manifest.assets.map((asset) => asset.id));
+      for (const asset of manifest.assets) {
+        expect(() => assetCropSchema.parse(asset.crop)).not.toThrow();
+        expect(nodeIds.has(asset.nodeId), `${fixture}/${asset.id}: manifest nodeId 不在 spec 中`).toBe(true);
+      }
+      for (const asset of spec.assets) {
+        expect(manifestIds.has(asset.id), `${fixture}/${asset.id}: spec 资产缺 manifest 裁切`).toBe(true);
+        expect(asset.path).toBe(manifest.atlas);
+      }
+
+      // 全部指向同一个目标仓库，路由互不冲突
+      expect(profile.repositoryPath).toBe("examples/activity-target");
+      expect(profile.previewUrl.startsWith("http://127.0.0.1:4173/")).toBe(true);
+      expect(spec.page.route.startsWith("/")).toBe(true);
+    });
+  }
+
+  it("三个真实样例的路由与 previewUrl 互不冲突", () => {
+    const seen = new Set<string>();
+    for (const fixture of realFixtures) {
+      const dir = join(root, "examples", "activity-pages", fixture);
+      const spec = activitySpecSchema.parse(JSON.parse(readFileSync(join(dir, "activity-spec.json"), "utf8")));
+      const profile = targetProjectProfileSchema.parse(JSON.parse(readFileSync(join(dir, "target-profile.json"), "utf8")));
+      expect(seen.has(spec.page.route), `${fixture}: 路由重复 ${spec.page.route}`).toBe(false);
+      seen.add(spec.page.route);
+      expect(seen.has(profile.previewUrl), `${fixture}: previewUrl 重复`).toBe(false);
+      seen.add(profile.previewUrl);
+    }
   });
 });

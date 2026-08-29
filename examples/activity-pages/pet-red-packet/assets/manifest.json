@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "atlas": "reference.jpg",
+  "atlasSize": { "width": 1260, "height": 2645 },
+  "atlasSha256": "8a8f4e60a24e07130bea024d65a87fc618ce0175b3ed3f4f285218ddca4c2847",
+  "notes": "crop 为整图归一化坐标（0-1）。宠物舞台（含香蕉服饰宠物与聚光灯）与立体字主标题为复杂艺术素材，从原图裁切；导航/进度卡/浮层/任务/底栏全部语义化重建。",
+  "assets": [
+    {
+      "id": "pet-hero-title",
+      "nodeId": "pet-hero-title",
+      "purpose": "主标题橙红渐变立体字「养萌宠赢88元红包」",
+      "alt": "养萌宠赢88元红包立体字标题",
+      "crop": { "x": 0.18, "y": 0.066, "width": 0.64, "height": 0.046 }
+    },
+    {
+      "id": "pet-stage-art",
+      "nodeId": "pet-stage-art",
+      "purpose": "宠物舞台：红色绒面圆台 + 聚光灯 + 香蕉服饰宠物「比比拉布」",
+      "alt": "穿香蕉服饰的棕白花色宠物站在红色圆台上",
+      "crop": { "x": 0, "y": 0.223, "width": 1, "height": 0.439 }
+    }
+  ]
+}
