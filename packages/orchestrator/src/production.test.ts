@@ -84,6 +84,7 @@ const renderFake = (heroX: number): RenderResult => ({
       hero: { x: heroX, y: 0, width: 1440 - heroX, height: 500, parentId: "page", visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0,0,0)", backgroundColor: "rgb(255,255,255)", fontFamily: "Arial", fontSize: "16px", lineHeight: "normal" },
       "hero-title": { x: heroX + 40, y: 40, width: 600, height: 72, parentId: "hero", visible: true, overflowX: "visible", overflowY: "visible", position: "static", zIndex: "auto", color: "rgb(0,0,0)", backgroundColor: "rgba(0,0,0,0)", fontFamily: "Arial", fontSize: "48px", lineHeight: "normal" },
     },
+    texts: { "hero-title": "夏日好物节" },
   }],
 });
 
@@ -166,7 +167,7 @@ describe("runProductionWorkflow", () => {
       url: "http://127.0.0.1/campaign/summer", runtimeErrors: [],
       viewports: [
         renderFake(0).viewports[0]!,
-        { name: "mobile", width: 390, height: 844, screenshotPath: "renders/mobile.png", horizontalOverflow: true, nodes: {} },
+        { name: "mobile", width: 390, height: 844, screenshotPath: "renders/mobile.png", horizontalOverflow: true, nodes: {}, texts: {} },
       ],
     };
     const seenHorizontal: boolean[] = [];
@@ -203,5 +204,28 @@ describe("runProductionWorkflow", () => {
     expect(events.at(-1)?.state).toBe("FAILED");
     // 失败 detail 明确告知自动回滚
     expect(events.at(-1)?.detail).toContain("已自动回滚");
+  });
+
+  it("builds text evidence from spec text nodes + rendered texts so textConsistency becomes available", async () => {
+    const { workspace, artifacts } = await setup();
+    let seenText: { expected: string[]; actual: string[] } | undefined;
+    const events = await collect(runProductionWorkflow({ ...baseInput, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => commandOk("build"),
+      render: async () => renderFake(0),
+      evaluate: async (input) => {
+        seenText = input.text;
+        return { outcome: "passed", metrics: metrics(95), violations: [] };
+      },
+      attribute: () => [],
+    }));
+    expect(seenText).toBeDefined();
+    // spec 里 hero-title 是 text 节点 + content.text；渲染产物 texts 含对应条目 → 两条都非空、对齐
+    expect(seenText!.expected.length).toBeGreaterThan(0);
+    expect(seenText!.actual.length).toBeGreaterThan(0);
+    expect(seenText!.expected).toContain(seenText!.actual[0]);
+    // 终局 COMPLETED（passed）
+    expect(events.at(-1)?.state).toBe("COMPLETED");
   });
 });

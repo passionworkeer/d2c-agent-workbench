@@ -33,6 +33,8 @@ export interface ViewportRender {
   height: number;
   screenshotPath: string;
   nodes: Record<string, NodeGeometry>;
+  /** nodeId → element.textContent.trim()；评测用作文本一致性证据 */
+  texts: Record<string, string>;
   horizontalOverflow: boolean;
 }
 
@@ -91,10 +93,16 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
           color: style.color, backgroundColor: style.backgroundColor, fontFamily: style.fontFamily, fontSize: style.fontSize, lineHeight: style.lineHeight,
         }];
       }))) as Record<string, NodeGeometry>;
+      // 文本证据：每个 d2c 节点的 textContent.trim()，去掉只含空白节点的干扰
+      const texts = await page.locator("[data-d2c-node-id]").evaluateAll((elements) => Object.fromEntries(elements.map((element) => {
+        const htmlElement = element as HTMLElement;
+        const text = htmlElement.textContent?.trim() ?? "";
+        return text ? [htmlElement.dataset.d2cNodeId ?? "", text] : [];
+      }).filter((entry): entry is [string, string] => entry.length === 2))) as Record<string, string>;
       const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
       const screenshotPath = resolve(input.outputDir, `${viewport.name}.png`);
       await page.screenshot({ path: screenshotPath, fullPage: true, animations: "disabled" });
-      renders.push({ ...viewport, screenshotPath, nodes, horizontalOverflow });
+      renders.push({ ...viewport, screenshotPath, nodes, texts, horizontalOverflow });
       await context.close();
     }
   } finally {

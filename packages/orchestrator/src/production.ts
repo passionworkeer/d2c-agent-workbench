@@ -145,6 +145,21 @@ function mergeViolations(groups: ProductionViolation[][]): ProductionViolation[]
   return [...byId.values()];
 }
 
+/** 文本一致性证据：expected = spec 中 role=text 的 content.text，actual = 渲染 DOM 对应节点 textContent
+ *  按 spec 节点顺序对齐；同名节点多出现时取首个，缺则填空串让 textConsistency 真实反映缺漏 */
+function deriveTextEvidence(spec: ActivitySpec, viewports: RenderResult["viewports"]): { expected: string[]; actual: string[] } {
+  const textNodes = spec.nodes.filter((node) => node.role === "text" && typeof node.content?.text === "string");
+  const expected = textNodes.map((node) => node.content!.text as string);
+  const actualTexts = new Map<string, string>();
+  for (const viewport of viewports) {
+    for (const [nodeId, text] of Object.entries(viewport.texts)) {
+      if (!actualTexts.has(nodeId)) actualTexts.set(nodeId, text);
+    }
+  }
+  const actual = textNodes.map((node) => actualTexts.get(node.id) ?? "");
+  return { expected, actual };
+}
+
 interface RoundResult {
   evaluation: ProductionEvaluationReport;
   violations: ProductionViolation[];
@@ -238,7 +253,8 @@ export async function* runProductionWorkflow(
       renderedNodes,
       horizontalOverflow: anyHorizontalOverflow,
       image: comparison,
-      text: input.textEvidence ?? { expected: [], actual: [] },
+      // 文本证据从渲染产物中提取：expected 来自 spec.text 节点，actual 来自渲染 DOM 的 textContent
+      text: input.textEvidence ?? deriveTextEvidence(spec, render.viewports),
       assets: input.assetEvidence ?? [],
       engineering: { ...deriveEngineering(spec, generated.plan), ...input.engineeringOverride },
       sourceMap: generated.sourceMap,
