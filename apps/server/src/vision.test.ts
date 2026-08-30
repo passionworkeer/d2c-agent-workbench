@@ -213,6 +213,25 @@ describe("interpretReferenceImage", () => {
     if (!result.ok) expect(result.code).toBe("VISION_BAD_REQUEST");
   });
 
+  it("system prompt 含「如实记录参考稿事实」约束，禁止识别阶段静默修正违规设计", async () => {
+    // web-design-guidelines 阶段 3 注入：保真优先原则落进识别 prompt，evaluator 规则负责评判
+    const capturedSystem: string[] = [];
+    const fetchImpl = makeFetch(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { system?: string };
+      if (typeof body.system === "string") capturedSystem.push(body.system);
+      return makeToolUseResponse(makeToolUseInput());
+    });
+    await interpretReferenceImage({
+      baseUrl: "https://api.example.com",
+      apiKey: "k",
+      model: "M3",
+      imageDataUrl: TINY_PNG,
+      fetchImpl,
+    });
+    expect(capturedSystem[0]).toContain("如实记录参考稿事实");
+    expect(capturedSystem[0]).toContain("evaluator");
+  });
+
   it("401 → VISION_UNAVAILABLE", async () => {
     const fetchImpl = makeFetch(async () => new Response("Unauthorized", { status: 401 }));
     const result = await interpretReferenceImage({

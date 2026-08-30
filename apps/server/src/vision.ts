@@ -171,6 +171,7 @@ const SYSTEM_PROMPT = [
   "5. mappings 数组为每个 INSTANCE 节点给出一条映射记录，codeComponent 用 PascalCase（如 ProductCard），importPath 用 '@/components/ProductCard' 形式。",
   "6. 文本内容填 content 字段；无法识别的字段宁可省略，不要编造。",
   "7. viewport 用图中推断的画布尺寸；不确定时用 1440x900。",
+  "8. 如实记录参考稿事实：参考稿若存在 10px 字号、浅灰对比度不足、< 44px 点击区、过近文本间距等设计瑕疵，原样写入 spec.tokenValue / padding / size 字段——不要静默「修正」成更合规的值。evaluator 会基于真实产物按 web-design-guidelines 规则（最小字号 / WCAG AA / 点击区 / 间距节奏）产出 violation 作为信号，不在识别阶段擅自美化。",
 ].join("\n");
 
 export async function interpretReferenceImage(request: VisionRequest): Promise<VisionResult> {
