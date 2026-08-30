@@ -2,7 +2,7 @@
 
 一个面向面试演示的、可追踪且可评测的 Design-to-Code 工作台。它把结构化 Figma 资产编译为 UISpec，基于团队设计系统匹配组件与 Design Token，再通过 Build / Eval 双 Agent 工作流完成代码生成、问题归因和自动修复；并支持参考图 / Figma → 设计稿（I2D）、真视觉模型识别、LLM 可选的对话式画布编辑，以及设计稿回写 Figma。
 
-![工作台结构](https://img.shields.io/badge/Figma%20Bundle-%E2%86%92%20UISpec-c8ff38) ![组件匹配](https://img.shields.io/badge/SDS-%E7%BB%84%E4%BB%B6%E8%AF%81%E6%8D%AE-ff6433) ![评测闭环](https://img.shields.io/badge/Eval-72%E2%86%9294-c8ff38) ![LLM](https://img.shields.io/badge/LLM-MiniMax%20M3-ff6433)
+![CI](https://github.com/passionworkeer/d2c-agent-workbench/actions/workflows/ci.yml/badge.svg) ![工作台结构](https://img.shields.io/badge/Figma%20Bundle-%E2%86%92%20UISpec-c8ff38) ![组件匹配](https://img.shields.io/badge/SDS-%E7%BB%84%E4%BB%B6%E8%AF%81%E6%8D%AE-ff6433) ![评测闭环](https://img.shields.io/badge/Eval-72%E2%86%9294-c8ff38) ![LLM](https://img.shields.io/badge/LLM-MiniMax%20M3-ff6433)
 
 ![D2C Agent Workbench 完成态](docs/workbench-completed.png)
 
