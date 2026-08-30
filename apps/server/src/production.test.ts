@@ -90,6 +90,7 @@ const passedReport = {
       colorEffects: 98, colorEffectsAvailable: true,
       assetConsistency: 100, assetConsistencyAvailable: true,
       semanticReview: 92, semanticReviewAvailable: true,
+      designQuality: 100,
     },
     engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 95 },
     visualScore: 93, engineeringScore: 91, finalScore: 92,

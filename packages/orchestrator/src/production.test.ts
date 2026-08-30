@@ -63,6 +63,7 @@ const metrics = (finalScore: number) => productionMetricsSchema.parse({
     colorEffects: 94, colorEffectsAvailable: true,
     assetConsistency: 100, assetConsistencyAvailable: true,
     semanticReview: 90, semanticReviewAvailable: true,
+    designQuality: 95,
   },
   engineering: { buildSuccess: 100, componentReuse: 100, tokenUsage: 50, structuralAbsoluteRatio: 100, hardcodeRatio: 50, responsiveBehavior: 100, semanticHtml: 100, accessibility: 100, codeComplexity: 85 },
   visualScore: finalScore, engineeringScore: finalScore, finalScore,

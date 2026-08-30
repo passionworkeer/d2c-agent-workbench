@@ -102,12 +102,128 @@ describe("evaluateProductionRun", () => {
   });
 
   it("renormalises visual weights to exclude unavailable evidence", () => {
-    // 只保留 layoutGeometry + asset 证据：总分不会因缺 perceptual/text/semantic 而被填 100
+    // 只保留 layoutGeometry + designQuality + asset 证据：总分不会因缺 perceptual/text/semantic 而被填 100
+    // designQuality 0.10 来自 web-design-guidelines 规则化；hero 节点 16px / 黑色文字 / 白底 全合规，扣 0 分
     const { image: _img, text: _text, semanticReviewScore: _sr, ...rest } = baseInput as { image?: unknown; text?: unknown; semanticReviewScore?: number } & typeof baseInput;
     const report = evaluateProductionRun({ ...rest, text: { expected: [], actual: [] }, image: { differentPixels: 0, totalPixels: 0, diffClusters: [] } });
-    const availableWeight = .30 + .10; // layoutGeometry + asset
-    const expected = report.metrics.visual.layoutGeometry * (.30 / availableWeight) + (report.metrics.visual.assetConsistency ?? 0) * (.10 / availableWeight);
+    const availableWeight = .20 + .10 + .10; // layoutGeometry + designQuality + asset
+    const expected = report.metrics.visual.layoutGeometry * (.20 / availableWeight)
+      + (report.metrics.visual.designQuality ?? 0) * (.10 / availableWeight)
+      + (report.metrics.visual.assetConsistency ?? 0) * (.10 / availableWeight);
     expect(report.metrics.visualScore).toBeCloseTo(expected, 1);
+  });
+
+  it("includes designQuality in visual weights when text-like nodes exist", () => {
+    // 默认 baseInput 的 hero 节点有 fontSize 16px / 黑色文字 / 白底 → 4 条规则全合规 → designQuality = 100
+    const report = evaluateProductionRun(baseInput);
+    expect(report.metrics.visual.designQuality).toBe(100);
+    expect(report.violations.some((item) => item.type === "design")).toBe(false);
+  });
+
+  it("returns designQuality=null when no text-like or tiny-component nodes exist", () => {
+    // 全是装饰/容器，无 fontSize 字段 → heuristic 全过滤 → null
+    const { renderedNodes: _omit, ...rest } = baseInput as { renderedNodes?: unknown } & typeof baseInput;
+    void _omit;
+    const report = evaluateProductionRun({
+      ...rest,
+      renderedNodes: {
+        banner: { x: 0, y: 0, width: 390, height: 800, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)", fontFamily: "Arial", fontSize: "", lineHeight: "normal" },
+      },
+    });
+    expect(report.metrics.visual.designQuality).toBeNull();
+  });
+
+  it("flags font-size below 12px as P0 design violation (a11y)", () => {
+    const report = evaluateProductionRun({
+      ...baseInput,
+      renderedNodes: {
+        hero: { ...baseInput.renderedNodes.hero, fontSize: "10px" },
+      },
+    });
+    expect(report.metrics.visual.designQuality).toBeLessThan(100);
+    const v = report.violations.find((item) => item.type === "design" && item.id === "design:font-size:hero");
+    expect(v?.severity).toBe("P0");
+    expect(v?.expected).toEqual({ fontSizePx: 12 });
+    expect(v?.actual).toEqual({ fontSizePx: 10 });
+  });
+
+  it("flags WCAG AA contrast below 4.5:1 as P1 design violation", () => {
+    // 浅灰文字 (rgb(200,200,200)) on 白色背景 → 对比度约 1.6，远低于 4.5
+    const report = evaluateProductionRun({
+      ...baseInput,
+      renderedNodes: {
+        hero: { ...baseInput.renderedNodes.hero, color: "rgb(200, 200, 200)" },
+      },
+    });
+    const v = report.violations.find((item) => item.type === "design" && item.id === "design:contrast:hero");
+    expect(v?.severity).toBe("P1");
+    const actual = v?.actual as { contrastRatio: number };
+    expect(actual.contrastRatio).toBeLessThan(4.5);
+  });
+
+  it("flags tap target below 44x44 px as P1 design violation", () => {
+    const report = evaluateProductionRun({
+      ...baseInput,
+      renderedNodes: {
+        // 小图标：no fontSize (heuristic 跳过文本)，width/height = 24x24
+        icon: { x: 0, y: 0, width: 24, height: 24, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgba(0, 0, 0, 0)", fontFamily: "Arial", fontSize: "", lineHeight: "normal" },
+      },
+    });
+    const v = report.violations.find((item) => item.type === "design" && item.id === "design:tap-target:icon");
+    expect(v?.severity).toBe("P1");
+    expect(v?.expected).toEqual({ width: 44, height: 44 });
+    expect(v?.actual).toEqual({ width: 24, height: 24 });
+  });
+
+  it("flags overlapping vertical spacing between adjacent text nodes as P2", () => {
+    // 两个文本节点 y 紧贴且 x 有重叠 → 间距节奏违规
+    const report = evaluateProductionRun({
+      ...baseInput,
+      renderedNodes: {
+        label1: { x: 20, y: 100, width: 100, height: 14, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)", fontFamily: "Arial", fontSize: "12px", lineHeight: "normal" },
+        label2: { x: 20, y: 112, width: 100, height: 14, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)", fontFamily: "Arial", fontSize: "12px", lineHeight: "normal" },
+      },
+    });
+    expect(report.violations.some((item) => item.type === "design" && item.id.startsWith("design:spacing:"))).toBe(true);
+  });
+
+  it("design violations do not auto-block passed when only P2 spacing issues exist", () => {
+    // 仅 P2 间距违规不应阻止 passed（P0/P1 才是硬门槛）。
+    // 用全新 fixture 避免 baseInput 的 hero referenceNode 与 label1/label2 错配产生额外 P1 layout violation
+    const labelSourceMap: D2CSourceMap = {
+      version: "1.0",
+      locators: [
+        { nodeId: "label1", file: "src/pages/x/X.tsx", styleFile: "src/pages/x/X.module.css", styleSelector: ".l1" },
+        { nodeId: "label2", file: "src/pages/x/X.tsx", styleFile: "src/pages/x/X.module.css", styleSelector: ".l2" },
+      ],
+    };
+    const report = evaluateProductionRun({
+      build: { exitCode: 0, runtimeErrors: [] },
+      referenceNodes: {
+        label1: { x: 20, y: 100, width: 100, height: 14 },
+        label2: { x: 20, y: 112, width: 100, height: 14 },
+      },
+      renderedNodes: {
+        label1: { x: 20, y: 100, width: 100, height: 14, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)", fontFamily: "Arial", fontSize: "12px", lineHeight: "normal" },
+        label2: { x: 20, y: 112, width: 100, height: 14, visible: true, overflowX: "visible", overflowY: "visible", position: "relative", zIndex: "auto", color: "rgb(0, 0, 0)", backgroundColor: "rgb(255, 255, 255)", fontFamily: "Arial", fontSize: "12px", lineHeight: "normal" },
+      },
+      horizontalOverflow: false,
+      image: { differentPixels: 100, totalPixels: 100_000, diffClusters: [{ left: 0, top: 0, right: 200, bottom: 200 }] },
+      text: { expected: ["a", "b"], actual: ["a", "b"] },
+      assets: [{ id: "x", pHashDistance: 0 }],
+      engineering: {
+        reusableNodes: 2, reusedNodes: 2, tokenizableValues: 0, tokenValues: 0,
+        structuralNodes: 0, structuralAbsoluteNodes: 0, hardcodedValues: 0,
+        semanticNodeRatio: 1, accessibleNodeRatio: 1, complexityScore: 100,
+      },
+      sourceMap: labelSourceMap,
+      semanticReviewScore: 95,
+      acceptance: { pass: 50, needsReview: 40 },
+    });
+    const designViolations = report.violations.filter((item) => item.type === "design");
+    expect(designViolations.length).toBeGreaterThan(0);
+    expect(designViolations.every((item) => item.severity === "P2")).toBe(true);
+    expect(report.outcome).toBe("passed");
   });
 });
 

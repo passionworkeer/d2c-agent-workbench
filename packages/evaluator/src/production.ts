@@ -8,6 +8,7 @@ import {
   type ProductionViolation,
   type Rect,
 } from "@d2c/contracts";
+import { evaluateDesignQuality } from "./design-quality.js";
 
 export interface RenderedNode extends Rect {
   parentId?: string | null;
@@ -170,6 +171,9 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
   const semanticReview = semanticAvailable ? clamp(input.semanticReviewScore ?? 90) : null;
   // colorEffects 来自 perceptualDiff + layoutGeometry；perceptual 缺证据时该指标亦缺
   const colorEffects = perceptualAvailable ? clamp(((perceptualDiff ?? 0) + geometry.score) / 2) : null;
+  // 设计质量：Playwright 已采集 fontSize/color/backgroundColor/geometry；evaluator 按规则评判
+  // 最小字号 / WCAG AA 对比度 / 44×44 点击区域 / 间距节奏。无文本/小组件节点时记 null
+  const designQualityReport = evaluateDesignQuality({ renderedNodes: input.renderedNodes, sourceMap: input.sourceMap });
   const visual = {
     layoutGeometry: geometry.score,
     perceptualDiff,
@@ -182,6 +186,7 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
     assetConsistencyAvailable: assetAvailable,
     semanticReview,
     semanticReviewAvailable: semanticAvailable,
+    designQuality: designQualityReport.score,
   };
   const engineering = {
     buildSuccess: input.build.exitCode === 0 && input.build.runtimeErrors.length === 0 ? 100 : 0,
@@ -194,8 +199,11 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
     accessibility: clamp(input.engineering.accessibleNodeRatio * 100),
     codeComplexity: clamp(input.engineering.complexityScore),
   };
-  // 视觉分数：layoutGeometry 始终有证据，其余按 available 归一化权重
-  const visualWeights: Array<{ score: number; weight: number }> = [{ score: visual.layoutGeometry, weight: .30 }];
+  // 视觉分数：layoutGeometry 始终有证据，其余按 available 归一化权重；
+  // designQuality 也始终来自 Playwright 渲染产物（heuristic 全空时记 null 不参与平均）。
+  // layoutGeometry 权重从 0.30 降至 0.20，让出 0.10 给 designQuality（web-design-guidelines 规则化）。
+  const visualWeights: Array<{ score: number; weight: number }> = [{ score: visual.layoutGeometry, weight: .20 }];
+  if (visual.designQuality !== null) visualWeights.push({ score: visual.designQuality, weight: .10 });
   if (visual.perceptualDiffAvailable && visual.perceptualDiff !== null) visualWeights.push({ score: visual.perceptualDiff, weight: .25 });
   if (visual.textConsistencyAvailable && visual.textConsistency !== null) visualWeights.push({ score: visual.textConsistency, weight: .15 });
   if (visual.colorEffectsAvailable && visual.colorEffects !== null) visualWeights.push({ score: visual.colorEffects, weight: .10 });
@@ -222,6 +230,9 @@ export function evaluateProductionRun(input: ProductionEvaluationInput): Product
   if (!semanticAvailable) violations.push(makeViolation({ id: "evidence:semantic-review-missing", severity: "P1", type: "build", nodeIds: [], sourceLocators: [], expected: { semanticReviewScore: "provided" }, actual: { semanticReviewScore: "missing" }, suggestedAction: "在服务端可信适配器中接入 VLM 语义评审；不要接受客户端注入分数" }));
   if (textAvailable && textConsistency !== null && textConsistency < 100) violations.push(makeViolation({ id: "text:consistency", severity: "P1", type: "text", nodeIds: [], sourceLocators: [], expected: input.text.expected, actual: input.text.actual, suggestedAction: "以 PRD 文本为准修正内容和换行" }));
   if (assetAvailable && assetConsistency !== null && assetConsistency < 90) violations.push(makeViolation({ id: "asset:phash", severity: "P2", type: "asset", nodeIds: [], sourceLocators: [], expected: { pHashDistance: 0 }, actual: input.assets, suggestedAction: "替换素材或修正裁切位置" }));
+  // 设计质量 violation（来自 web-design-guidelines 规则化）：作为信号产出，
+  // 不进入 planTargetedRepair（只处理 layout），与 VLM issues[] 一致：识别后告知，但不强制自动修复
+  violations.push(...designQualityReport.violations);
   const hasP0 = violations.some((item) => item.severity === "P0");
   const hasP1 = violations.some((item) => item.severity === "P1");
   // 门槛只影响 outcome 判定，不修改分数；P0/P1 硬门槛不随验收门槛放松
