@@ -1,10 +1,26 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { zipSync } from "fflate";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
 
 const fixtureRoot = join(process.cwd(), "..", "..", "examples", "figma-bundles", "product-grid");
+
+// 测试实例统一用临时 dataRoot，不碰真实 <cwd>/.data/production——
+// 否则真实目录里有遗留孤儿工作区时，buildApp 启动清理会拖慢整机 IO
+// 把无关测试拖过超时线（会话后首跑必抖的根因）。
+let testRoot = "";
+beforeAll(async () => {
+  testRoot = await mkdtemp(join(tmpdir(), "d2c-app-"));
+});
+afterAll(async () => {
+  if (testRoot) await rm(testRoot, { recursive: true, force: true });
+});
+function buildTestApp() {
+  return buildApp({ replayDelayMs: 0, production: { dataRoot: testRoot } });
+}
 
 function buildDemoZip(): Buffer {
   const entries: Record<string, [Uint8Array, { level: 0 }]> = {};
@@ -36,7 +52,7 @@ function multipartPayload(zip: Buffer, fileName: string) {
 
 describe("D2C server", () => {
   it("reports health and registry size", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const response = await app.inject({ method: "GET", url: "/api/health" });
 
     expect(response.statusCode).toBe(200);
@@ -45,7 +61,7 @@ describe("D2C server", () => {
   });
 
   it("?scan=dynamic 实时扫描 sample-design-system 返回动态 registry 大小", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const response = await app.inject({ method: "GET", url: "/api/health?scan=dynamic" });
 
     expect(response.statusCode).toBe(200);
@@ -56,7 +72,7 @@ describe("D2C server", () => {
   });
 
   it("creates and completes a demo run", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const created = await app.inject({ method: "POST", url: "/api/runs/demo" });
     const { runId } = created.json<{ runId: string }>();
 
@@ -81,7 +97,7 @@ describe("D2C server", () => {
   });
 
   it("returns a stable error for an unknown run", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const response = await app.inject({ method: "GET", url: "/api/runs/missing" });
 
     expect(response.statusCode).toBe(404);
@@ -90,7 +106,7 @@ describe("D2C server", () => {
   });
 
   it("accepts a real figma bundle upload and runs it", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const { headers, payload } = multipartPayload(buildDemoZip(), "product-grid.zip");
     const created = await app.inject({
       method: "POST",
@@ -113,7 +129,7 @@ describe("D2C server", () => {
   });
 
   it("rejects a non-zip upload with a stable Chinese error", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const { headers, payload } = multipartPayload(Buffer.from("not a zip"), "broken.zip");
     const response = await app.inject({
       method: "POST",
@@ -131,7 +147,7 @@ describe("D2C server", () => {
   });
 
   it("rejects an upload missing the file part", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const boundary = "----test-boundary-1234";
     const body = Buffer.from(`--${boundary}--\r\n`, "utf8");
     const response = await app.inject({
@@ -148,7 +164,7 @@ describe("D2C server", () => {
   });
 
   it("rejects a non-multipart upload", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/runs/upload",
@@ -165,7 +181,7 @@ describe("D2C server", () => {
   });
 
   it("streams events to an SSE subscriber and closes the connection on terminal state", async () => {
-    const app = buildApp({ replayDelayMs: 0 });
+    const app = buildTestApp();
     const created = await app.inject({ method: "POST", url: "/api/runs/demo" });
     const { runId } = created.json<{ runId: string }>();
 
