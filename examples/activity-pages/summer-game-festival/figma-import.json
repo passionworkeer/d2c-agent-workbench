@@ -13,6 +13,16 @@
       "y": 0,
       "width": 390,
       "height": 823,
+      "fills": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 28,
+            "g": 16,
+            "b": 56
+          }
+        }
+      ],
       "children": [
         {
           "type": "FRAME",
@@ -45,7 +55,7 @@
                 "x": 0,
                 "y": 0,
                 "width": 1,
-                "height": 0.3572296476306197
+                "height": 0.35714285714285715
               },
               "pluginData": {
                 "d2cNodeId": "festival-hero-art"
@@ -70,10 +80,10 @@
                 "rationale": "立体金字效果复杂，整块裁切（原图 38-567 × 378-724）"
               },
               "imageCrop": {
-                "x": 0.03076923076923077,
-                "y": 0.1421628189550425,
-                "width": 0.4205128205128205,
-                "height": 0.13001215066828675
+                "x": 0.03015873015873016,
+                "y": 0.14210526315789473,
+                "width": 0.41984126984126985,
+                "height": 0.13007518796992482
               },
               "pluginData": {
                 "d2cNodeId": "festival-hero-title"
@@ -87,6 +97,25 @@
               "y": 96,
               "width": 64,
               "height": 16,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 12,
+                    "g": 6,
+                    "b": 32
+                  },
+                  "opacity": 0.8
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 215,
+                    "b": 106
+                  }
+                }
+              ],
               "characters": "7.1-8.31",
               "fontSize": 11,
               "fontWeight": 600,
@@ -106,6 +135,17 @@
               "y": 9,
               "width": 160,
               "height": 22,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 94,
+                    "g": 72,
+                    "b": 204
+                  },
+                  "opacity": 0.85
+                }
+              ],
               "children": [
                 {
                   "type": "TEXT",
@@ -115,6 +155,16 @@
                   "y": 13,
                   "width": 140,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "我的星钻： 0",
                   "fontSize": 11,
                   "layout": {
@@ -142,6 +192,17 @@
               "y": 52,
               "width": 44,
               "height": 44,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 18,
+                    "g": 10,
+                    "b": 44
+                  },
+                  "opacity": 0.62
+                }
+              ],
               "children": [
                 {
                   "type": "TEXT",
@@ -151,6 +212,16 @@
                   "y": 66,
                   "width": 28,
                   "height": 16,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "规则",
                   "fontSize": 12,
                   "layout": {
@@ -178,6 +249,17 @@
               "y": 104,
               "width": 44,
               "height": 44,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 18,
+                    "g": 10,
+                    "b": 44
+                  },
+                  "opacity": 0.62
+                }
+              ],
               "children": [
                 {
                   "type": "TEXT",
@@ -187,6 +269,16 @@
                   "y": 118,
                   "width": 28,
                   "height": 16,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "背包",
                   "fontSize": 12,
                   "layout": {
@@ -232,6 +324,16 @@
               "y": 281,
               "width": 180,
               "height": 20,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "超自然行动组 · 福利专场",
               "fontSize": 15,
               "fontWeight": 700,
@@ -251,6 +353,16 @@
               "y": 282,
               "width": 88,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "50 : 41 : 12",
               "fontSize": 13,
               "fontWeight": 700,
@@ -270,6 +382,16 @@
               "y": 283,
               "width": 62,
               "height": 16,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "专场日历 ›",
               "fontSize": 12,
               "layout": {
@@ -304,6 +426,17 @@
           "y": 318,
           "width": 374,
           "height": 116,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 38,
+                "g": 22,
+                "b": 86
+              },
+              "opacity": 0.92
+            }
+          ],
           "children": [
             {
               "type": "FRAME",
@@ -322,6 +455,16 @@
                   "y": 332,
                   "width": 210,
                   "height": 18,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "下载安装「超自然行动组」",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -341,6 +484,16 @@
                   "y": 354,
                   "width": 180,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 185,
+                        "g": 168,
+                        "b": 232
+                      }
+                    }
+                  ],
                   "characters": "完成后，我+200 ✦",
                   "fontSize": 11,
                   "layout": {
@@ -359,6 +512,16 @@
                   "y": 336,
                   "width": 66,
                   "height": 28,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 58,
+                        "g": 36,
+                        "b": 112
+                      }
+                    }
+                  ],
                   "characters": "去下载",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -398,6 +561,16 @@
                   "y": 390,
                   "width": 210,
                   "height": 18,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "关注 @AT-瑶瑶🎀（超自然行动组）",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -417,6 +590,16 @@
                   "y": 412,
                   "width": 180,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 185,
+                        "g": 168,
+                        "b": 232
+                      }
+                    }
+                  ],
                   "characters": "完成+50 ✦",
                   "fontSize": 11,
                   "layout": {
@@ -435,6 +618,16 @@
                   "y": 392,
                   "width": 66,
                   "height": 28,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 58,
+                        "g": 36,
+                        "b": 112
+                      }
+                    }
+                  ],
                   "characters": "去关注",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -482,6 +675,17 @@
           "y": 438,
           "width": 374,
           "height": 72,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 38,
+                "g": 22,
+                "b": 86
+              },
+              "opacity": 0.92
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -491,6 +695,16 @@
               "y": 444,
               "width": 170,
               "height": 16,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "超自然行动组专属福利",
               "fontSize": 13,
               "fontWeight": 700,
@@ -510,6 +724,16 @@
               "y": 445,
               "width": 52,
               "height": 14,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 215,
+                    "b": 106
+                  }
+                }
+              ],
               "characters": "立即兑换 ›",
               "fontSize": 12,
               "layout": {
@@ -537,6 +761,16 @@
                   "y": 488,
                   "width": 81,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 230,
+                        "g": 220,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "随机7天舞蹈礼包",
                   "fontSize": 10,
                   "layout": {
@@ -575,6 +809,16 @@
                   "y": 488,
                   "width": 81,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 230,
+                        "g": 220,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "铲铲币20000",
                   "fontSize": 10,
                   "layout": {
@@ -613,6 +857,16 @@
                   "y": 488,
                   "width": 81,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 230,
+                        "g": 220,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "灵契100",
                   "fontSize": 10,
                   "layout": {
@@ -651,6 +905,16 @@
                   "y": 488,
                   "width": 81,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 230,
+                        "g": 220,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "小快头套",
                   "fontSize": 10,
                   "layout": {
@@ -697,6 +961,17 @@
           "y": 514,
           "width": 374,
           "height": 66,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 38,
+                "g": 22,
+                "b": 86
+              },
+              "opacity": 0.92
+            }
+          ],
           "children": [
             {
               "type": "FRAME",
@@ -715,6 +990,16 @@
                   "y": 530,
                   "width": 70,
                   "height": 16,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "现金红包",
                   "fontSize": 13,
                   "fontWeight": 700,
@@ -734,6 +1019,16 @@
                   "y": 550,
                   "width": 90,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 216,
+                        "g": 201,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "兑换可得现金",
                   "fontSize": 10,
                   "layout": {
@@ -752,6 +1047,16 @@
                   "y": 536,
                   "width": 44,
                   "height": 22,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "兑奖",
                   "fontSize": 11,
                   "fontWeight": 700,
@@ -796,6 +1101,16 @@
                   "y": 530,
                   "width": 80,
                   "height": 16,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "星钻抽大奖",
                   "fontSize": 13,
                   "fontWeight": 700,
@@ -815,6 +1130,16 @@
                   "y": 550,
                   "width": 100,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 216,
+                        "g": 201,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "有机会赢iPhone",
                   "fontSize": 10,
                   "layout": {
@@ -866,6 +1191,17 @@
           "y": 586,
           "width": 374,
           "height": 158,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 38,
+                "g": 22,
+                "b": 86
+              },
+              "opacity": 0.92
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -875,6 +1211,16 @@
               "y": 592,
               "width": 110,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "做任务赢星钻",
               "fontSize": 14,
               "fontWeight": 700,
@@ -894,6 +1240,16 @@
               "y": 596,
               "width": 164,
               "height": 12,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 143,
+                    "g": 127,
+                    "b": 192
+                  }
+                }
+              ],
               "characters": "任务每日24:00刷新，部分奖励可能延迟",
               "fontSize": 9,
               "layout": {
@@ -912,6 +1268,16 @@
               "y": 671,
               "width": 72,
               "height": 14,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 230,
+                    "g": 220,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "我的任务",
               "fontSize": 12,
               "fontWeight": 600,
@@ -940,6 +1306,16 @@
                   "y": 700,
                   "width": 150,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "发布作品",
                   "fontSize": 14,
                   "fontWeight": 600,
@@ -959,6 +1335,16 @@
                   "y": 716,
                   "width": 120,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 185,
+                        "g": 168,
+                        "b": 232
+                      }
+                    }
+                  ],
                   "characters": "+50 星钻",
                   "fontSize": 11,
                   "layout": {
@@ -977,6 +1363,16 @@
                   "y": 706,
                   "width": 80,
                   "height": 35,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 58,
+                        "g": 36,
+                        "b": 112
+                      }
+                    }
+                  ],
                   "characters": "去发布",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -1024,6 +1420,16 @@
           "y": 761,
           "width": 390,
           "height": 62,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 34,
+                "g": 18,
+                "b": 70
+              }
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -1033,6 +1439,16 @@
               "y": 774,
               "width": 160,
               "height": 36,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "做任务得星钻",
               "fontSize": 13,
               "fontWeight": 700,
@@ -1052,6 +1468,24 @@
               "y": 774,
               "width": 160,
               "height": 36,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 44,
+                    "g": 42,
+                    "b": 102
+                  }
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 203,
+                    "g": 191,
+                    "b": 236
+                  }
+                }
+              ],
               "characters": "主播排行榜",
               "fontSize": 13,
               "layout": {

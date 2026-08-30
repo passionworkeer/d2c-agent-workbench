@@ -13,6 +13,16 @@
       "y": 0,
       "width": 390,
       "height": 819,
+      "fills": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 92,
+            "g": 21,
+            "b": 3
+          }
+        }
+      ],
       "children": [
         {
           "type": "FRAME",
@@ -31,6 +41,16 @@
               "y": 9,
               "width": 53,
               "height": 24,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 200,
+                    "b": 32
+                  }
+                }
+              ],
               "characters": "养萌宠",
               "fontSize": 15,
               "fontWeight": 700,
@@ -50,6 +70,16 @@
               "y": 11,
               "width": 31,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 244,
+                    "b": 234
+                  }
+                }
+              ],
               "characters": "关注",
               "fontSize": 14,
               "layout": {
@@ -68,6 +98,16 @@
               "y": 11,
               "width": 32,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 244,
+                    "b": 234
+                  }
+                }
+              ],
               "characters": "商城",
               "fontSize": 14,
               "layout": {
@@ -86,6 +126,16 @@
               "y": 11,
               "width": 32,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 244,
+                    "b": 234
+                  }
+                }
+              ],
               "characters": "发现",
               "fontSize": 14,
               "layout": {
@@ -104,6 +154,16 @@
               "y": 11,
               "width": 31,
               "height": 18,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 244,
+                    "b": 234
+                  }
+                }
+              ],
               "characters": "同城",
               "fontSize": 14,
               "layout": {
@@ -158,10 +218,10 @@
                 "rationale": "快手 logo 行 + 橙红渐变立体字整块裁切（原图 215-1035 × 165-370）"
               },
               "imageCrop": {
-                "x": 0.1717948717948718,
-                "y": 0.06227106227106227,
-                "width": 0.6512820512820513,
-                "height": 0.07692307692307693
+                "x": 0.17063492063492064,
+                "y": 0.062381852551984876,
+                "width": 0.6507936507936508,
+                "height": 0.07750472589792061
               },
               "pluginData": {
                 "d2cNodeId": "pet-hero-title"
@@ -175,6 +235,17 @@
               "y": 119,
               "width": 283,
               "height": 22,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 70,
+                    "g": 14,
+                    "b": 2
+                  },
+                  "opacity": 0.9
+                }
+              ],
               "children": [
                 {
                   "type": "TEXT",
@@ -184,6 +255,16 @@
                   "y": 123,
                   "width": 271,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 233,
+                        "b": 200
+                      }
+                    }
+                  ],
                   "characters": "活动时间结束后，宠物玩法即将焕新回归",
                   "fontSize": 10,
                   "layout": {
@@ -211,6 +292,25 @@
               "y": 53,
               "width": 34,
               "height": 33,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0
+                  },
+                  "opacity": 0.32
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "分享",
               "fontSize": 10,
               "layout": {
@@ -229,6 +329,25 @@
               "y": 102,
               "width": 34,
               "height": 34,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 0,
+                    "g": 0,
+                    "b": 0
+                  },
+                  "opacity": 0.32
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "钱包",
               "fontSize": 10,
               "layout": {
@@ -256,6 +375,16 @@
           "y": 144,
           "width": 349,
           "height": 90,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              }
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -265,6 +394,16 @@
               "y": 150,
               "width": 160,
               "height": 14,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 43,
+                    "g": 43,
+                    "b": 51
+                  }
+                }
+              ],
               "characters": "再升4级，开惊喜礼盒",
               "fontSize": 13,
               "fontWeight": 700,
@@ -284,6 +423,16 @@
               "y": 181,
               "width": 46,
               "height": 17,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 224,
+                    "g": 32,
+                    "b": 32
+                  }
+                }
+              ],
               "characters": "0.10元",
               "fontSize": 16,
               "fontWeight": 800,
@@ -303,6 +452,16 @@
               "y": 197,
               "width": 43,
               "height": 14,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "累计收入 ›",
               "fontSize": 10,
               "layout": {
@@ -321,6 +480,16 @@
               "y": 212,
               "width": 16,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 224,
+                    "g": 32,
+                    "b": 32
+                  }
+                }
+              ],
               "characters": "1级",
               "fontSize": 10,
               "fontWeight": 700,
@@ -340,6 +509,16 @@
               "y": 212,
               "width": 14,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "5级",
               "fontSize": 10,
               "layout": {
@@ -358,6 +537,16 @@
               "y": 212,
               "width": 18,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "10级",
               "fontSize": 10,
               "layout": {
@@ -376,6 +565,16 @@
               "y": 212,
               "width": 18,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "15级",
               "fontSize": 10,
               "layout": {
@@ -394,6 +593,16 @@
               "y": 212,
               "width": 20,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "20级",
               "fontSize": 10,
               "layout": {
@@ -412,6 +621,16 @@
               "y": 212,
               "width": 20,
               "height": 9,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 156,
+                    "g": 156,
+                    "b": 166
+                  }
+                }
+              ],
               "characters": "55级",
               "fontSize": 10,
               "layout": {
@@ -430,6 +649,24 @@
               "y": 186,
               "width": 37,
               "height": 23,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 224,
+                    "g": 32,
+                    "b": 32
+                  }
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "88元",
               "fontSize": 10,
               "fontWeight": 800,
@@ -487,9 +724,9 @@
               },
               "imageCrop": {
                 "x": 0,
-                "y": 0.2869352869352869,
+                "y": 0.28733459357277885,
                 "width": 1,
-                "height": 0.3516483516483517
+                "height": 0.3516068052930057
               },
               "pluginData": {
                 "d2cNodeId": "pet-stage-art"
@@ -503,6 +740,16 @@
               "y": 532,
               "width": 42,
               "height": 11,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 60,
+                    "g": 32,
+                    "b": 0
+                  }
+                }
+              ],
               "characters": "比比拉布",
               "fontSize": 11,
               "fontWeight": 700,
@@ -522,6 +769,24 @@
               "y": 532,
               "width": 22,
               "height": 14,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 133,
+                    "b": 52
+                  }
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
               "characters": "Lv.1",
               "fontSize": 10,
               "fontWeight": 700,
@@ -541,6 +806,24 @@
               "y": 549,
               "width": 101,
               "height": 13,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                },
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 60,
+                    "g": 32,
+                    "b": 0
+                  }
+                }
+              ],
               "characters": "喂食必得装扮",
               "fontSize": 9,
               "layout": {
@@ -568,6 +851,16 @@
                   "y": 282,
                   "width": 46,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "每日签到",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -605,6 +898,16 @@
                   "y": 285,
                   "width": 44,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "超级夏晚",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -642,6 +945,16 @@
                   "y": 334,
                   "width": 51,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "18级领取",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -679,6 +992,16 @@
                   "y": 352,
                   "width": 52,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "我的衣橱",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -716,6 +1039,16 @@
                   "y": 398,
                   "width": 50,
                   "height": 12,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 92,
+                        "g": 58,
+                        "b": 0
+                      }
+                    }
+                  ],
                   "characters": "点击领取",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -753,6 +1086,16 @@
                   "y": 404,
                   "width": 48,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 166,
+                        "g": 58,
+                        "b": 140
+                      }
+                    }
+                  ],
                   "characters": "惊喜？",
                   "fontSize": 11,
                   "fontWeight": 700,
@@ -772,6 +1115,24 @@
                   "y": 434,
                   "width": 48,
                   "height": 18,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 25,
+                        "g": 169,
+                        "b": 116
+                      }
+                    },
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "赢现金",
                   "fontSize": 10,
                   "fontWeight": 700,
@@ -818,6 +1179,24 @@
                       "y": 568,
                       "width": 58,
                       "height": 12,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 25,
+                            "g": 169,
+                            "b": 116
+                          }
+                        },
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
                       "characters": "再赢88元",
                       "fontSize": 10,
                       "fontWeight": 700,
@@ -837,6 +1216,24 @@
                       "y": 582,
                       "width": 58,
                       "height": 18,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 99,
+                            "b": 25
+                          }
+                        },
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
                       "characters": "去PK",
                       "fontSize": 11,
                       "fontWeight": 700,
@@ -876,6 +1273,16 @@
                       "y": 565,
                       "width": 134,
                       "height": 13,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
                       "characters": "首次喂食免费",
                       "fontSize": 13,
                       "fontWeight": 800,
@@ -895,6 +1302,16 @@
                       "y": 581,
                       "width": 86,
                       "height": 11,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 233,
+                            "b": 200
+                          }
+                        }
+                      ],
                       "characters": "剩余 0 能量",
                       "fontSize": 10,
                       "layout": {
@@ -924,6 +1341,16 @@
                   "y": 562,
                   "width": 80,
                   "height": 32,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 99,
+                        "b": 25
+                      }
+                    }
+                  ],
                   "children": [
                     {
                       "type": "TEXT",
@@ -933,6 +1360,16 @@
                       "y": 571,
                       "width": 48,
                       "height": 14,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
                       "characters": "赚能量",
                       "fontSize": 13,
                       "fontWeight": 700,
@@ -980,6 +1417,16 @@
           "y": 604,
           "width": 390,
           "height": 156,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 245,
+                "g": 232,
+                "b": 184
+              }
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -989,6 +1436,16 @@
               "y": 612,
               "width": 110,
               "height": 15,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 74,
+                    "g": 44,
+                    "b": 10
+                  }
+                }
+              ],
               "characters": "做任务赚食物能量",
               "fontSize": 14,
               "fontWeight": 800,
@@ -1008,6 +1465,16 @@
               "y": 614,
               "width": 52,
               "height": 12,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 138,
+                    "g": 106,
+                    "b": 58
+                  }
+                }
+              ],
               "characters": "全部 ›",
               "fontSize": 10,
               "layout": {
@@ -1035,6 +1502,16 @@
                   "y": 641,
                   "width": 110,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 74,
+                        "g": 44,
+                        "b": 10
+                      }
+                    }
+                  ],
                   "characters": "每日喂食",
                   "fontSize": 13,
                   "fontWeight": 600,
@@ -1054,6 +1531,16 @@
                   "y": 657,
                   "width": 110,
                   "height": 11,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 138,
+                        "g": 106,
+                        "b": 58
+                      }
+                    }
+                  ],
                   "characters": "+10 能量",
                   "fontSize": 11,
                   "layout": {
@@ -1072,6 +1559,24 @@
                   "y": 641,
                   "width": 64,
                   "height": 26,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 99,
+                        "b": 25
+                      }
+                    },
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -1111,6 +1616,16 @@
                   "y": 685,
                   "width": 110,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 74,
+                        "g": 44,
+                        "b": 10
+                      }
+                    }
+                  ],
                   "characters": "观看视频",
                   "fontSize": 13,
                   "fontWeight": 600,
@@ -1130,6 +1645,16 @@
                   "y": 701,
                   "width": 110,
                   "height": 11,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 138,
+                        "g": 106,
+                        "b": 58
+                      }
+                    }
+                  ],
                   "characters": "+5 能量",
                   "fontSize": 11,
                   "layout": {
@@ -1148,6 +1673,24 @@
                   "y": 685,
                   "width": 64,
                   "height": 26,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 99,
+                        "b": 25
+                      }
+                    },
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -1187,6 +1730,16 @@
                   "y": 726,
                   "width": 110,
                   "height": 14,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 74,
+                        "g": 44,
+                        "b": 10
+                      }
+                    }
+                  ],
                   "characters": "分享活动页",
                   "fontSize": 13,
                   "fontWeight": 600,
@@ -1206,6 +1759,16 @@
                   "y": 742,
                   "width": 110,
                   "height": 11,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 138,
+                        "g": 106,
+                        "b": 58
+                      }
+                    }
+                  ],
                   "characters": "+15 能量",
                   "fontSize": 11,
                   "layout": {
@@ -1224,6 +1787,24 @@
                   "y": 726,
                   "width": 64,
                   "height": 26,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 99,
+                        "b": 25
+                      }
+                    },
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
@@ -1271,6 +1852,16 @@
           "y": 766,
           "width": 390,
           "height": 53,
+          "fills": [
+            {
+              "type": "SOLID",
+              "color": {
+                "r": 255,
+                "g": 255,
+                "b": 255
+              }
+            }
+          ],
           "children": [
             {
               "type": "TEXT",
@@ -1280,6 +1871,16 @@
               "y": 772,
               "width": 50,
               "height": 40,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 23,
+                    "g": 24,
+                    "b": 31
+                  }
+                }
+              ],
               "characters": "首页",
               "fontSize": 10,
               "layout": {
@@ -1299,6 +1900,16 @@
               "y": 772,
               "width": 50,
               "height": 40,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 107,
+                    "g": 109,
+                    "b": 117
+                  }
+                }
+              ],
               "characters": "精选",
               "fontSize": 10,
               "layout": {
@@ -1318,6 +1929,16 @@
               "y": 772,
               "width": 50,
               "height": 40,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 107,
+                    "g": 109,
+                    "b": 117
+                  }
+                }
+              ],
               "characters": "消息",
               "fontSize": 10,
               "layout": {
@@ -1337,6 +1958,16 @@
               "y": 772,
               "width": 50,
               "height": 40,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 107,
+                    "g": 109,
+                    "b": 117
+                  }
+                }
+              ],
               "characters": "我",
               "fontSize": 10,
               "layout": {

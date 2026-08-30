@@ -110,4 +110,88 @@ describe("buildFigmaImportBundle", () => {
     // spec.assets 有 id 但没有嵌入数据 → 同样拒绝（自包含包不允许断链）
     expect(() => buildFigmaImportBundle(spec, renderedDocument, [])).toThrow(/reference/);
   });
+
+  it("derives image crop from spec evidence region divided by parsed atlas dimensions", () => {
+    // 合成最小 JPEG 头（SOI + SOF0 声明 1260×2800）→ jpegDimensions 解析出真实图集尺寸；
+    // 节点 evidence.region {18,890,604,607} ÷ {1260,2800} 即真实商品图裁切
+    const syntheticJpeg = (width: number, height: number): string => {
+      const bytes = new Uint8Array([
+        0xff, 0xd8, // SOI
+        0xff, 0xc0, // SOF0
+        0x00, 0x09, // length = 9
+        0x08, // precision = 8
+        (height >> 8) & 0xff, height & 0xff, // height BE
+        (width >> 8) & 0xff, width & 0xff, // width BE
+        0x01, 0x01, 0x11, 0x00, // Nf=1, component 1
+      ]);
+      let binary = "";
+      for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]!);
+      return (globalThis as { btoa: (s: string) => string }).btoa(binary);
+    };
+    const withRegion: ActivitySpec = activitySpecSchema.parse({
+      ...spec,
+      assets: [{ id: "hero-art", path: "reference", mimeType: "image/jpeg", evidence: [{ type: "asset", sourceId: "manifest", region: { x: 18, y: 890, width: 604, height: 607 }, observation: "心相印抽纸商品图", confidence: 0.8 }] }],
+    });
+    const bundle = buildFigmaImportBundle(withRegion, renderedDocument, [
+      { id: "reference", path: "reference", mimeType: "image/jpeg", data: syntheticJpeg(1260, 2800) },
+    ]);
+    const image = findNode(bundle.nodes, "hero-art");
+    expect(image?.imageCrop?.x).toBeCloseTo(18 / 1260, 4);
+    expect(image?.imageCrop?.y).toBeCloseTo(890 / 2800, 4);
+    expect(image?.imageCrop?.width).toBeCloseTo(604 / 1260, 4);
+    expect(image?.imageCrop?.height).toBeCloseTo(607 / 2800, 4);
+  });
+
+  it("falls back to spec visual color and background when no render evidence is available", () => {
+    // 闭环前导出（rendered={}）也必须有填色，否则页是全白：实测 → spec.visual 兜底
+    const visualOnly: ActivitySpec = activitySpecSchema.parse({
+      version: "2.0",
+      page: { id: "page", name: "P", route: "/p", canonicalViewport: { width: 390, height: 867 }, background: { type: "solid", value: "#ffffff" } },
+      tokens: [],
+      assets: [],
+      nodes: [
+        {
+          id: "page", role: "page", name: "页面", sourceBox: { x: 0, y: 0, width: 390, height: 867 },
+          layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "整页" },
+          visual: { opacity: 1, background: { type: "solid", value: "#f6f7f9" } },
+          evidence: [{ type: "user", sourceId: "x", observation: "x", confidence: 1 }],
+          confidence: 1, reviewState: "accepted", children: ["title"],
+        },
+        {
+          id: "title", parentId: "page", role: "text", name: "标题", sourceBox: { x: 12, y: 16, width: 200, height: 24 },
+          layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "标题" },
+          visual: { opacity: 1, color: "#ff3b8d" }, content: { text: "测试" },
+          evidence: [{ type: "user", sourceId: "x", observation: "x", confidence: 1 }],
+          confidence: 1, reviewState: "accepted", children: [],
+        },
+      ],
+      interactions: [], unresolved: [],
+    });
+    const bundle = buildFigmaImportBundle(visualOnly, {}, []);
+    const pageNode = findNode(bundle.nodes, "page");
+    expect(pageNode?.fills?.[0]).toMatchObject({ type: "SOLID", color: { r: 246, g: 247, b: 249 } });
+    const title = findNode(bundle.nodes, "title");
+    expect(title?.fills?.[0]).toMatchObject({ type: "SOLID", color: { r: 255, g: 59, b: 141 } });
+  });
+
+  it("emits opacity for semi-transparent solid fills parsed from rgba()", () => {
+    // rgba(...,0.62) → SOLID 带 opacity，summer-game-festival 半透明卡片（如 rgba(18,10,44,0.62)）不再变实心黑块
+    const translucent: ActivitySpec = activitySpecSchema.parse({
+      version: "2.0",
+      page: { id: "page", name: "P", route: "/p", canonicalViewport: { width: 390, height: 867 }, background: { type: "solid", value: "#ffffff" } },
+      tokens: [],
+      assets: [],
+      nodes: [{
+        id: "card", role: "section", name: "卡", sourceBox: { x: 10, y: 10, width: 200, height: 80 },
+        layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "卡" },
+        visual: { opacity: 1, background: { type: "solid", value: "rgba(38,22,86,0.62)" } },
+        evidence: [{ type: "user", sourceId: "x", observation: "x", confidence: 1 }],
+        confidence: 1, reviewState: "accepted", children: [],
+      }],
+      interactions: [], unresolved: [],
+    });
+    const bundle = buildFigmaImportBundle(translucent, {}, []);
+    const card = findNode(bundle.nodes, "card");
+    expect(card?.fills?.[0]).toMatchObject({ type: "SOLID", color: { r: 38, g: 22, b: 86 }, opacity: 0.62 });
+  });
 });

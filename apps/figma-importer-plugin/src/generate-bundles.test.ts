@@ -1,10 +1,19 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFigmaImportBundle, type FigmaImportBundle } from "@d2c/figma-patcher";
+import { buildFigmaImportBundle, type FigmaExportNode, type FigmaImportBundle } from "@d2c/figma-patcher";
 import type { ActivitySpec } from "@d2c/contracts";
 import { describe, expect, it } from "vitest";
 import { parseFigmaImportBundle } from "./import";
+
+function findNode(nodes: FigmaExportNode[], d2cNodeId: string): FigmaExportNode | undefined {
+  for (const node of nodes) {
+    if (node.pluginData.d2cNodeId === d2cNodeId) return node;
+    const child = node.children ? findNode(node.children, d2cNodeId) : undefined;
+    if (child) return child;
+  }
+  return undefined;
+}
 
 // 预生成三张真实活动页的 figma-import.json：spec + 整页图集（base64 自包含）→ bundle v2，
 // 并用插件同款解析器校验，保证「工作台导出 / 插件导入」两侧形状永远一致。
@@ -19,6 +28,10 @@ describe("pre-generated figma import bundles", () => {
     it(`${fixtureId}: 生成自包含导入包并通过插件解析器校验`, async () => {
       const spec = JSON.parse(await readFile(join(fixtureRoot, fixtureId, "activity-spec.json"), "utf8")) as ActivitySpec;
       const atlasBase64 = (await readFile(join(fixtureRoot, fixtureId, "reference.jpg"))).toString("base64");
+      const manifest = JSON.parse(await readFile(join(fixtureRoot, fixtureId, "assets/manifest.json"), "utf8")) as {
+        atlasSize: { width: number; height: number };
+        assets: Array<{ nodeId: string; crop: { x: number; y: number; width: number; height: number } }>;
+      };
       const bundle: FigmaImportBundle = buildFigmaImportBundle(spec, {}, [
         { id: "reference", path: "reference.jpg", mimeType: "image/jpeg", data: atlasBase64 },
       ]);
@@ -31,8 +44,21 @@ describe("pre-generated figma import bundles", () => {
       // 图节点必须带归一化裁切区域（imageCrop）
       const imageNodes = JSON.stringify(bundle.nodes).match(/"imageCrop"/g) ?? [];
       expect(imageNodes.length, `${fixtureId}: 真实样例应包含图集裁切节点`).toBeGreaterThan(0);
-      // 离线预生成：无渲染证据 → 全部节点如实降级
+      // 离线预生成：无渲染证据 → 全部节点如实降级（按 spec 视觉兜底导出，仍带 fills 与正确裁切）
       expect(bundle.degradations.length).toBe(spec.nodes.length);
+      // spec.visual 兜底：页根与文本节点必须带 SOLID 填充，否则 Figma 端会是全白包
+      const nodeFillsCount = JSON.stringify(bundle.nodes).match(/"type":\s*"SOLID"/g)?.length ?? 0;
+      expect(nodeFillsCount, `${fixtureId}: spec.visual 兜底必须产出非空 SOLID fills`).toBeGreaterThan(0);
+      // imageCrop 必须按素材证据区域 ÷ 嵌入图集尺寸（manifest 已手测对齐），把裁切修复锁死
+      for (const assetEntry of manifest.assets) {
+        const node = findNode(bundle.nodes, assetEntry.nodeId);
+        expect(node, `${fixtureId}: 节点 ${assetEntry.nodeId} 应在 bundle.nodes 树中`).not.toBeUndefined();
+        expect(node?.imageCrop, `${fixtureId}: 节点 ${assetEntry.nodeId} 应带 imageCrop`).toBeDefined();
+        expect(node!.imageCrop!.x).toBeCloseTo(assetEntry.crop.x, 3);
+        expect(node!.imageCrop!.y).toBeCloseTo(assetEntry.crop.y, 3);
+        expect(node!.imageCrop!.width).toBeCloseTo(assetEntry.crop.width, 3);
+        expect(node!.imageCrop!.height).toBeCloseTo(assetEntry.crop.height, 3);
+      }
       await writeFile(join(fixtureRoot, fixtureId, "figma-import.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
     });
   }
