@@ -98,6 +98,39 @@ describe("importBundle", () => {
     expect(page.layoutMode).toBeUndefined();
   });
 
+  it("converts page-absolute coordinates to parent-relative for nested children", async () => {
+    // 导入包 x/y 是页面绝对坐标；Figma 子节点相对父级 → 卡片相对 page(0,0) 仍为 276，
+    // 三层嵌套的标题相对卡片需减去卡片 origin（340-276=64），否则会逐层叠加下漂
+    const nested: FigmaImportBundle = {
+      ...bundle,
+      nodes: [{
+        ...bundle.nodes[0]!,
+        children: [{
+          type: "FRAME", id: "d2c-card", name: "商品卡", x: 6, y: 276, width: 178, height: 240,
+          layout: { mode: "flow", rationale: "卡片" },
+          pluginData: { d2cNodeId: "card" },
+          children: [{
+            type: "TEXT", id: "d2c-card-title", name: "商品标题", x: 22, y: 340, width: 140, height: 20,
+            characters: "心相印抽纸", fontSize: 14,
+            layout: { mode: "flow", rationale: "标题" },
+            pluginData: { d2cNodeId: "card-title" },
+          }],
+        }],
+      }],
+    };
+    const { facade, calls } = makeFacade();
+    await importBundle(nested, facade);
+    const page = calls.setPluginData.mock.calls.find(([, , value]) => value === "page")![0]!;
+    const card = calls.setPluginData.mock.calls.find(([, , value]) => value === "card")![0]!;
+    const title = calls.setPluginData.mock.calls.find(([, , value]) => value === "card-title")![0]!;
+    expect(page.x).toBe(0);
+    expect(page.y).toBe(0);
+    expect(card.x).toBe(6);
+    expect(card.y).toBe(276);
+    expect(title.x).toBe(16);
+    expect(title.y).toBe(64);
+  });
+
   it("creates image fills from embedded base64 assets with a crop transform", async () => {
     const { facade, calls } = makeFacade();
     await importBundle(bundle, facade);

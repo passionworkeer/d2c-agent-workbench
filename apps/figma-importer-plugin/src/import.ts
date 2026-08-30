@@ -89,13 +89,17 @@ async function importNode(
   bundle: FigmaImportBundle,
   facade: FigmaFacade,
   report: FigmaImportReport,
+  originX = 0,
+  originY = 0,
 ): Promise<FigmaFacadeNode> {
   const node = source.type === "TEXT" ? facade.createText()
     : source.type === "RECTANGLE" ? facade.createRectangle()
     : facade.createFrame();
   node.name = source.name;
-  node.x = source.x;
-  node.y = source.y;
+  // 导入包携带页面绝对坐标（与 spec sourceBox 一致）；Figma 的子节点 x/y 相对父级 →
+  // 按父级页面原点换算，否则嵌套子节点会叠加祖先 origin 逐层下漂
+  node.x = source.x - originX;
+  node.y = source.y - originY;
   node.width = source.width;
   node.height = source.height;
   report.createdNodes += 1;
@@ -139,7 +143,7 @@ async function importNode(
   facade.setPluginData(node, "d2cNodeId", source.pluginData.d2cNodeId);
 
   for (const child of source.children ?? []) {
-    const created = await importNode(child, bundle, facade, report);
+    const created = await importNode(child, bundle, facade, report, source.x, source.y);
     facade.appendChild(node, created);
   }
   return node;
