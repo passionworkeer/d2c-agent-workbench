@@ -630,6 +630,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       }
       return reply.code(200).send({
         score: result.score,
+        designQuality: result.designQuality,
         summary: result.summary,
         observations: result.observations,
         model: result.model,
