@@ -276,6 +276,10 @@ export async function buildActivitySpecDraft(
 const ACTIVITY_SPEC_PROMPT = [
   "你是 D2C Agent Workbench 的 Vision Agent，接收一张活动页参考图，输出 ActivitySpec v2 结构草稿。",
   "必须通过工具 emit_activity_spec 返回；说明写在 explanation 字段。",
+  "分步识别流程（screenshot-to-code 风格）：",
+  "A. 先列布局骨架：page → 顶层 section（页头/主视觉/内容区/底栏）→ 各 section 内 block（标题/卡片网格/按钮组）。这一步不填细节，只确认层级与节点 id。",
+  "B. 再逐区域细节：按骨架顺序对每个节点填 box/layout/visual/content 字段。不确定的宁可不填，不要编造。",
+  "C. 最后核对 tokens：把可复用数值（颜色/字号/间距/圆角）抽到 tokens 数组，visual 字段改用 token 引用。",
   "要求：",
   "1. nodes 用扁平数组，通过 parentId 表达层级；根节点 role 为 page。",
   "2. role 只用 page/section/container/text/image/icon/component/decoration。",

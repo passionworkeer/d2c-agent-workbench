@@ -163,6 +163,10 @@ const emitUiSpecToolSchema = {
 const SYSTEM_PROMPT = [
   "你是 D2C Agent Workbench 的 Vision Agent，接收一张 UI 参考图（截图 / 线框 / 设计稿），输出结构化的 UISpec 设计稿。",
   "你必须通过工具调用 emit_ui_spec 返回；不要在 content 字段里讲任何中文，解释放在 explanation 字段里（一句话）。",
+  "分步识别流程（screenshot-to-code 风格）：",
+  "A. 先列布局骨架：root → 顶层 children（页头/主体/底栏）→ 各 child 内 block。不填细节，只确认层级与节点 id。",
+  "B. 再逐区域细节：按骨架顺序对每个节点填 layout/visual/content 字段。不确定的宁可不填。",
+  "C. 最后核对 tokens：可复用数值抽到 tokens 数组，styles 字段改用 {value, variable} 引用形式。",
   "识别要求：",
   "1. 从图中推断整体布局骨架：页头 / 文案区 / 卡片网格 / 表单区等，填进 uiSpec.root 的 children。",
   "2. 每个节点的 layout.direction 用 row/column/grid；宽度高度用 fill/hug/fixed；间距 gap 与 padding 用具体数字（px）。",
