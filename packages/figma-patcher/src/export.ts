@@ -208,7 +208,7 @@ function toFigmaNode(
     fills.push({ type: "IMAGE", assetId: embedded.id });
     // 优先用素材证据区域（图集像素）÷ 嵌入图集实际尺寸做归一化裁切：
     // sourceBox 覆盖整卡（含标题/价格/按钮），按视口归一化会把整页切片塞进卡片
-    const region = asset.evidence.find((item) => item.region)?.region;
+    const region = asset.evidence?.find((item) => item.region)?.region;
     const dims = dimensionsByAssetId.get(embedded.id);
     if (region && dims) {
       imageCrop = {
