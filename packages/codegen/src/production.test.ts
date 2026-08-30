@@ -119,6 +119,23 @@ describe("generateProductionPage", () => {
     expect(plainHero?.styleFile).toBe("src/pages/campaign/CampaignPage.module.css");
   });
 
+  it("passes descendant text nodes as `texts` prop to a mapped component so subtree edits flow into DOM", () => {
+    // 真实样例：根节点映射为单个可信组件，codegen 必须把后代 role=text 节点的
+    // content.text 一起作为 texts prop 传给组件，否则 spec 改文案后组件仍然渲染内置默认值。
+    const output = generateProductionPage(spec, profile, [{
+      nodeId: "page", figmaComponent: "CampaignRoot", codeComponent: "CampaignExperience",
+      importPath: "@/components/activity/CampaignExperience", props: { atlasUrl: "/campaign/reference.jpg" },
+      confidence: 1, status: "accepted", evidence: [],
+      sourceFile: "src/components/activity/CampaignExperience.tsx",
+    }]);
+    const code = output.files["src/pages/campaign/CampaignPage.tsx"] ?? "";
+    // texts 内含后代文本节点：spec 里只有 hero-title 一条 role=text
+    // JSON.stringify 直接输出 CJK 字符，不做 \uXXXX 转义
+    expect(code).toContain('"texts":{"hero-title":"夏日好物节"}');
+    // 仍然保留原始 atlasUrl prop
+    expect(code).toContain('"atlasUrl":"/campaign/reference.jpg"');
+  });
+
   it("rejects mapping identifiers that could inject source code", () => {
     expect(() => generateProductionPage(spec, profile, [{
       nodeId: "hero",

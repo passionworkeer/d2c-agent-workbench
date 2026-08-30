@@ -40,9 +40,11 @@ describe("真实移动活动页 fixture 端到端生成", () => {
       const pageFile = `src/pages/campaign/${sample.pageName}Page.tsx`;
       const code = output.files[pageFile] ?? "";
       // 生成的包装页 import 可信组件并透传图集 URL；文件名与目标仓库路由表一致
+      // 文案覆盖：后代 role=text 节点作为 texts prop 一并传入，组件据此渲染（编辑穿透）
       expect(code).toContain(`import { ${sample.component} } from "@/components/activity/${sample.component}"`);
       expect(code).toContain('data-d2c-node-id="page"');
-      expect(code).toContain(`{"atlasUrl":"/${sample.assetDir}/reference.jpg"}`);
+      expect(code).toContain(`"atlasUrl":"/${sample.assetDir}/reference.jpg"`);
+      expect(code).toContain('"texts":{');
       expect(output.plan.files.map((file) => file.path)).toContain(pageFile);
       // 多个裁切资产指向同一图集：拷贝计划去重为一次
       expect(output.plan.assets).toEqual([{ source: "reference.jpg", target: `public/${sample.assetDir}/reference.jpg` }]);

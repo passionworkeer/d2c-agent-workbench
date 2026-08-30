@@ -137,24 +137,28 @@ const BOTTOM_TAB_ICONS = [
   "M10 4a3.2 3.2 0 1 1 0 6.4A3.2 3.2 0 0 1 10 4Zm-6 13.2c.8-3.1 3.1-4.8 6-4.8s5.2 1.7 6 4.8Z",
 ];
 
-/** 画布内底部导航（absolute 贴底，随画布高度走）：首页 / 精选 / ＋发布（角标）/ 消息 / 我 */
+/** 画布内底部导航（absolute 贴底，随画布高度走）：首页 / 精选 / ＋发布（角标）/ 消息 / 我。
+ *  texts 接收 codegen 注入文案覆盖（编辑穿透）；缺失时回落内置默认值。 */
 export function BottomTabBar({
   nodeId = "bottom-nav",
   publishBadge,
   height = 65,
   activeTab = "home",
+  texts,
   onTabClick,
 }: Partial<NodeProps> & {
   publishBadge?: string;
   height?: number;
   activeTab?: string;
+  texts?: Record<string, string>;
   onTabClick?: (tabId: string) => void;
 }) {
+  const t = (id: string, fallback: string) => texts?.[id] ?? fallback;
   const tabs = [
-    { id: `${nodeId}-home`, label: "首页" },
-    { id: `${nodeId}-feature`, label: "精选" },
-    { id: `${nodeId}-message`, label: "消息" },
-    { id: `${nodeId}-me`, label: "我" },
+    { id: `${nodeId}-home`, label: t(`${nodeId}-home`, "首页") },
+    { id: `${nodeId}-feature`, label: t(`${nodeId}-feature`, "精选") },
+    { id: `${nodeId}-message`, label: t(`${nodeId}-message`, "消息") },
+    { id: `${nodeId}-me`, label: t(`${nodeId}-me`, "我") },
   ];
   const tabButton = (tab: (typeof tabs)[number], iconIndex: number) => (
     <button

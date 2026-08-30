@@ -112,11 +112,49 @@ function componentName(spec: ActivitySpec): string {
   return `${parts.map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join("") || "Campaign"}Page`;
 }
 
+function collectDescendants(rootId: string, nodes: Map<string, ActivityNode>): ActivityNode[] {
+  const out: ActivityNode[] = [];
+  const stack: string[] = [rootId];
+  const visited = new Set<string>();
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    const node = nodes.get(id);
+    if (!node) continue;
+    out.push(node);
+    for (const childId of node.children) stack.push(childId);
+  }
+  return out;
+}
+
+/**
+ * 真实样例：根节点映射成单个可信组件（如 CommerceFeedExperience），子树文案编辑
+ * 需穿透到 props，否则 codegen 把整棵子树换成 `<Component {...props}/>` 后，
+ * spec 里改的子节点文本永远进不了 DOM，rerun 后 DOM 与 spec 错位。
+ * 收集后代所有 role=text 节点的 content.text 作为 `texts` prop，组件读
+ * `texts?.[nodeId] ?? fallback` 优先于内置默认值——既支持编辑又不破坏默认渲染。
+ */
+function descendantTextOverrides(rootId: string, nodes: Map<string, ActivityNode>): Record<string, string> {
+  const texts: Record<string, string> = {};
+  for (const descendant of collectDescendants(rootId, nodes)) {
+    if (descendant.id === rootId) continue;
+    if (descendant.role !== "text") continue;
+    const text = descendant.content?.text;
+    if (typeof text !== "string") continue;
+    texts[descendant.id] = text;
+  }
+  return texts;
+}
+
 function renderNode(node: ActivityNode, nodes: Map<string, ActivityNode>, assetUrls: Map<string, string>, mappings: Map<string, ComponentMapping>, depth: number, isRoot = false): string {
   const indent = "  ".repeat(depth);
   const attributes = `data-d2c-node-id=${JSON.stringify(node.id)}${isRoot ? ' data-d2c-ready="true"' : ""} className={styles[${JSON.stringify(className(node.id))}]}`;
   const mapping = mappings.get(node.id);
-  if (mapping && mapping.status !== "unmapped") return `${indent}<${mapping.codeComponent} ${attributes} {...${JSON.stringify(mapping.props)}} />`;
+  if (mapping && mapping.status !== "unmapped") {
+    const mergedProps: Record<string, unknown> = { ...(mapping.props ?? {}), texts: descendantTextOverrides(node.id, nodes) };
+    return `${indent}<${mapping.codeComponent} ${attributes} {...${JSON.stringify(mergedProps)}} />`;
+  }
   if (node.role === "text") return `${indent}<p ${attributes}>{${JSON.stringify(node.content?.text ?? "")}}</p>`;
   if (node.role === "image") return `${indent}<img ${attributes} src=${JSON.stringify(node.content?.assetId ? assetUrls.get(node.content.assetId) ?? "" : "")} alt=${JSON.stringify(node.content?.alt ?? "")} />`;
   const tag = node.role === "page" ? "main" : node.role === "section" ? "section" : "div";

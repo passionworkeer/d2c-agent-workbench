@@ -146,8 +146,9 @@ const PRODUCTS: ProductSpec[] = [
   },
 ];
 
-/** 快手商城信息流页。atlasUrl 指向本样例的参考图整图（素材裁切源）。 */
-export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string } & ComponentPropsWithoutRef<"div">) {
+/** 快手商城信息流页。atlasUrl 指向本样例的参考图整图（素材裁切源）。texts 接收 codegen 注入的后代 role=text 文案覆盖（编辑穿透）；缺失时回落内置默认值，保证默认渲染与 spec 一致。 */
+export function CommerceFeedExperience({ atlasUrl, texts, ...root }: { atlasUrl: string; texts?: Record<string, string> } & ComponentPropsWithoutRef<"div">) {
+  const t = (id: string, fallback: string) => texts?.[id] ?? fallback;
   const [toast, setToast] = useState<string | null>(null);
   const [floatsVisible, setFloatsVisible] = useState(true);
   const showToast = (message: string) => setToast(message);
@@ -163,10 +164,10 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           style={{ position: "absolute", top: 46, left: 0, width: 390, height: 44 }}
           activeTab="top-tab-mall"
           tabs={[
-            { id: "top-tab-follow", label: "关注" },
-            { id: "top-tab-mall", label: "商城" },
-            { id: "top-tab-discover", label: "发现" },
-            { id: "top-tab-local", label: "同城" },
+            { id: "top-tab-follow", label: t("top-tab-follow", "关注") },
+            { id: "top-tab-mall", label: t("top-tab-mall", "商城") },
+            { id: "top-tab-discover", label: t("top-tab-discover", "发现") },
+            { id: "top-tab-local", label: t("top-tab-local", "同城") },
           ]}
         />
 
@@ -175,15 +176,15 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
             <circle cx="9" cy="9" r="6.4" fill="none" stroke="#9c9ca6" strokeWidth="1.8" />
             <line x1="13.8" y1="13.8" x2="18" y2="18" stroke="#9c9ca6" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          <span data-d2c-node-id="commerce-search-keyword" style={box(28, 14, 44, 16)} className={pageStyles.searchKeyword}>猫粮</span>
+          <span data-d2c-node-id="commerce-search-keyword" style={box(28, 14, 44, 16)} className={pageStyles.searchKeyword}>{t("commerce-search-keyword", "猫粮")}</span>
           <button
             type="button"
             data-d2c-node-id="commerce-search-submit"
             className={pageStyles.searchSubmit}
             style={box(314, 5, 50, 32)}
-            onClick={() => showToast("已搜索「猫粮」")}
+            onClick={() => showToast(`已搜索「${t("commerce-search-keyword", "猫粮")}」`)}
           >
-            搜索
+            {t("commerce-search-submit", "搜索")}
           </button>
         </div>
 
@@ -191,18 +192,18 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
           {QUICK_ACTIONS.map((action) => (
             <button key={action.id} type="button" className={pageStyles.quickActionItem} style={{ left: action.x }}>
               {action.icon}
-              <span data-d2c-node-id={action.id}>{action.label}</span>
+              <span data-d2c-node-id={action.id}>{t(action.id, action.label)}</span>
             </button>
           ))}
         </div>
 
         <div data-d2c-node-id="promo-banner" style={box(0, 208, 390, 67)}>
           <ArtworkSlice nodeId="banner-art" atlasUrl={atlasUrl} crop={ATLAS_CROPS.banner} alt="快手818宠粉节粉红渐变 Banner" style={box(0, 0, 390, 67)} />
-          <span data-d2c-node-id="banner-title" style={box(12, 8, 100, 18)} className={pageStyles.bannerTitle}>快手818宠粉节</span>
-          <span data-d2c-node-id="banner-line-auction" style={box(12, 30, 120, 12)} className={pageStyles.bannerLine}>手机金豆 1元起拍 ›</span>
-          <span data-d2c-node-id="banner-line-coupon" style={box(12, 46, 122, 12)} className={pageStyles.bannerLine}>80元 消费券 去领取</span>
-          <span data-d2c-node-id="banner-line-moutai" style={box(135, 30, 120, 12)} className={pageStyles.bannerLine}>手机茅台 一元起拍</span>
-          <span data-d2c-node-id="banner-price" style={box(310, 20, 68, 22)} className={pageStyles.bannerPrice}>¥59.9</span>
+          <span data-d2c-node-id="banner-title" style={box(12, 8, 100, 18)} className={pageStyles.bannerTitle}>{t("banner-title", "快手818宠粉节")}</span>
+          <span data-d2c-node-id="banner-line-auction" style={box(12, 30, 120, 12)} className={pageStyles.bannerLine}>{t("banner-line-auction", "手机金豆 1元起拍 ›")}</span>
+          <span data-d2c-node-id="banner-line-coupon" style={box(12, 46, 122, 12)} className={pageStyles.bannerLine}>{t("banner-line-coupon", "80元 消费券 去领取")}</span>
+          <span data-d2c-node-id="banner-line-moutai" style={box(135, 30, 120, 12)} className={pageStyles.bannerLine}>{t("banner-line-moutai", "手机茅台 一元起拍")}</span>
+          <span data-d2c-node-id="banner-price" style={box(310, 20, 68, 22)} className={pageStyles.bannerPrice}>{t("banner-price", "¥59.9")}</span>
         </div>
 
         <div data-d2c-node-id="product-grid" style={box(0, 276, 390, 548)} className={pageStyles.productGrid}>
@@ -213,14 +214,14 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
               style={box(product.box[0], product.box[1] - 276, product.box[2], product.box[3])}
               imageHeight={product.imageHeight}
               image={{ atlasUrl, crop: product.crop, alt: product.alt }}
-              title={product.title}
-              brand={product.brand}
-              badge={product.badge}
-              priceLabel={product.priceLabel}
-              price={product.price}
-              actionLabel={product.actionLabel}
-              service={product.service}
-              onClick={() => product.actionLabel ? showToast(`已抢购：${product.title}`) : undefined}
+              title={t(`${product.id}-title`, product.title)}
+              brand={product.brand !== undefined ? t(`${product.id}-brand`, product.brand) : undefined}
+              badge={product.badge !== undefined ? t(`${product.id}-badge`, product.badge) : undefined}
+              priceLabel={product.priceLabel !== undefined ? t(`${product.id}-price-label`, product.priceLabel) : undefined}
+              price={product.price !== undefined ? t(`${product.id}-price`, product.price) : undefined}
+              actionLabel={product.actionLabel !== undefined ? t(`${product.id}-action`, product.actionLabel) : undefined}
+              service={product.service !== undefined ? t(`${product.id}-service`, product.service) : undefined}
+              onClick={() => product.actionLabel ? showToast(`已抢购：${t(`${product.id}-title`, product.title)}`) : undefined}
             />
           ))}
         </div>
@@ -230,7 +231,7 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
             <FloatingAction
               nodeId="floating-back"
               shape="pill"
-              label="‹ 回到赚钱任务"
+              label={t("floating-back-label", "‹ 回到赚钱任务")}
               style={box(0, 718, 102, 33)}
               onClick={() => showToast("回到赚钱任务")}
             />
@@ -242,21 +243,21 @@ export function CommerceFeedExperience({ atlasUrl, ...root }: { atlasUrl: string
             <FloatingAction
               nodeId="float-reward"
               shape="pill"
-              label="+100"
+              label={t("float-reward-label", "+100")}
               style={{ ...box(338, 699, 50, 26), background: "#ff3b30", boxShadow: "none", padding: "0 8px" }}
               onClick={() => showToast("+100 金币已入账")}
             />
             <FloatingAction
               nodeId="float-browse"
               shape="circle"
-              label="再逛30秒"
+              label={t("float-browse-label", "再逛30秒")}
               style={{ ...box(338, 725, 50, 47), padding: "4px 2px" }}
               onClick={() => showToast("再逛 30 秒可得奖励")}
             />
           </>
         ) : null}
 
-        <BottomTabBar height={43} />
+        <BottomTabBar height={43} texts={texts} />
 
         {toast ? <div className={pageStyles.toast} role="status">{toast}</div> : null}
       </MobileActivityShell>
