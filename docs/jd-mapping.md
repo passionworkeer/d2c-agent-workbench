@@ -68,7 +68,7 @@
 | 评测指标设计 | `packages/evaluator` 六维公式文档化 + 校准测试钉 72 / 94 / 52.1 / 91.9 | 看评分从 72→94、52.1→91.9 | 校准常数（80px 漂移预算、/32 二次项、2/10/4 罚项）由测试钉死，回归时精确报错 |
 | 真实场景落地 | `product-grid.zip` + `form-page` 双 fixture + 真实上传链路 + 浏览器内真实执行（与 server SSE 等价） | 上传真实 zip / 切 fixture / 自动播放 | 浏览器内本地真实执行 + 上传到 server 走同一确定性管线，`scripts/consistency.test.ts` 守护两路逐字段一致 |
 | 文档 / 沟通 | `README.md` + `docs/demo-script.md` + `docs/jd-mapping.md` + 各包内中文注释 | 看仓库文档 + demo 脚本 | 注释用中文，commit message 用中文（commit 习惯）；讲稿与代码一一对应 |
-| 工程能力（CI / 测试 / 部署） | `pnpm test` / `pnpm typecheck` / `playwright.config.ts` / `pnpm e2e` | `pnpm test` 全仓 429 个用例 + `pnpm e2e` 8 条浏览器 e2e（含真实生产闭环 3 条） | 没有 mock 偷懒：figma-importer 拒绝伪造输入、evaluator violation 钉 id、consistency 钉 web ≡ server 逐字段、asset-indexer 钉扫描 ≡ 静态表、key/PAT 不落盘由路由测试钉死 |
+| 工程能力（CI / 测试 / 部署） | `.github/workflows/ci.yml`（push/PR 自动 typecheck + 429 单测 + 构建，e2e 刻意留本地——Playwright 浏览器与真实 install 不进 CI 是显式取舍）+ `pnpm test` / `pnpm typecheck` / `playwright.config.ts` / `pnpm e2e` | 看 GitHub Actions 绿标 + 本地 `pnpm test` 全仓 429 个用例 + `pnpm e2e` 8 条浏览器 e2e（含真实生产闭环 3 条） | 没有 mock 偷懒：figma-importer 拒绝伪造输入、evaluator violation 钉 id、consistency 钉 web ≡ server 逐字段、asset-indexer 钉扫描 ≡ 静态表、key/PAT 不落盘由路由测试钉死 |
 | 可复用 Skills / Tools | `skills/d2c-agent-workbench/`（SKILL.md + references + scan-design-assets.mjs）+ `scripts/build-skill-zip.mjs` + `scripts/skill-assets.test.ts` | 顶栏点「导出 D2C Skill」→ 下载 ZIP 解压看结构 | Web 把链路可视化，Skill 把方法迁移到其它 Agent：输入检查、有无设计资产的降级分支、执行顺序、证据与停止条件都在包里；ZIP 与 canonical 逐字节一致（测试钉死），不依赖后端 |
 
 ## 8. 压轴：活动页生产闭环（PRODUCTION）

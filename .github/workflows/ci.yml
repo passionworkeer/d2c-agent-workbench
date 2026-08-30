@@ -1,0 +1,23 @@
+# CI：push / PR 跑 typecheck + 单测 + 构建，与 README「验证」一节口径一致。
+# e2e 刻意不进 CI：Playwright 要下载浏览器、生产闭环要真实 pnpm install 目标仓库
+# （分钟级且依赖网络），作为本地验证步骤保留（pnpm e2e，见 README）。
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # 从 package.json 的 packageManager 固定 pnpm 版本
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
