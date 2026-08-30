@@ -228,4 +228,26 @@ describe("buildFigmaImportBundle", () => {
       type: "unsupported-style", nodeId: "hero", property: "shadow", value: "var(--shadow)",
     }));
   });
+
+  it("attaches a parentId child omitted from children so it remains inside the exported page Frame", () => {
+    const withDetachedChild = activitySpecSchema.parse({
+      ...spec,
+      nodes: [
+        ...spec.nodes,
+        {
+          id: "live-task-overlay", parentId: "page", role: "component", name: "悬浮任务",
+          sourceBox: { x: 0, y: 700, width: 390, height: 80 },
+          layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "fixed", value: 80 }, rationale: "截图悬浮层" },
+          visual: { opacity: 1, background: { type: "solid", value: "#222222" } },
+          evidence: spec.nodes[0]!.evidence, confidence: 1, reviewState: "accepted", children: [],
+        },
+      ],
+    });
+
+    const bundle = buildFigmaImportBundle(withDetachedChild, renderedDocument, embeddedAssets);
+
+    expect(bundle.nodes).toHaveLength(1);
+    expect(findNode(bundle.nodes, "live-task-overlay")).toMatchObject({ x: 0, y: 700, pluginData: { d2cNodeId: "live-task-overlay" } });
+    expect(bundle.nodes[0]!.children?.map((node) => node.pluginData.d2cNodeId)).toContain("live-task-overlay");
+  });
 });

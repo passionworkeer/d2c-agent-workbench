@@ -185,12 +185,15 @@ function toFigmaNode(
   assetByPath: Map<string, FigmaImportAsset>,
   dimensionsByAssetId: Map<string, { width: number; height: number }>,
   degradations: FigmaImportDegradation[],
+  nodesById: Map<string, ActivitySpec["nodes"][number]>,
+  omittedChildrenByParentId: Map<string, string[]>,
 ): FigmaExportNode | null {
-  const node = spec.nodes.find((item) => item.id === nodeId);
+  const node = nodesById.get(nodeId);
   if (!node) return null;
   const styles = rendered[nodeId] ?? {};
-  const children = node.children
-    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId, degradations))
+  const childIds = [...node.children, ...(omittedChildrenByParentId.get(node.id) ?? [])];
+  const children = childIds
+    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId))
     .filter((child): child is FigmaExportNode => child !== null);
   // 背景色：实测样式 → spec 视觉声明（仅 solid；gradient/image 类型如实跳过）
   const background = parseColor(styles.backgroundColor)
@@ -291,6 +294,17 @@ export function buildFigmaImportBundle(
   embeddedAssets: FigmaImportAsset[] = [],
 ): FigmaImportBundle {
   const degradations: FigmaImportDegradation[] = [];
+  const nodesById = new Map(spec.nodes.map((node) => [node.id, node]));
+  const omittedChildrenByParentId = new Map<string, string[]>();
+  for (const node of spec.nodes) {
+    if (!node.parentId) continue;
+    const parent = nodesById.get(node.parentId);
+    if (parent && !parent.children.includes(node.id)) {
+      const omitted = omittedChildrenByParentId.get(parent.id) ?? [];
+      omitted.push(node.id);
+      omittedChildrenByParentId.set(parent.id, omitted);
+    }
+  }
   // 同 id 嵌入条目去重（首个生效）；path 缺省时以 id 充当路径匹配键
   const assetsById = new Map<string, FigmaImportAsset>();
   const assetByPath = new Map<string, FigmaImportAsset>();
@@ -309,9 +323,9 @@ export function buildFigmaImportBundle(
       // 非法 base64 / 解码错误 → 走回落路径，不污染导入包
     }
   }
-  const roots = spec.nodes.filter((node) => !node.parentId);
+  const roots = spec.nodes.filter((node) => !node.parentId || !nodesById.has(node.parentId));
   const nodes = roots
-    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId, degradations))
+    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId))
     .filter((node): node is FigmaExportNode => node !== null);
   const emitted = new Set<string>();
   const collect = (items: FigmaExportNode[]) => items.forEach((item) => { emitted.add(item.pluginData.d2cNodeId); collect(item.children ?? []); });
@@ -319,7 +333,7 @@ export function buildFigmaImportBundle(
   // 视觉草稿偶有 parentId 已声明却未挂入 parent.children 的孤立子树；不能让它静默消失。
   for (const source of spec.nodes) {
     if (emitted.has(source.id)) continue;
-    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId, degradations);
+    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId);
     if (orphan) { nodes.push(orphan); collect([orphan]); }
   }
   // 无渲染样式证据的节点如实标注降级（按 spec 视觉导出，插件端不做计算样式回填）

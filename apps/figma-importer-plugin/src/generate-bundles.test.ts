@@ -43,6 +43,8 @@ describe("pre-generated figma import bundles", () => {
       const parsed = parseFigmaImportBundle(bundle);
       expect(parsed.ok, `${fixtureId}: 预生成包必须通过插件解析器`).toBe(true);
       expect(bundle.viewport).toEqual(spec.page.canonicalViewport);
+      expect(bundle.nodes, `${fixtureId}: 所有页面元素必须位于同一个可导出的页面根 Frame 内`).toHaveLength(1);
+      expect(bundle.nodes[0]!.pluginData.d2cNodeId).toBe(spec.page.id);
       expect(bundle.manifest.referenceAssetId).toBe("reference");
       expect(bundle.assets).toHaveLength(1);
       expect(bundle.assets[0]!.data.length).toBeGreaterThan(1000);

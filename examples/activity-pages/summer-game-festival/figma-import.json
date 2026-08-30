@@ -1639,6 +1639,75 @@
           "pluginData": {
             "d2cNodeId": "activity-tabs"
           }
+        },
+        {
+          "type": "FRAME",
+          "id": "d2c-live-task-overlay",
+          "name": "直播间任务悬浮",
+          "x": 100,
+          "y": 697,
+          "width": 188,
+          "height": 47,
+          "children": [
+            {
+              "type": "TEXT",
+              "id": "d2c-live-task-label",
+              "name": "悬浮文案",
+              "x": 116,
+              "y": 713,
+              "width": 156,
+              "height": 16,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
+              "characters": "去直播间做任务",
+              "fontSize": 13,
+              "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
+              "layout": {
+                "mode": "flow",
+                "rationale": "按钮文案"
+              },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
+              "pluginData": {
+                "d2cNodeId": "live-task-label"
+              }
+            }
+          ],
+          "layout": {
+            "mode": "absolute",
+            "rationale": "粉紫渐变悬浮胶囊，覆盖发布任务行左侧（原图 322-930 × 2252-2405）"
+          },
+          "cornerRadius": 24,
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": 4
+              },
+              "radius": 14,
+              "color": {
+                "r": 138,
+                "g": 92,
+                "b": 255,
+                "a": 0.45
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
+          "pluginData": {
+            "d2cNodeId": "live-task-overlay"
+          }
         }
       ],
       "layout": {
@@ -1650,75 +1719,6 @@
       "renderKind": "native",
       "pluginData": {
         "d2cNodeId": "page"
-      }
-    },
-    {
-      "type": "FRAME",
-      "id": "d2c-live-task-overlay",
-      "name": "直播间任务悬浮",
-      "x": 100,
-      "y": 697,
-      "width": 188,
-      "height": 47,
-      "children": [
-        {
-          "type": "TEXT",
-          "id": "d2c-live-task-label",
-          "name": "悬浮文案",
-          "x": 116,
-          "y": 713,
-          "width": 156,
-          "height": 16,
-          "fills": [
-            {
-              "type": "SOLID",
-              "color": {
-                "r": 255,
-                "g": 255,
-                "b": 255
-              }
-            }
-          ],
-          "characters": "去直播间做任务",
-          "fontSize": 13,
-          "fontWeight": 700,
-          "textAlignHorizontal": "CENTER",
-          "layout": {
-            "mode": "flow",
-            "rationale": "按钮文案"
-          },
-          "layoutStrategy": "absolute",
-          "renderKind": "native",
-          "pluginData": {
-            "d2cNodeId": "live-task-label"
-          }
-        }
-      ],
-      "layout": {
-        "mode": "absolute",
-        "rationale": "粉紫渐变悬浮胶囊，覆盖发布任务行左侧（原图 322-930 × 2252-2405）"
-      },
-      "cornerRadius": 24,
-      "effects": [
-        {
-          "type": "DROP_SHADOW",
-          "offset": {
-            "x": 0,
-            "y": 4
-          },
-          "radius": 14,
-          "color": {
-            "r": 138,
-            "g": 92,
-            "b": 255,
-            "a": 0.45
-          }
-        }
-      ],
-      "layoutStrategy": "absolute",
-      "renderKind": "native",
-      "pluginData": {
-        "d2cNodeId": "live-task-overlay"
       }
     }
   ],
