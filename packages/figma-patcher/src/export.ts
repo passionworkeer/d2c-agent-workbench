@@ -61,6 +61,16 @@ export interface FigmaExportNode {
   layout: FigmaExportLayout;
   imageCrop?: FigmaImageCrop;
   pluginData: { d2cNodeId: string };
+  opacity?: number;
+  cornerRadius?: number;
+  strokes?: Array<{ type: "SOLID"; color: { r: number; g: number; b: number }; opacity?: number; weight: number }>;
+  effects?: Array<{ type: "DROP_SHADOW"; color: { r: number; g: number; b: number; a: number }; offset: { x: number; y: number }; radius: number }>;
+  clipsContent?: boolean;
+  lineHeight?: number;
+  letterSpacing?: number;
+  textAlignHorizontal?: "LEFT" | "CENTER" | "RIGHT" | "JUSTIFIED";
+  layoutStrategy?: "absolute" | "auto";
+  renderKind?: "native" | "raster";
 }
 
 export interface FigmaImportBundle {
@@ -71,6 +81,7 @@ export interface FigmaImportBundle {
   manifest: {
     name: string;
     route: string;
+    referenceAssetId?: string;
   };
   degradations: FigmaImportDegradation[];
 }
@@ -109,6 +120,17 @@ function solidFill(color: ParsedColor): FigmaExportPaint {
     color: { r: color.r, g: color.g, b: color.b },
     ...(color.alpha !== undefined && color.alpha < 1 ? { opacity: color.alpha } : {}),
   };
+}
+
+function parseBorder(value: string | undefined): FigmaExportNode["strokes"] | undefined {
+  const match = /^(\d+(?:\.\d+)?)px\s+solid\s+(.+)$/i.exec(value?.trim() ?? "");
+  const color = match ? parseColor(match[2]) : undefined;
+  return match && color ? [{ type: "SOLID", weight: Number(match[1]), color: { r: color.r, g: color.g, b: color.b }, ...(color.alpha !== undefined && color.alpha < 1 ? { opacity: color.alpha } : {}) }] : undefined;
+}
+function parseShadow(value: string | undefined): FigmaExportNode["effects"] | undefined {
+  const match = /^(0|-?\d+(?:\.\d+)?px)\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(rgba?\(.+\))$/i.exec(value?.trim() ?? "");
+  const color = match ? parseColor(match[4]) : undefined;
+  return match && color ? [{ type: "DROP_SHADOW", offset: { x: Number(match[1]!.replace("px", "")), y: Number(match[2]) }, radius: Number(match[3]), color: { r: color.r, g: color.g, b: color.b, a: color.alpha ?? 1 } }] : undefined;
 }
 
 /** base64 → 字节（atob 在 Node ≥16 与浏览器均为全局） */
@@ -221,11 +243,21 @@ function toFigmaNode(
       characters: node.content?.text ?? "",
       ...(node.visual.fontSize !== undefined ? { fontSize: node.visual.fontSize } : {}),
       ...(node.visual.fontWeight !== undefined ? { fontWeight: node.visual.fontWeight } : {}),
-      ...(styles.fontFamily ? { fontFamily: styles.fontFamily } : {}),
+      ...((styles.fontFamily ?? node.visual.fontFamily) ? { fontFamily: styles.fontFamily ?? node.visual.fontFamily } : {}),
+      ...(node.visual.lineHeight !== undefined ? { lineHeight: node.visual.lineHeight } : {}),
+      ...(node.visual.letterSpacing !== undefined ? { letterSpacing: node.visual.letterSpacing } : {}),
+      ...(node.visual.textAlign ? { textAlignHorizontal: ({ left: "LEFT", center: "CENTER", right: "RIGHT", justify: "JUSTIFIED" } as const)[node.visual.textAlign] } : {}),
     } : {}),
     ...(children.length ? { children } : {}),
     layout: toFigmaLayout(node),
     ...(imageCrop ? { imageCrop } : {}),
+    ...(node.visual.opacity !== 1 ? { opacity: node.visual.opacity } : {}),
+    ...(node.visual.borderRadius !== undefined ? { cornerRadius: node.visual.borderRadius } : {}),
+    ...(node.role === "page" || node.layout.overflow === "hidden" ? { clipsContent: true } : {}),
+    ...(parseBorder(node.visual.border) ? { strokes: parseBorder(node.visual.border) } : {}),
+    ...(parseShadow(node.visual.shadow) ? { effects: parseShadow(node.visual.shadow) } : {}),
+    layoutStrategy: "absolute",
+    renderKind: node.content?.assetId ? "raster" : "native",
     pluginData: { d2cNodeId: node.id },
   };
 }
@@ -257,6 +289,15 @@ export function buildFigmaImportBundle(
   const nodes = roots
     .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId))
     .filter((node): node is FigmaExportNode => node !== null);
+  const emitted = new Set<string>();
+  const collect = (items: FigmaExportNode[]) => items.forEach((item) => { emitted.add(item.pluginData.d2cNodeId); collect(item.children ?? []); });
+  collect(nodes);
+  // 视觉草稿偶有 parentId 已声明却未挂入 parent.children 的孤立子树；不能让它静默消失。
+  for (const source of spec.nodes) {
+    if (emitted.has(source.id)) continue;
+    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId);
+    if (orphan) { nodes.push(orphan); collect([orphan]); }
+  }
   // 无渲染样式证据的节点如实标注降级（按 spec 视觉导出，插件端不做计算样式回填）
   const degradations: FigmaImportDegradation[] = spec.nodes
     .filter((node) => rendered[node.id] === undefined)
@@ -269,6 +310,7 @@ export function buildFigmaImportBundle(
     manifest: {
       name: spec.page.name,
       route: spec.page.route,
+      ...(embeddedAssets.length === 1 ? { referenceAssetId: embeddedAssets[0]!.id } : {}),
     },
     degradations,
   };

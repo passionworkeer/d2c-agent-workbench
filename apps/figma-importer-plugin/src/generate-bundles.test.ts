@@ -15,6 +15,10 @@ function findNode(nodes: FigmaExportNode[], d2cNodeId: string): FigmaExportNode 
   return undefined;
 }
 
+function flatten(nodes: FigmaExportNode[]): FigmaExportNode[] {
+  return nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);
+}
+
 // 预生成三张真实活动页的 figma-import.json：spec + 整页图集（base64 自包含）→ bundle v2，
 // 并用插件同款解析器校验，保证「工作台导出 / 插件导入」两侧形状永远一致。
 // 说明：离线预生成不经过真实渲染，RenderedDocument 传空 → 每个节点都如实标注
@@ -39,6 +43,7 @@ describe("pre-generated figma import bundles", () => {
       const parsed = parseFigmaImportBundle(bundle);
       expect(parsed.ok, `${fixtureId}: 预生成包必须通过插件解析器`).toBe(true);
       expect(bundle.viewport).toEqual(spec.page.canonicalViewport);
+      expect(bundle.manifest.referenceAssetId).toBe("reference");
       expect(bundle.assets).toHaveLength(1);
       expect(bundle.assets[0]!.data.length).toBeGreaterThan(1000);
       // 图节点必须带归一化裁切区域（imageCrop）
@@ -49,6 +54,18 @@ describe("pre-generated figma import bundles", () => {
       // spec.visual 兜底：页根与文本节点必须带 SOLID 填充，否则 Figma 端会是全白包
       const nodeFillsCount = JSON.stringify(bundle.nodes).match(/"type":\s*"SOLID"/g)?.length ?? 0;
       expect(nodeFillsCount, `${fixtureId}: spec.visual 兜底必须产出非空 SOLID fills`).toBeGreaterThan(0);
+      const allNodes = flatten(bundle.nodes);
+      expect(allNodes.every((node) => node.layoutStrategy === "absolute")).toBe(true);
+      expect(allNodes.filter((node) => node.type === "TEXT").every((node) => node.renderKind === "native")).toBe(true);
+      expect(allNodes.filter((node) => node.renderKind === "raster").every((node) => node.type === "RECTANGLE" && node.imageCrop)).toBe(true);
+      for (const source of spec.nodes) {
+        const output = findNode(bundle.nodes, source.id)!;
+        if (source.visual.borderRadius !== undefined) expect(output.cornerRadius).toBe(source.visual.borderRadius);
+        if (source.visual.shadow !== undefined) expect(output.effects).toHaveLength(1);
+        if (source.visual.textAlign !== undefined) expect(output.textAlignHorizontal).toBeDefined();
+        if (source.visual.letterSpacing !== undefined) expect(output.letterSpacing).toBe(source.visual.letterSpacing);
+        if (source.visual.opacity !== 1) expect(output.opacity).toBe(source.visual.opacity);
+      }
       // imageCrop 必须按素材证据区域 ÷ 嵌入图集尺寸（manifest 已手测对齐），把裁切修复锁死
       for (const assetEntry of manifest.assets) {
         const node = findNode(bundle.nodes, assetEntry.nodeId);

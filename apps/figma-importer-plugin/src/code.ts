@@ -21,6 +21,9 @@ interface FigmaGlobalNode {
   characters?: string;
   fontSize?: number;
   fontName?: { family: string; style: string };
+  visible?: boolean;
+  locked?: boolean;
+  exportAsync(settings: { format: "PNG"; constraint: { type: "SCALE"; value: number } }): Promise<Uint8Array>;
   appendChild(child: FigmaGlobalNode): void;
   setPluginData(key: string, value: string): void;
 }
@@ -35,8 +38,8 @@ interface FigmaGlobal {
   getNodeById(id: string): FigmaGlobalNode | null;
   showUI(html: string, options?: { width?: number; height?: number }): void;
   ui: {
-    onmessage: ((message: { type: string; bundle?: unknown }) => void) | undefined;
-    postMessage(message: { type: string; message?: string; report?: unknown }): void;
+    onmessage: ((message: { type: string; bundle?: unknown; rootId?: string }) => void) | undefined;
+    postMessage(message: { type: string; message?: string; report?: unknown; rootId?: string; bytes?: number[]; width?: number; height?: number }): void;
   };
   currentPage: { selection: FigmaGlobalNode[] };
   viewport: { scrollAndZoomIntoView(nodes: FigmaGlobalNode[]): void };
@@ -63,6 +66,15 @@ function createFigmaFacade(): FigmaFacade {
 figma.showUI(__html__, { width: 420, height: 480 });
 
 figma.ui.onmessage = async (message) => {
+  if (message.type === "export-root-png" && typeof message.rootId === "string") {
+    const root = figma.getNodeById(message.rootId);
+    if (!root) { figma.ui.postMessage({ type: "import-error", message: "PNG 导出失败：根节点不存在" }); return; }
+    try {
+      const bytes = await root.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: 1 } });
+      figma.ui.postMessage({ type: "figma-root-png", rootId: root.id, bytes: Array.from(bytes), width: root.width, height: root.height });
+    } catch (cause) { figma.ui.postMessage({ type: "import-error", message: `PNG 导出失败：${cause instanceof Error ? cause.message : "未知错误"}` }); }
+    return;
+  }
   if (message.type !== "import-bundle") return;
   const parsed = parseFigmaImportBundle(message.bundle);
   if (!parsed.ok) {

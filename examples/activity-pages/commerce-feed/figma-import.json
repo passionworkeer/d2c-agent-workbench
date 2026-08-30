@@ -43,6 +43,8 @@
             },
             "rationale": "时间左、信号电量右"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "status-bar"
           }
@@ -81,6 +83,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "top-tab-follow"
               }
@@ -110,6 +114,8 @@
                 "mode": "flow",
                 "rationale": "选中 Tab 加粗带下划线"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "top-tab-mall"
               }
@@ -139,6 +145,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "top-tab-discover"
               }
@@ -168,6 +176,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "top-tab-local"
               }
@@ -184,6 +194,8 @@
             },
             "rationale": "菜单 + 四个频道 Tab + 搜索图标"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "top-nav"
           }
@@ -231,6 +243,8 @@
                 "mode": "flow",
                 "rationale": "输入占位"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "commerce-search-keyword"
               }
@@ -263,10 +277,14 @@
               ],
               "characters": "搜索",
               "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "红底白字按钮"
               },
+              "cornerRadius": 16,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "commerce-search-submit"
               }
@@ -284,6 +302,9 @@
             },
             "rationale": "白底胶囊搜索框，右侧红底搜索按钮"
           },
+          "cornerRadius": 21,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "commerce-search"
           }
@@ -327,11 +348,14 @@
               ],
               "characters": "我的订单",
               "fontSize": 11,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "quick-action-orders"
               }
@@ -356,11 +380,14 @@
               ],
               "characters": "购物车",
               "fontSize": 11,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "quick-action-cart"
               }
@@ -385,11 +412,14 @@
               ],
               "characters": "充值中心",
               "fontSize": 11,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "quick-action-recharge"
               }
@@ -414,11 +444,14 @@
               ],
               "characters": "一元拍",
               "fontSize": 11,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标带拍金豆角标"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "quick-action-auction"
               }
@@ -443,11 +476,14 @@
               ],
               "characters": "赚金币",
               "fontSize": 11,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "quick-action-coins"
               }
@@ -464,6 +500,8 @@
             },
             "rationale": "一行五个可见快捷入口（第六项被截图右缘截断）"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "quick-actions"
           }
@@ -501,6 +539,8 @@
                 "width": 1,
                 "height": 0.07785714285714286
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "raster",
               "pluginData": {
                 "d2cNodeId": "banner-art"
               }
@@ -530,6 +570,8 @@
                 "mode": "absolute",
                 "rationale": "Banner 主标题"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "banner-title"
               }
@@ -558,6 +600,8 @@
                 "mode": "absolute",
                 "rationale": "Banner 副文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "banner-line-auction"
               }
@@ -586,6 +630,8 @@
                 "mode": "absolute",
                 "rationale": "Banner 副文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "banner-line-coupon"
               }
@@ -614,6 +660,8 @@
                 "mode": "absolute",
                 "rationale": "Banner 中列副文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "banner-line-moutai"
               }
@@ -643,6 +691,8 @@
                 "mode": "absolute",
                 "rationale": "右侧价格标签"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "banner-price"
               }
@@ -652,6 +702,9 @@
             "mode": "absolute",
             "rationale": "全宽粉红渐变营销 Banner"
           },
+          "clipsContent": true,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "promo-banner"
           }
@@ -718,6 +771,8 @@
                     "width": 0.4793650793650794,
                     "height": 0.21678571428571428
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "raster",
                   "pluginData": {
                     "d2cNodeId": "product-tissue"
                   }
@@ -755,6 +810,8 @@
                     "mode": "flow",
                     "rationale": "标题行首黑底品牌标"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-brand"
                   }
@@ -784,6 +841,8 @@
                     "mode": "flow",
                     "rationale": "单行标题（品牌标右侧）"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-title"
                   }
@@ -812,6 +871,8 @@
                     "mode": "flow",
                     "rationale": "榜单标签"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-badge"
                   }
@@ -840,6 +901,8 @@
                     "mode": "flow",
                     "rationale": "到手价前缀标签"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-price-label"
                   }
@@ -869,6 +932,8 @@
                     "mode": "flow",
                     "rationale": "到手价"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-price"
                   }
@@ -894,10 +959,14 @@
                   "characters": "抢",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "闪电抢按钮"
                   },
+                  "cornerRadius": 10,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tissue-action"
                   }
@@ -907,6 +976,10 @@
                 "mode": "absolute",
                 "rationale": "白底商品卡，网格第一行左列"
               },
+              "cornerRadius": 10,
+              "clipsContent": true,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "product-tissue-card"
               }
@@ -954,6 +1027,8 @@
                     "width": 0.4777777777777778,
                     "height": 0.21678571428571428
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "raster",
                   "pluginData": {
                     "d2cNodeId": "product-tea"
                   }
@@ -983,6 +1058,8 @@
                     "mode": "flow",
                     "rationale": "单行标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tea-title"
                   }
@@ -1011,6 +1088,8 @@
                     "mode": "flow",
                     "rationale": "榜单标签"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tea-badge"
                   }
@@ -1039,6 +1118,8 @@
                     "mode": "flow",
                     "rationale": "到手价前缀标签"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tea-price-label"
                   }
@@ -1068,6 +1149,8 @@
                     "mode": "flow",
                     "rationale": "到手价"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tea-price"
                   }
@@ -1093,10 +1176,14 @@
                   "characters": "抢",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "闪电抢按钮"
                   },
+                  "cornerRadius": 10,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-tea-action"
                   }
@@ -1106,6 +1193,10 @@
                 "mode": "absolute",
                 "rationale": "白底商品卡，网格第一行右列"
               },
+              "cornerRadius": 10,
+              "clipsContent": true,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "product-tea-card"
               }
@@ -1153,6 +1244,8 @@
                     "width": 0.4642857142857143,
                     "height": 0.23035714285714284
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "raster",
                   "pluginData": {
                     "d2cNodeId": "product-detergent"
                   }
@@ -1182,6 +1275,8 @@
                     "mode": "flow",
                     "rationale": "单行标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-detergent-title"
                   }
@@ -1210,6 +1305,8 @@
                     "mode": "flow",
                     "rationale": "先用后付 + 销量"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-detergent-service"
                   }
@@ -1219,6 +1316,10 @@
                 "mode": "absolute",
                 "rationale": "白底商品卡，网格第二行左列，底部被底栏截断"
               },
+              "cornerRadius": 10,
+              "clipsContent": true,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "product-detergent-card"
               }
@@ -1266,6 +1367,8 @@
                     "width": 0.47619047619047616,
                     "height": 0.23035714285714284
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "raster",
                   "pluginData": {
                     "d2cNodeId": "product-comb"
                   }
@@ -1295,6 +1398,8 @@
                     "mode": "flow",
                     "rationale": "单行标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-comb-title"
                   }
@@ -1323,6 +1428,8 @@
                     "mode": "flow",
                     "rationale": "先用后付 + 销量"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "product-comb-service"
                   }
@@ -1332,6 +1439,10 @@
                 "mode": "absolute",
                 "rationale": "白底商品卡，网格第二行右列，底部被底栏截断"
               },
+              "cornerRadius": 10,
+              "clipsContent": true,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "product-comb-card"
               }
@@ -1341,6 +1452,8 @@
             "mode": "absolute",
             "rationale": "浅灰底双列商品网格，两行四卡"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "product-grid"
           }
@@ -1389,6 +1502,8 @@
                 "mode": "flow",
                 "rationale": "按钮文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "floating-back-label"
               }
@@ -1398,6 +1513,25 @@
             "mode": "absolute",
             "rationale": "左侧悬浮返回任务入口"
           },
+          "cornerRadius": 17,
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": 2
+              },
+              "radius": 8,
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0.18
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "floating-back"
           }
@@ -1414,6 +1548,9 @@
             "mode": "absolute",
             "rationale": "右侧悬浮小组件 × 关闭钮"
           },
+          "opacity": 0.85,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "float-close"
           }
@@ -1458,10 +1595,13 @@
               "characters": "+100",
               "fontSize": 11,
               "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "胶囊文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "float-reward-label"
               }
@@ -1471,6 +1611,9 @@
             "mode": "absolute",
             "rationale": "右侧 +100 金币小胶囊"
           },
+          "cornerRadius": 13,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "float-reward"
           }
@@ -1516,10 +1659,13 @@
               "characters": "再逛30秒",
               "fontSize": 10,
               "fontWeight": 600,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "竖排文案"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "float-browse-label"
               }
@@ -1529,6 +1675,25 @@
             "mode": "absolute",
             "rationale": "右侧「再逛30秒」竖排引导"
           },
+          "cornerRadius": 10,
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": 2
+              },
+              "radius": 8,
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0.16
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "float-browse"
           }
@@ -1572,11 +1737,14 @@
               ],
               "characters": "首页",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-home"
               }
@@ -1601,11 +1769,14 @@
               ],
               "characters": "精选",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-feature"
               }
@@ -1630,11 +1801,14 @@
               ],
               "characters": "消息",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-message"
               }
@@ -1659,11 +1833,14 @@
               ],
               "characters": "我",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-me"
               }
@@ -1673,6 +1850,24 @@
             "mode": "absolute",
             "rationale": "底部 Tab，原图高仅 140px（43 CSS）"
           },
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": -2
+              },
+              "radius": 8,
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0.06
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "bottom-nav"
           }
@@ -1682,6 +1877,9 @@
         "mode": "flow",
         "rationale": "390px 手机完整长页，横向裁切防溢出"
       },
+      "clipsContent": true,
+      "layoutStrategy": "absolute",
+      "renderKind": "native",
       "pluginData": {
         "d2cNodeId": "page"
       }
@@ -1697,7 +1895,8 @@
   ],
   "manifest": {
     "name": "CommerceFeed",
-    "route": "/commerce/feed"
+    "route": "/commerce/feed",
+    "referenceAssetId": "reference"
   },
   "degradations": [
     {
