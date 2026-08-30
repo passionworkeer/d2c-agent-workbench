@@ -221,6 +221,15 @@ export const semanticReviewEvidenceSchema = z.object({
   content: z.number().min(0).max(100),
   visualTone: z.number().min(0).max(100),
   taskClarity: z.number().min(0).max(100),
+  /**
+   * VLM 对生成页设计质量的主观评分（0-100）：排版密度、节奏感、对比度感受、视觉成熟度。
+   * 与 evaluator 确定性 designQuality 互补：
+   * - evaluator 评「生成页是否违反硬规则」（已在最小字号/对比度/点击区/间距阶段 1）
+   * - VLM designQuality 评「整体设计成熟度」（排版/节奏/视觉协调）
+   * 缺字段时返回 null（兼容旧 schema/旧模型响应）；不影响主 score。
+   * 不进入 visual.designQuality 字段（evaluator 那条规则已占位），仅作为评审证据观察项。
+   */
+  designQuality: z.number().min(0).max(100).nullable().default(null),
   summary: z.string().min(1),
   issues: z.array(semanticReviewIssueSchema).max(5),
   provider: z.enum(["minimax", "registered-fallback"]),

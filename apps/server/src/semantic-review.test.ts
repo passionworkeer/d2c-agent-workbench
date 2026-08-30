@@ -155,6 +155,28 @@ describe("reviewActivitySemantics", () => {
     }
   });
 
+  it("designQuality 字段缺省时落入 null（兼容旧模型响应），不影响主解析", async () => {
+    const result = await reviewActivitySemantics({
+      config: { apiKey: "sk-test", baseUrl: "https://mm.test", model: "MiniMax-M3" },
+      referenceDataUrl: PNG_DATA_URL,
+      renderDataUrl: PNG_DATA_URL,
+      fetchImpl: (async () => toolResponse(VALID_REVIEW)) as unknown as typeof fetch,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.evidence.designQuality).toBeNull();
+  });
+
+  it("designQuality 字段显式返回时保留夹紧后的整数", async () => {
+    const result = await reviewActivitySemantics({
+      config: { apiKey: "sk-test", baseUrl: "https://mm.test", model: "MiniMax-M3" },
+      referenceDataUrl: PNG_DATA_URL,
+      renderDataUrl: PNG_DATA_URL,
+      fetchImpl: (async () => toolResponse({ ...VALID_REVIEW, designQuality: 88 })) as unknown as typeof fetch,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.evidence.designQuality).toBe(88);
+  });
+
   it("模型输出不合 schema 时返回 INVALID_OUTPUT，不透传原始内容", async () => {
     const result = await reviewActivitySemantics({
       config: { apiKey: "sk-test", baseUrl: "https://mm.test", model: "MiniMax-M3" },

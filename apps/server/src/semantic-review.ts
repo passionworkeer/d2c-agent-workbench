@@ -16,6 +16,8 @@ export type SemanticReviewResult =
   | { ok: false; code: SemanticReviewErrorCode; message: string };
 
 // 手写纯 JSON Schema（与 contracts 的 semanticReviewEvidenceSchema 对齐，provider 由服务端注入）。
+// designQuality 是 optional：缺字段时 schema 解析失败，调用方会落到 INVALID_OUTPUT。
+// 但为了兼容旧版模型响应（未升级到新 prompt 时），调用方也会容错处理 designQuality 缺字段的情况。
 const semanticReviewToolSchema = {
   type: "object",
   properties: {
@@ -24,6 +26,7 @@ const semanticReviewToolSchema = {
     content: { type: "number", description: "文案内容一致性 0-100" },
     visualTone: { type: "number", description: "视觉风格一致性 0-100" },
     taskClarity: { type: "number", description: "任务链路清晰度 0-100" },
+    designQuality: { type: "number", description: "设计质量主观评分 0-100（排版密度/节奏感/视觉成熟度，独立维度，不影响 score）" },
     summary: { type: "string", description: "一句话总评" },
     issues: {
       type: "array",
@@ -41,7 +44,7 @@ const semanticReviewToolSchema = {
               width: { type: "number" },
               height: { type: "number" },
             },
-            required: ["x", "y", "width", "height"],
+            required: ["x", "width", "height"],
             additionalProperties: false,
           },
         },
@@ -57,6 +60,8 @@ const semanticReviewToolSchema = {
 const SYSTEM_PROMPT = [
   "你是 D2C Agent Workbench 的语义评审员，比较同一活动页的参考截图与实现截图。",
   "评分维度（0-100）：layout 布局结构、content 文案内容、visualTone 视觉风格、taskClarity 任务链路清晰度；score 为综合分。",
+  "附加维度 designQuality（可选）：对生成页设计质量的主观评分 0-100，评估排版密度、节奏感、对比度感受、视觉成熟度。",
+  "该维度独立：不计入 score，不进 finalScore（evaluator 确定性规则已覆盖硬规则评判），仅作为评审证据观察项供工作台展示。",
   "要求：",
   "1. 只依据两张图的可见事实评分，不做推测；实现与参考一致时敢于给高分。",
   "2. issues 最多 5 条，按严重度 P1（关键缺失/错位）/ P2（明显差异）/ P3（轻微瑕疵）标注，region 填实现截图上的像素区域（可省略）。",
