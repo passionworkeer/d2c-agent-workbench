@@ -12,7 +12,7 @@ const reportBox = byId<HTMLDivElement>("report");
 
 function report(message: string, error = false) { reportBox.className = error ? "error" : ""; reportBox.textContent = message; }
 function dataUrl(mime: string, data: string) { return `data:${mime};base64,${data}`; }
-function download(name: string, value: BlobPart, type: string) { const url = URL.createObjectURL(new Blob([value], { type })); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); }
+function download(name: string, value: BlobPart, type: string) { const url = URL.createObjectURL(new Blob([value], { type })); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 0); }
 async function canvasFrom(source: string, width: number, height: number) {
   const image = new Image(); image.src = source; await image.decode();
   const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;

@@ -210,4 +210,22 @@ describe("buildFigmaImportBundle", () => {
     expect(findNode(bundle.nodes, "title")).toMatchObject({ fontFamily: "PingFang SC", lineHeight: 20, letterSpacing: 1, textAlignHorizontal: "CENTER" });
     expect(findNode(bundle.nodes, "image")).toMatchObject({ renderKind: "raster" });
   });
+
+  it("records unparseable border and shadow values instead of silently dropping them", () => {
+    const unsupported = activitySpecSchema.parse({
+      ...spec,
+      nodes: spec.nodes.map((node) => node.id === "hero"
+        ? { ...node, visual: { ...node.visual, border: "dashed red", shadow: "var(--shadow)" } }
+        : node),
+    });
+
+    const bundle = buildFigmaImportBundle(unsupported, renderedDocument, embeddedAssets);
+
+    expect(bundle.degradations).toContainEqual(expect.objectContaining({
+      type: "unsupported-style", nodeId: "hero", property: "border", value: "dashed red",
+    }));
+    expect(bundle.degradations).toContainEqual(expect.objectContaining({
+      type: "unsupported-style", nodeId: "hero", property: "shadow", value: "var(--shadow)",
+    }));
+  });
 });

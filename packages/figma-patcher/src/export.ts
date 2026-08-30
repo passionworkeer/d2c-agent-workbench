@@ -39,9 +39,11 @@ export interface FigmaExportLayout {
 }
 
 export interface FigmaImportDegradation {
-  type: "missing-render-evidence";
+  type: "missing-render-evidence" | "unsupported-style";
   nodeId: string;
   message: string;
+  property?: "border" | "shadow";
+  value?: string;
 }
 
 export interface FigmaExportNode {
@@ -182,12 +184,13 @@ function toFigmaNode(
   nodeId: string,
   assetByPath: Map<string, FigmaImportAsset>,
   dimensionsByAssetId: Map<string, { width: number; height: number }>,
+  degradations: FigmaImportDegradation[],
 ): FigmaExportNode | null {
   const node = spec.nodes.find((item) => item.id === nodeId);
   if (!node) return null;
   const styles = rendered[nodeId] ?? {};
   const children = node.children
-    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId))
+    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId, degradations))
     .filter((child): child is FigmaExportNode => child !== null);
   // 背景色：实测样式 → spec 视觉声明（仅 solid；gradient/image 类型如实跳过）
   const background = parseColor(styles.backgroundColor)
@@ -230,6 +233,26 @@ function toFigmaNode(
   if (type === "TEXT" && color) {
     fills.push(solidFill(color));
   }
+  const strokes = parseBorder(node.visual.border);
+  const effects = parseShadow(node.visual.shadow);
+  if (node.visual.border?.trim() && !strokes) {
+    degradations.push({
+      type: "unsupported-style",
+      nodeId: node.id,
+      property: "border",
+      value: node.visual.border,
+      message: `无法导出 border：${node.visual.border}`,
+    });
+  }
+  if (node.visual.shadow?.trim() && !effects) {
+    degradations.push({
+      type: "unsupported-style",
+      nodeId: node.id,
+      property: "shadow",
+      value: node.visual.shadow,
+      message: `无法导出 shadow：${node.visual.shadow}`,
+    });
+  }
   return {
     type,
     id: `d2c-${nodeId}`,
@@ -254,8 +277,8 @@ function toFigmaNode(
     ...(node.visual.opacity !== 1 ? { opacity: node.visual.opacity } : {}),
     ...(node.visual.borderRadius !== undefined ? { cornerRadius: node.visual.borderRadius } : {}),
     ...(node.role === "page" || node.layout.overflow === "hidden" ? { clipsContent: true } : {}),
-    ...(parseBorder(node.visual.border) ? { strokes: parseBorder(node.visual.border) } : {}),
-    ...(parseShadow(node.visual.shadow) ? { effects: parseShadow(node.visual.shadow) } : {}),
+    ...(strokes ? { strokes } : {}),
+    ...(effects ? { effects } : {}),
     layoutStrategy: "absolute",
     renderKind: node.content?.assetId ? "raster" : "native",
     pluginData: { d2cNodeId: node.id },
@@ -267,6 +290,7 @@ export function buildFigmaImportBundle(
   rendered: RenderedDocument = {},
   embeddedAssets: FigmaImportAsset[] = [],
 ): FigmaImportBundle {
+  const degradations: FigmaImportDegradation[] = [];
   // 同 id 嵌入条目去重（首个生效）；path 缺省时以 id 充当路径匹配键
   const assetsById = new Map<string, FigmaImportAsset>();
   const assetByPath = new Map<string, FigmaImportAsset>();
@@ -287,7 +311,7 @@ export function buildFigmaImportBundle(
   }
   const roots = spec.nodes.filter((node) => !node.parentId);
   const nodes = roots
-    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId))
+    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId, degradations))
     .filter((node): node is FigmaExportNode => node !== null);
   const emitted = new Set<string>();
   const collect = (items: FigmaExportNode[]) => items.forEach((item) => { emitted.add(item.pluginData.d2cNodeId); collect(item.children ?? []); });
@@ -295,13 +319,13 @@ export function buildFigmaImportBundle(
   // 视觉草稿偶有 parentId 已声明却未挂入 parent.children 的孤立子树；不能让它静默消失。
   for (const source of spec.nodes) {
     if (emitted.has(source.id)) continue;
-    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId);
+    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId, degradations);
     if (orphan) { nodes.push(orphan); collect([orphan]); }
   }
   // 无渲染样式证据的节点如实标注降级（按 spec 视觉导出，插件端不做计算样式回填）
-  const degradations: FigmaImportDegradation[] = spec.nodes
+  degradations.push(...spec.nodes
     .filter((node) => rendered[node.id] === undefined)
-    .map((node) => ({ type: "missing-render-evidence" as const, nodeId: node.id, message: "节点无渲染样式证据，按 spec 视觉导出" }));
+    .map((node) => ({ type: "missing-render-evidence" as const, nodeId: node.id, message: "节点无渲染样式证据，按 spec 视觉导出" })));
   return {
     version: "2.0",
     viewport: spec.page.canonicalViewport,

@@ -51,6 +51,7 @@ describe("pre-generated figma import bundles", () => {
       expect(imageNodes.length, `${fixtureId}: 真实样例应包含图集裁切节点`).toBeGreaterThan(0);
       // 离线预生成：无渲染证据 → 全部节点如实降级（按 spec 视觉兜底导出，仍带 fills 与正确裁切）
       expect(bundle.degradations.length).toBe(spec.nodes.length);
+      expect(bundle.degradations.filter((item) => item.type === "unsupported-style"), `${fixtureId}: 真实样例不得含无法导出的样式`).toEqual([]);
       // spec.visual 兜底：页根与文本节点必须带 SOLID 填充，否则 Figma 端会是全白包
       const nodeFillsCount = JSON.stringify(bundle.nodes).match(/"type":\s*"SOLID"/g)?.length ?? 0;
       expect(nodeFillsCount, `${fixtureId}: spec.visual 兜底必须产出非空 SOLID fills`).toBeGreaterThan(0);

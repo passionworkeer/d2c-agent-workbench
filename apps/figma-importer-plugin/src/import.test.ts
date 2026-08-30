@@ -154,6 +154,36 @@ describe("importBundle", () => {
     expect(reference).toMatchObject({ name: "Reference（隐藏）", x: 0, y: 0, width: 390, height: 867, visible: false, locked: true });
   });
 
+  it("writes native visual and typography properties to the Figma facade", async () => {
+    const styled: FigmaImportBundle = {
+      ...bundle,
+      nodes: [{
+        ...bundle.nodes[0]!,
+        opacity: 0.85,
+        cornerRadius: 12,
+        clipsContent: true,
+        strokes: [{ type: "SOLID", weight: 1, color: { r: 255, g: 255, b: 255 }, opacity: 0.4 }],
+        effects: [{ type: "DROP_SHADOW", color: { r: 0, g: 0, b: 0, a: 0.18 }, offset: { x: 0, y: 2 }, radius: 8 }],
+        children: [{
+          ...bundle.nodes[0]!.children![0]!,
+          children: [{
+            ...bundle.nodes[0]!.children![0]!.children![0]!,
+            lineHeight: 20,
+            letterSpacing: 1,
+            textAlignHorizontal: "CENTER",
+          }],
+        }],
+      }],
+    };
+    const { facade, calls } = makeFacade();
+    await importBundle(styled, facade);
+    const page = calls.setPluginData.mock.calls.find(([, , value]) => value === "page")![0]!;
+    const title = calls.setPluginData.mock.calls.find(([, , value]) => value === "hero-title")![0]!;
+    expect(page).toMatchObject({ opacity: 0.85, cornerRadius: 12, clipsContent: true, strokes: [{ type: "SOLID", opacity: 0.4 }], effects: [{ type: "DROP_SHADOW", radius: 8 }] });
+    expect(title).toMatchObject({ lineHeight: { unit: "PIXELS", value: 20 }, letterSpacing: { unit: "PIXELS", value: 1 }, textAlignHorizontal: "CENTER" });
+    expect(calls.setPluginData).toHaveBeenCalledWith(page, "d2cLayout", JSON.stringify(styled.nodes[0]!.layout));
+  });
+
   it("falls back to Inter Regular and records a degradation when the bundle font is unavailable", async () => {
     const { facade, calls } = makeFacade(); // 只有 Inter:Regular 可加载
     const result = await importBundle(bundle, facade);
