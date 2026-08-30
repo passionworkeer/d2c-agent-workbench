@@ -230,6 +230,7 @@ describe("interpretReferenceImage", () => {
     });
     expect(capturedSystem[0]).toContain("如实记录参考稿事实");
     expect(capturedSystem[0]).toContain("evaluator");
+    expect(capturedSystem[0]).toContain("taste-skill 设计变化度启发");
   });
 
   it("401 → VISION_UNAVAILABLE", async () => {

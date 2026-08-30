@@ -172,6 +172,7 @@ const SYSTEM_PROMPT = [
   "6. 文本内容填 content 字段；无法识别的字段宁可省略，不要编造。",
   "7. viewport 用图中推断的画布尺寸；不确定时用 1440x900。",
   "8. 如实记录参考稿事实：参考稿若存在 10px 字号、浅灰对比度不足、< 44px 点击区、过近文本间距等设计瑕疵，原样写入 spec.tokenValue / padding / size 字段——不要静默「修正」成更合规的值。evaluator 会基于真实产物按 web-design-guidelines 规则（最小字号 / WCAG AA / 点击区 / 间距节奏）产出 violation 作为信号，不在识别阶段擅自美化。",
+  "9. taste-skill 设计变化度启发：参考稿明显克制的（如全直角、无阴影）→ 沿用克制；spec 模糊处（styles.borderRadius / boxShadow / 间距未指定）允许你基于「设计变化度 1-10」主动推断合理值（如 card 节点补 8px 圆角 + 微阴影），目的是减少「AI 模板感」。但不要在参考稿已经指定的值上覆盖。",
 ].join("\n");
 
 export async function interpretReferenceImage(request: VisionRequest): Promise<VisionResult> {
