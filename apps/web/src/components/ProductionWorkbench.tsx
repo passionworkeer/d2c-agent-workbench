@@ -586,14 +586,17 @@ export function ProductionWorkbench() {
                     const expected = specTextNode?.content?.text ?? actualRendered;
                     const matched = expected === actual;
                     const baseline = baselineTexts?.[index] ?? "";
+                    // 「✓ 编辑已应用」必须 spec 期望与渲染实际都吻合：baseline !== expected 只说明
+                    // spec 被改过，并不保证 codegen 把新文案注入了组件 DOM；只有 matched 时才算闭环
                     const edited = baselineTexts !== null && baseline !== expected;
+                    const editApplied = edited && matched;
                     return (
-                      <tr key={index} className={matched && !edited ? "ok" : "warn"} data-testid={`text-evidence-row-${index}`}>
+                      <tr key={index} className={matched && !editApplied ? "ok" : "warn"} data-testid={`text-evidence-row-${index}`}>
                         <td>{index + 1}</td>
                         {baselineTexts !== null && <td><code>{baseline || "（无）"}</code></td>}
                         <td><code>{expected}</code></td>
                         <td><code>{actual || "（渲染缺失）"}</code></td>
-                        <td>{edited ? "✓ 编辑已应用" : matched ? "✓" : "✗"}</td>
+                        <td>{editApplied ? "✓ 编辑已应用" : edited ? "⚠ 编辑未生效" : matched ? "✓" : "✗"}</td>
                       </tr>
                     );
                   })}
@@ -628,6 +631,11 @@ export function ProductionWorkbench() {
               )}
             </div>
           </div>
+          <p className="prototype-editor-honest-note" data-testid="prototype-editor-honest-note">
+            真实样例（commerce-feed / game-festival / pet-red-packet）注册为单个可信组件，
+            Puck 在此仅作<strong>文本节点文案编辑</strong>入口——区块位置、视觉样式、组件结构以目标仓库代码为准，
+            Puck 画布只渲染节点 id 与文本，不能作为最终视觉布局的所见即所得编辑。
+          </p>
           <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />
         </section>
       )}

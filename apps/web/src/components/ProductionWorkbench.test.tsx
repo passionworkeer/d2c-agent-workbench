@@ -407,17 +407,43 @@ describe("ProductionWorkbench", () => {
     expect(evidence.querySelectorAll("thead th").length).toBe(4);
     expect(evidence.querySelector("summary")?.textContent ?? "").not.toContain("已应用编辑");
 
-    // 编辑 → 保存 → 展开为 5 列；基线列保留原文「全场 5 折」；spec 列变成「全场 6 折」并标 ✓ 编辑已应用
+    // 编辑 → 保存：基线列展开为 5 列，spec 文本变更后渲染尚未更新，差异列如实标「⚠ 编辑未生效」——
+    // 必须等闭环真正重跑完成才能宣称「编辑已应用」，不能拿旧渲染误导观众
     const input = screen.getByLabelText("hero-title 文本");
     await user.clear(input);
     await user.type(input, "夏日好物节 · 全场 6 折");
     await user.click(screen.getByRole("button", { name: "保存编辑到 Run" }));
     expect(evidence.querySelectorAll("thead th").length).toBe(5);
     expect(evidence.querySelector("thead th:nth-child(2)")?.textContent).toContain("基线");
-    const row = await screen.findByTestId("text-evidence-row-0");
-    expect(row.querySelector("td:nth-child(2)")?.textContent).toContain("夏日好物节 · 全场 5 折");
-    expect(row.querySelector("td:nth-child(3)")?.textContent).toContain("夏日好物节 · 全场 6 折");
-    expect(row.querySelector("td:nth-child(5)")?.textContent).toContain("编辑已应用");
+    const staleRow = await screen.findByTestId("text-evidence-row-0");
+    expect(staleRow.querySelector("td:nth-child(2)")?.textContent).toContain("夏日好物节 · 全场 5 折");
+    expect(staleRow.querySelector("td:nth-child(3)")?.textContent).toContain("夏日好物节 · 全场 6 折");
+    expect(staleRow.querySelector("td:nth-child(5)")?.textContent).toContain("编辑未生效");
+
+    // 按编辑重跑闭环：模拟服务端把 spec 编辑吸纳进新一轮 EVALUATED，最终落到终态，
+    // 工作台在终态时回查 /runs/:id 拉最新文本证据。覆盖 getProductionRun 让它返回编辑后的文案——
+    // 真实链路靠 orchestrator 重跑真实渲染，测试层只是用 mock 显式注入闭环结果
+    apiMocks.getProductionRun.mockReset().mockResolvedValueOnce({
+      id: "run-1", mode: "production", status: "completed", state: "COMPLETED", iteration: 2,
+      artifacts: [], violations: [violation], events: flowEvents,
+      latestEvaluation: evaluationMetrics,
+      latestTextEvidence: { expected: ["夏日好物节 · 全场 6 折"], actual: ["夏日好物节 · 全场 6 折"] },
+      latestSemanticReview: fallbackSemanticReview,
+    });
+    apiMocks.subscribeToProductionRun.mockReset().mockImplementationOnce((_id: string, onEvent: (item: TraceEvent) => void) => {
+      for (const item of flowEvents) onEvent(item);
+      onEvent({
+        id: "completed-after-repair", runId: "run-1", timestamp: new Date().toISOString(),
+        state: "COMPLETED", title: "闭环完成",
+        data: { finalScore: 93.4 },
+      });
+      return () => undefined;
+    });
+    await user.click(screen.getByRole("button", { name: "按编辑重跑闭环" }));
+    await waitFor(() => {
+      const appliedRow = screen.getByTestId("text-evidence-row-0");
+      expect(appliedRow.querySelector("td:nth-child(5)")?.textContent).toContain("编辑已应用");
+    });
     // summary 文案改为「已应用编辑」
     expect(evidence.querySelector("summary")?.textContent ?? "").toContain("已应用编辑");
   });
