@@ -161,12 +161,15 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         }
       }
       // 磁盘 run 记录同样封顶：内存 records 上限 MAX_RUNS，磁盘无界增长会让 runs/ 越积越多。
-      // 与内存同水位——按 createdAt 淘汰最旧的整目录（元数据 + artifacts 引用 + 渲染证据一并清理）。
+      // 与内存同水位——按 createdAt 淘汰最旧的整目录（元数据 + 渲染证据一并清理），
+      // artifacts/<id> 与 renders/<id> 必须同步删，否则 MAX_RUNS 形同虚设。
       if (reloadedRuns.length > MAX_RUNS) {
         const evict = [...reloadedRuns].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, reloadedRuns.length - MAX_RUNS);
         for (const { id } of evict) {
           records.delete(id);
           listeners.delete(id);
+          await rm(join(dataRoot, "artifacts", id), { recursive: true, force: true }).catch(() => undefined);
+          await rm(join(dataRoot, "renders", id), { recursive: true, force: true }).catch(() => undefined);
           await rm(join(dataRoot, "runs", id), { recursive: true, force: true }).catch(() => undefined);
         }
       }
@@ -422,6 +425,10 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         if (oldest === undefined) break;
         records.delete(oldest);
         listeners.delete(oldest);
+        // 同步清理 artifacts/<id> 与 renders/<id>，避免磁盘随内存淘汰遗留孤儿目录
+        await rm(join(dataRoot, "artifacts", oldest), { recursive: true, force: true }).catch(() => undefined);
+        await rm(join(dataRoot, "renders", oldest), { recursive: true, force: true }).catch(() => undefined);
+        await rm(join(dataRoot, "runs", oldest), { recursive: true, force: true }).catch(() => undefined);
       }
 
       const workspace = await RunWorkspace.create(join(dataRoot, "workspaces", id), profile);

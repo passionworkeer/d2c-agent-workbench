@@ -603,7 +603,9 @@ describe("production routes", () => {
     for (let attempt = 0; attempt < 50; attempt += 1) {
       const response = await restarted.inject({ method: "GET", url: "/api/production/runs" });
       runs = response.json().runs;
-      if (runs.length === 50) break;
+      // 启动清理是异步的：API 数量降到 50 时，磁盘 rm 可能还没把最旧目录真正删掉。
+      // 同步轮询 existsSync 直到最旧目录消失，避免 Windows 上并行 rm 的瞬态脏数据。
+      if (runs.length === 50 && !existsSync(join(dataRoot, "runs", "prod-cp000"))) break;
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     expect(runs).toHaveLength(50);
