@@ -36,7 +36,11 @@ Patch-Texture 275 325 51 52 221 315
 Patch-Texture 327 438 63 80 272 380 63 53
 Patch-Texture 172 531 48 14 220 531
 Patch-Texture 123 550 147 45 272 550 4 45
-Clear-Region 0 603 390 27 '#ab1500'
+# 下沿只去除按钮本身，保留两侧复杂舞台金边，避免把舞台截成水平色块。
+Clear-Region 98 603 194 27 '#ab1500'
+Clear-Region 0 627 80 3 '#ab1500'
+Clear-Region 312 625 78 5 '#ab1500'
+Patch-Texture 13 610 74 20 0 589 74 20
 $output=Join-Path $PSScriptRoot '..\..\..\activity-target\public\pet-red-packet\stage-scene.png'
 $scene.Save($output,[System.Drawing.Imaging.ImageFormat]::Png)
 $g.Dispose(); $scene.Dispose(); $source.Dispose()

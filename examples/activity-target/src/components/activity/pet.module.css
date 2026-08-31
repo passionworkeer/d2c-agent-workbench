@@ -38,7 +38,7 @@
 .signBadge { position: absolute; right: 0; top: -8px; background: #3a260799; border-radius: 12px; padding: 1px 5px; color: white; font-size: 10px; font-style: normal; }
 .blindbox { border: 0; padding: 0; background: none; }
 .cube { position: absolute; right: 2px; top: 2px; width: 49px; height: 48px; border: 2px solid white; border-radius: 6px 7px 3px 3px; background: linear-gradient(155deg,#fface3 0 17%,#ef77bc 19% 48%,#fa91d1 51%); color: white; font-weight: 800; font-size: 13px; line-height: 43px; transform: skewY(8deg); box-shadow: inset -11px 1px 0 #ffacd4; }
-.cash { position: absolute; top: 43px; left: 0; display: flex; flex-direction: column; align-items: center; width: 65px; height: 31px; border: 2px solid white; border-radius: 20px 0 0 20px; background: linear-gradient(100deg,#b6ff52,#91e618); color: #256208; }
+.cash { position: absolute; top: 43px; left: 0; display: flex; flex-direction: column; align-items: center; width: 62px; height: 31px; border: 2px solid white; border-radius: 20px 0 0 20px; background: linear-gradient(100deg,#b6ff52,#91e618); color: #256208; }
 .cash strong { font-size: 12px; line-height: 15px; }
 .cash small { font-size: 9px; color: #6faa09; }
 .levelRail { border: 1px solid #fff8; border-radius: 11px; background: #ffd5cb; }
@@ -47,7 +47,7 @@
 .hint::after { content: ""; position: absolute; bottom: -5px; left: 45px; width: 10px; height: 10px; transform: rotate(45deg); background: #fffffff5; }
 .feedButton,.sideAction { border: 2px solid #fffbe4; color: white; background: linear-gradient(180deg,#fff4b8 0%,#ffbd47 25%,#ff5a00 66%,#ff7415); box-shadow: inset 0 0 0 2px #ffd399,inset 0 6px 7px #ffffff95; }
 .feedButton { border-radius: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; background: radial-gradient(ellipse at 9% 32%,#ff96d8,transparent 60%),linear-gradient(125deg,#ff88b9,#ff6c56 57%,#ffa100); }
-.feedButton strong { font-size: 26px; line-height: 31px; font-weight: 900; font-style: italic; letter-spacing: -.6px; text-shadow: 0 1px 1px #ffdfc8; }
+.feedButton strong { font-size: 26px; line-height: 31px; font-weight: 900; letter-spacing: -.6px; text-shadow: 0 1px 1px #ffdfc8; }
 .feedButton > span { font-size: 11px; color: #ffdd9d; }
 .feedButton > span::before { content: "ϟ"; color: #ffe83c; font-size: 18px; line-height: 10px; padding-right: 3px; }
 .sideAction { border-radius: 22px; font-size: 20px; font-weight: 900; }
