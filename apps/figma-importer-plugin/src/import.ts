@@ -72,13 +72,11 @@ function fontWeightToStyle(weight: number | undefined): string {
   return weight !== undefined && weight >= 600 ? "Bold" : "Regular";
 }
 
-/** 归一化裁切区域 → imageTransform：让裁切区域恰好铺满节点 */
+/** 归一化裁切区域 → imageTransform：把节点坐标映射到图集中的裁切区域 */
 function cropTransform(crop: { x: number; y: number; width: number; height: number }): number[][] {
-  const safeWidth = crop.width > 0 ? crop.width : 1;
-  const safeHeight = crop.height > 0 ? crop.height : 1;
   return [
-    [1 / safeWidth, 0, -crop.x / safeWidth],
-    [0, 1 / safeHeight, -crop.y / safeHeight],
+    [crop.width > 0 ? crop.width : 1, 0, crop.x],
+    [0, crop.height > 0 ? crop.height : 1, crop.y],
   ];
 }
 

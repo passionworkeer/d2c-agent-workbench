@@ -143,8 +143,10 @@ describe("importBundle", () => {
     const transform = (art.fills[0] as { imageTransform: number[][] }).imageTransform;
     expect(transform[0]![0]).toBeCloseTo(1, 5);
     expect(transform[0]![2]).toBeCloseTo(0, 5);
-    expect(transform[1]![1]).toBeCloseTo(1 / 0.3, 5);
-    expect(transform[1]![2]).toBeCloseTo(-0.1 / 0.3, 5);
+    // Figma 的 imageTransform 把节点归一化坐标映射到图像坐标：
+    // [0, 1] 的节点 y 轴应落到图集的 [0.1, 0.4] 裁切区，而不是反向缩放图像。
+    expect(transform[1]![1]).toBeCloseTo(0.3, 5);
+    expect(transform[1]![2]).toBeCloseTo(0.1, 5);
   });
 
   it("adds a hidden locked reference layer when the bundle identifies its atlas", async () => {
