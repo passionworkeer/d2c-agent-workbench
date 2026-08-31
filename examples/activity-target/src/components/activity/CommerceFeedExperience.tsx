@@ -199,11 +199,11 @@ export function CommerceFeedExperience({ atlasUrl, texts, ...root }: { atlasUrl:
 
         <div data-d2c-node-id="promo-banner" style={box(0, 208, 390, 67)}>
           <ArtworkSlice nodeId="banner-art" atlasUrl={atlasUrl} crop={ATLAS_CROPS.banner} alt="快手818宠粉节粉红渐变 Banner" style={box(0, 0, 390, 67)} />
-          <span data-d2c-node-id="banner-title" style={box(12, 8, 100, 18)} className={pageStyles.bannerTitle}>{t("banner-title", "快手818宠粉节")}</span>
-          <span data-d2c-node-id="banner-line-auction" style={box(12, 30, 120, 12)} className={pageStyles.bannerLine}>{t("banner-line-auction", "手机金豆 1元起拍 ›")}</span>
-          <span data-d2c-node-id="banner-line-coupon" style={box(12, 46, 122, 12)} className={pageStyles.bannerLine}>{t("banner-line-coupon", "80元 消费券 去领取")}</span>
-          <span data-d2c-node-id="banner-line-moutai" style={box(135, 30, 120, 12)} className={pageStyles.bannerLine}>{t("banner-line-moutai", "手机茅台 一元起拍")}</span>
-          <span data-d2c-node-id="banner-price" style={box(310, 20, 68, 22)} className={pageStyles.bannerPrice}>{t("banner-price", "¥59.9")}</span>
+          <span data-d2c-node-id="banner-title" hidden>{t("banner-title", "快手818宠粉节")}</span>
+          <span data-d2c-node-id="banner-line-auction" hidden>{t("banner-line-auction", "手机金豆 1元起拍 ›")}</span>
+          <span data-d2c-node-id="banner-line-coupon" hidden>{t("banner-line-coupon", "80元 消费券 去领取")}</span>
+          <span data-d2c-node-id="banner-line-moutai" hidden>{t("banner-line-moutai", "手机茅台 一元起拍")}</span>
+          <span data-d2c-node-id="banner-price" hidden>{t("banner-price", "¥59.9")}</span>
         </div>
 
         <div data-d2c-node-id="product-grid" style={box(0, 276, 390, 548)} className={pageStyles.productGrid}>

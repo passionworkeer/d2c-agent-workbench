@@ -41,6 +41,13 @@ describe("CommerceFeedExperience", () => {
     expect(queryNode("float-browse")).toBeNull();
     expect(queryNode("float-reward")).toBeNull();
   });
+
+  it("将已烘焙文案的 Banner 作为单个视觉切片，避免重复文字覆盖", () => {
+    render(<CommerceFeedExperience atlasUrl={atlasUrl} />);
+    for (const id of ["banner-title", "banner-line-auction", "banner-line-coupon", "banner-line-moutai", "banner-price"]) {
+      expect(queryNode(id), id).toHaveAttribute("hidden");
+    }
+  });
 });
 
 describe("SummerGameFestivalExperience", () => {
