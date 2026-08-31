@@ -45,7 +45,7 @@ export function PetRedPacketExperience({ atlasUrl, texts, ...root }: { atlasUrl:
               <button className={styles.sideEntry} style={box(11, 5, 34, 34)} onClick={() => setToast("更多活动（本地演示）")}>更多</button>
               <button data-d2c-node-id="pet-hero-share" className={styles.sideEntry} style={box(345, 5, 34, 34)} onClick={() => setToast("分享活动页（本地演示）")}>{t("pet-hero-share", "分享")}</button>
               <button data-d2c-node-id="pet-hero-wallet" className={styles.sideEntry} style={box(345, 53, 34, 34)} onClick={() => setToast("我的钱包（本地演示）")}>{t("pet-hero-wallet", "钱包")}</button>
-              <div className={styles.notice} style={box(83, 75, 228, 17)}><span aria-hidden="true">◀</span><span data-d2c-node-id="pet-hero-notice-text">{t("pet-hero-notice-text", "活动时间结束后，宠物玩法即将焕新回归")}</span></div>
+              <div data-d2c-node-id="pet-hero-notice" className={styles.notice} style={box(83, 75, 228, 17)}><span aria-hidden="true">◀</span><span data-d2c-node-id="pet-hero-notice-text">{t("pet-hero-notice-text", "活动时间结束后，宠物玩法即将焕新回归")}</span></div>
             </section>
 
             <section data-d2c-node-id="level-progress" className={styles.progress} style={box(37, 144, 316, 90)}>
@@ -73,8 +73,10 @@ export function PetRedPacketExperience({ atlasUrl, texts, ...root }: { atlasUrl:
             </section>
 
             <div data-d2c-node-id="feed-action" style={box(0, 603, 390, 87)}>
-              <div className={styles.pkBadge} style={box(15, 9, 69, 25)}><span data-d2c-node-id="pet-pk-title">{t("pet-pk-title", "再赢88元")}</span></div>
-              <button data-d2c-node-id="pet-pk-action" className={styles.sideAction} style={box(0, 24, 79, 58)} onClick={() => setToast("宠物 PK（本地演示）")}>{t("pet-pk-action", "去PK")}</button>
+              <div data-d2c-node-id="pet-pk-button" style={box(0, 9, 84, 73)}>
+                <div className={styles.pkBadge} style={box(15, 0, 69, 25)}><span data-d2c-node-id="pet-pk-title">{t("pet-pk-title", "再赢88元")}</span></div>
+                <button data-d2c-node-id="pet-pk-action" className={styles.sideAction} style={box(0, 15, 79, 58)} onClick={() => setToast("宠物 PK（本地演示）")}>{t("pet-pk-action", "去PK")}</button>
+              </div>
               <button data-d2c-node-id="pet-feed-button" className={styles.feedButton} style={box(98, 0, 194, 84)} onClick={feed}><strong data-d2c-node-id="pet-feed-label">{t("pet-feed-label", "首次喂食免费")}</strong><span data-d2c-node-id="pet-feed-energy">{`${t("pet-feed-energy-prefix", "剩余 ")}${energy}${t("pet-feed-energy-suffix", " 能量")}`}</span></button>
               <button data-d2c-node-id="pet-earn-energy" className={styles.sideAction} style={box(312, 24, 78, 58)} onClick={earn}><span data-d2c-node-id="pet-earn-energy-label">{t("pet-earn-energy-label", "赚能量")}</span></button>
             </div>

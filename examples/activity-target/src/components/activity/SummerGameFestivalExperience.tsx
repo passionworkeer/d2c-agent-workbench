@@ -17,6 +17,8 @@ const BENEFITS = [
 export function SummerGameFestivalExperience({ atlasUrl, texts, ...root }: { atlasUrl: string; texts?: Record<string, string> } & ComponentPropsWithoutRef<"div">) {
   const t = (id: string, fallback: string) => texts?.[id] ?? fallback;
   const [stars, setStars] = useState(0);
+  // 生成器传入的是包含初始数字的完整文案，不可再直接拼接动态余额。
+  const balancePrefix = t("star-balance-label", "我的星钻： ").replace(/\d+\s*$/, "");
   const [toast, setToast] = useState<string | null>(null);
   const [doneTasks, setDoneTasks] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState("tab-tasks");
@@ -42,7 +44,7 @@ export function SummerGameFestivalExperience({ atlasUrl, texts, ...root }: { atl
             <button className={styles.back} aria-label="返回" onClick={() => setToast("返回活动（本地演示）")}>‹</button>
             <button data-d2c-node-id="star-balance" className={styles.balance} onClick={() => setToast(`我的星钻：${stars}`)}>
               {art("star-gem", [273, 13, 16, 17], { width: 16, height: 17 })}
-              <span data-d2c-node-id="star-balance-label">{`${t("star-balance-label", "我的星钻： ")}${stars}`}</span><span aria-hidden="true">›</span>
+              <span data-d2c-node-id="star-balance-label">{`${balancePrefix}${stars}`}</span><span aria-hidden="true">›</span>
             </button>
             <button data-d2c-node-id="hero-rule-entry" className={styles.heroEntry} style={box(345, 52, 30, 30)} onClick={() => setToast("活动规则（本地演示）")}><span data-d2c-node-id="hero-rule-label">{t("hero-rule-label", "规则")}</span></button>
             <button data-d2c-node-id="hero-backpack-entry" className={styles.heroEntry} style={box(345, 89, 30, 30)} onClick={() => setToast("我的背包（本地演示）")}><span data-d2c-node-id="hero-backpack-label">{t("hero-backpack-label", "背包")}</span></button>

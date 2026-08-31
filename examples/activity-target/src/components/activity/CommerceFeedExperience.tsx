@@ -26,6 +26,10 @@ const Trophy = () => <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 2h8
 // 商品图保留营销图自身图文，卡片正文、按钮、导航及横幅都由 React 构建。
 export function CommerceFeedExperience({ atlasUrl, texts, ...root }: { atlasUrl: string; texts?: Record<string, string> } & ComponentPropsWithoutRef<"div">) {
   const t = (id: string, fallback: string) => texts?.[id] ?? fallback;
+  const couponText = t("banner-line-coupon", "80元 消费券 去领取");
+  const coupon = couponText.match(/^(\d+(?:\.\d+)?)元(\s+)(\S+)(\s+)(.+)$/);
+  const goodsText = t("banner-line-moutai", "手机茅台 一元起拍");
+  const goods = goodsText.match(/^(\S{2})(\S{2})(\s+)(.+)$/);
   const [toast, setToast] = useState<string | null>(null);
   const [floatsVisible, setFloatsVisible] = useState(true);
   const [nav, setNav] = useState("top-tab-mall");
@@ -54,8 +58,8 @@ export function CommerceFeedExperience({ atlasUrl, texts, ...root }: { atlasUrl:
           </div>
           <section data-d2c-node-id="promo-banner" className={styles.banner} style={box(8, 208, 375, 68)}>
             <div className={styles.bannerLead}><strong data-d2c-node-id="banner-title">{t("banner-title", "快手818宠粉节")}</strong><span data-d2c-node-id="banner-line-auction">{t("banner-line-auction", "手机金豆 1元起拍 ›")}</span></div>
-            <button className={styles.coupon} aria-label="去领取" onClick={() => setToast("80元消费券已领取（本地演示）")}><span data-d2c-node-id="banner-line-coupon">{texts?.["banner-line-coupon"] ?? <><strong>80<small>元</small></strong>{" "}<span>消费券{" "}<em>去领取</em></span></>}</span></button>
-            <div className={styles.bannerGoods}><span data-d2c-node-id="banner-line-moutai">{texts?.["banner-line-moutai"] ?? <><strong>手机<br />茅台</strong>{" "}<span>一元起拍</span></>}</span><ArtworkSlice nodeId="banner-art" atlasUrl={atlasUrl} crop={crop(326, 226, 47, 26)} alt="横幅中的手机商品图" style={box(67, 13, 47, 26)} /><span data-d2c-node-id="banner-price" className={styles.bannerPrice}>{t("banner-price", "¥59.9")}</span></div>
+            <button className={styles.coupon} aria-label={coupon?.[5] ?? couponText} onClick={() => setToast(`${coupon ? `${coupon[1]}元${coupon[3]}` : couponText}已领取（本地演示）`)}><span data-d2c-node-id="banner-line-coupon">{coupon ? <><strong>{coupon[1]}<small>元</small></strong>{coupon[2]}<span>{coupon[3]}{coupon[4]}<em>{coupon[5]}</em></span></> : couponText}</span></button>
+            <div className={styles.bannerGoods}><span data-d2c-node-id="banner-line-moutai">{goods ? <><strong>{goods[1]}<br />{goods[2]}</strong>{goods[3]}<span>{goods[4]}</span></> : goodsText}</span><ArtworkSlice nodeId="banner-art" atlasUrl={atlasUrl} crop={crop(326, 226, 47, 26)} alt="横幅中的手机商品图" style={box(67, 13, 47, 26)} /><span data-d2c-node-id="banner-price" className={styles.bannerPrice}>{t("banner-price", "¥59.9")}</span></div>
           </section>
 
           <section data-d2c-node-id="product-grid" style={box(0, 285, 390, 544)}>
