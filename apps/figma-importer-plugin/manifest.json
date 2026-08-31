@@ -6,7 +6,7 @@
   "ui": "dist/ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": [],
+    "allowedDomains": ["none"],
     "reasoning": "离线导入本地 JSON 导入包：不访问任何网络，不读取任何令牌或凭证"
   }
 }

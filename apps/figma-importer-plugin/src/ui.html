@@ -1,81 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>D2C 活动页导入</title>
-  <style>
-    body { font-family: Inter, "PingFang SC", sans-serif; margin: 16px; color: #1a1a1a; font-size: 12px; }
-    h2 { font-size: 14px; margin: 0 0 4px; }
-    p.hint { color: #666; margin: 0 0 12px; line-height: 1.6; }
-    label.file { display: block; margin: 0 0 12px; }
-    button { padding: 8px 16px; font-size: 12px; cursor: pointer; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    #report { margin-top: 12px; line-height: 1.7; white-space: pre-wrap; }
-    #report.error { color: #c0392b; }
-    #report .degradation { color: #a06000; }
-  </style>
-</head>
-<body>
-  <h2>D2C 活动页导入（离线）</h2>
-  <p class="hint">选择工作台导出的 figma-import.json（v2 自包含包）。插件不联网、不读取任何令牌——素材与文本全部来自这个本地文件。</p>
-  <label class="file">导入包 JSON：<input id="file" type="file" accept="application/json,.json" /></label>
-  <button id="import" disabled>导入到 Figma</button>
-  <div id="report"></div>
-  <script>
-    // UI 沙箱 ↔ 插件主线程：只传递用户选择的 JSON 内容，无网络请求
-    let pendingBundle = null;
-    const fileInput = document.getElementById("file");
-    const importButton = document.getElementById("import");
-    const reportBox = document.getElementById("report");
-
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files && fileInput.files[0];
-      pendingBundle = null;
-      importButton.disabled = true;
-      reportBox.className = "";
-      reportBox.textContent = file ? `已选择 ${file.name}（${(file.size / 1024).toFixed(0)} KB），点击导入` : "";
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          pendingBundle = JSON.parse(String(reader.result));
-          importButton.disabled = false;
-        } catch (error) {
-          reportBox.className = "error";
-          reportBox.textContent = `JSON 解析失败：${error && error.message ? error.message : error}`;
-        }
-      };
-      reader.readAsText(file);
-    });
-
-    importButton.addEventListener("click", () => {
-      if (!pendingBundle) return;
-      importButton.disabled = true;
-      reportBox.className = "";
-      reportBox.textContent = "导入中…";
-      parent.postMessage({ pluginMessage: { type: "import-bundle", bundle: pendingBundle } }, "*");
-    });
-
-    onmessage = (event) => {
-      const message = event.data.pluginMessage;
-      if (!message) return;
-      importButton.disabled = !pendingBundle;
-      if (message.type === "import-error") {
-        reportBox.className = "error";
-        reportBox.textContent = `导入失败：${message.message}`;
-        return;
-      }
-      if (message.type === "import-report") {
-        const report = message.report;
-        const lines = [`导入完成：创建 ${report.createdNodes} 个节点（根节点 ${report.rootIds.length} 个）`];
-        for (const degradation of report.degradations || []) {
-          lines.push(`· [${degradation.type}] ${degradation.nodeId}: ${degradation.message}`);
-        }
-        if (!report.degradations || report.degradations.length === 0) lines.push("无降级项");
-        reportBox.className = "";
-        reportBox.innerHTML = lines.map(line => line.startsWith("·") ? `<div class="degradation">${line}</div>` : `<div>${line}</div>`).join("");
-      }
-    };
-  </script>
-</body>
-</html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>D2C 活动页导入</title><style>
+body { font-family: Inter, "PingFang SC", sans-serif; margin: 16px; color: #1a1a1a; font-size: 12px; } h2 { font-size: 14px; margin: 0 0 4px; } p { color: #666; line-height: 1.6; } label { display: block; margin: 12px 0; } button { padding: 8px 16px; margin-right: 8px; cursor: pointer; } button:disabled { opacity: .5; cursor: not-allowed; } #report { margin-top: 12px; line-height: 1.7; white-space: pre-wrap; } #report.error { color: #c0392b; }
+</style></head><body>
+<h2>D2C 活动页导入（离线）</h2><p>导入自包含 JSON 后，可从 Figma 根 Frame 导出 PNG，并与包内参考图生成本地 diff 和报告。插件不联网。</p>
+<label>导入包 JSON：<input id="file" type="file" accept="application/json,.json" /></label>
+<button id="import" disabled>导入到 Figma</button><button id="verify" disabled>导出并验证</button><div id="report"></div><script src="ui.js"></script>
+</body></html>

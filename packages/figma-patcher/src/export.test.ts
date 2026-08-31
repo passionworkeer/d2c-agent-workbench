@@ -194,4 +194,60 @@ describe("buildFigmaImportBundle", () => {
     const card = findNode(bundle.nodes, "card");
     expect(card?.fills?.[0]).toMatchObject({ type: "SOLID", color: { r: 38, g: 22, b: 86 }, opacity: 0.62 });
   });
+
+  it("exports native style properties, raster classification, and unsupported styles explicitly", () => {
+    const styled = activitySpecSchema.parse({
+      ...spec,
+      nodes: [
+        { ...spec.nodes[0]!, children: ["card", "image"] },
+        { id: "card", parentId: "page", role: "section", name: "卡片", sourceBox: { x: 0, y: 0, width: 100, height: 80 }, layout: { mode: "flow", width: { mode: "fixed", value: 100 }, height: { mode: "fixed", value: 80 }, rationale: "卡片" }, visual: { opacity: .85, borderRadius: 12, border: "1px solid rgba(255,255,255,.4)", shadow: "0 2px 8px rgba(0,0,0,.18)" }, evidence: spec.nodes[0]!.evidence, confidence: 1, reviewState: "accepted", children: ["title"] },
+        { id: "title", parentId: "card", role: "text", name: "标题", sourceBox: { x: 0, y: 0, width: 100, height: 20 }, layout: { mode: "flow", width: { mode: "fixed", value: 100 }, height: { mode: "fixed", value: 20 }, rationale: "文字" }, visual: { opacity: 1, fontFamily: "PingFang SC", lineHeight: 20, letterSpacing: 1, textAlign: "center" }, content: { text: "标题" }, evidence: spec.nodes[0]!.evidence, confidence: 1, reviewState: "accepted", children: [] },
+        { id: "image", parentId: "page", role: "image", name: "图", sourceBox: { x: 0, y: 80, width: 100, height: 80 }, layout: { mode: "flow", width: { mode: "fixed", value: 100 }, height: { mode: "fixed", value: 80 }, rationale: "图" }, visual: { opacity: 1 }, content: { assetId: "hero-art" }, evidence: spec.nodes[0]!.evidence, confidence: 1, reviewState: "accepted", children: [] },
+      ],
+    });
+    const bundle = buildFigmaImportBundle(styled, {}, embeddedAssets);
+    expect(findNode(bundle.nodes, "card")).toMatchObject({ opacity: .85, cornerRadius: 12, layoutStrategy: "absolute", renderKind: "native", strokes: [{ weight: 1, opacity: .4 }], effects: [{ type: "DROP_SHADOW", offset: { x: 0, y: 2 }, radius: 8 }] });
+    expect(findNode(bundle.nodes, "title")).toMatchObject({ fontFamily: "PingFang SC", lineHeight: 20, letterSpacing: 1, textAlignHorizontal: "CENTER" });
+    expect(findNode(bundle.nodes, "image")).toMatchObject({ renderKind: "raster" });
+  });
+
+  it("records unparseable border and shadow values instead of silently dropping them", () => {
+    const unsupported = activitySpecSchema.parse({
+      ...spec,
+      nodes: spec.nodes.map((node) => node.id === "hero"
+        ? { ...node, visual: { ...node.visual, border: "dashed red", shadow: "var(--shadow)" } }
+        : node),
+    });
+
+    const bundle = buildFigmaImportBundle(unsupported, renderedDocument, embeddedAssets);
+
+    expect(bundle.degradations).toContainEqual(expect.objectContaining({
+      type: "unsupported-style", nodeId: "hero", property: "border", value: "dashed red",
+    }));
+    expect(bundle.degradations).toContainEqual(expect.objectContaining({
+      type: "unsupported-style", nodeId: "hero", property: "shadow", value: "var(--shadow)",
+    }));
+  });
+
+  it("attaches a parentId child omitted from children so it remains inside the exported page Frame", () => {
+    const withDetachedChild = activitySpecSchema.parse({
+      ...spec,
+      nodes: [
+        ...spec.nodes,
+        {
+          id: "live-task-overlay", parentId: "page", role: "component", name: "悬浮任务",
+          sourceBox: { x: 0, y: 700, width: 390, height: 80 },
+          layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "fixed", value: 80 }, rationale: "截图悬浮层" },
+          visual: { opacity: 1, background: { type: "solid", value: "#222222" } },
+          evidence: spec.nodes[0]!.evidence, confidence: 1, reviewState: "accepted", children: [],
+        },
+      ],
+    });
+
+    const bundle = buildFigmaImportBundle(withDetachedChild, renderedDocument, embeddedAssets);
+
+    expect(bundle.nodes).toHaveLength(1);
+    expect(findNode(bundle.nodes, "live-task-overlay")).toMatchObject({ x: 0, y: 700, pluginData: { d2cNodeId: "live-task-overlay" } });
+    expect(bundle.nodes[0]!.children?.map((node) => node.pluginData.d2cNodeId)).toContain("live-task-overlay");
+  });
 });

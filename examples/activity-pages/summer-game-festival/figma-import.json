@@ -57,6 +57,8 @@
                 "width": 1,
                 "height": 0.35714285714285715
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "raster",
               "pluginData": {
                 "d2cNodeId": "festival-hero-art"
               }
@@ -85,6 +87,8 @@
                 "width": 0.41984126984126985,
                 "height": 0.13007518796992482
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "raster",
               "pluginData": {
                 "d2cNodeId": "festival-hero-title"
               }
@@ -123,6 +127,9 @@
                 "mode": "absolute",
                 "rationale": "黑底金字日期条"
               },
+              "cornerRadius": 8,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "festival-hero-date"
               }
@@ -167,10 +174,13 @@
                   ],
                   "characters": "我的星钻： 0",
                   "fontSize": 11,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "余额文案"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "star-balance-label"
                   }
@@ -180,6 +190,9 @@
                 "mode": "absolute",
                 "rationale": "右上星钻余额胶囊"
               },
+              "cornerRadius": 11,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "star-balance"
               }
@@ -224,10 +237,13 @@
                   ],
                   "characters": "规则",
                   "fontSize": 12,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "hero-rule-label"
                   }
@@ -237,6 +253,9 @@
                 "mode": "absolute",
                 "rationale": "圆形悬浮入口"
               },
+              "cornerRadius": 22,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "hero-rule-entry"
               }
@@ -281,10 +300,13 @@
                   ],
                   "characters": "背包",
                   "fontSize": 12,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "hero-backpack-label"
                   }
@@ -294,6 +316,9 @@
                 "mode": "absolute",
                 "rationale": "圆形悬浮入口"
               },
+              "cornerRadius": 22,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "hero-backpack-entry"
               }
@@ -303,6 +328,9 @@
             "mode": "flow",
             "rationale": "夜晚瀑布场景主视觉（原图 0-950，950÷3.23077=294），叠加账户胶囊与悬浮入口"
           },
+          "clipsContent": true,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "festival-hero"
           }
@@ -341,6 +369,8 @@
                 "mode": "flow",
                 "rationale": "白色粗体专场名"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "collab-title"
               }
@@ -366,10 +396,13 @@
               "characters": "50 : 41 : 12",
               "fontSize": 13,
               "fontWeight": 700,
+              "letterSpacing": 1,
               "layout": {
                 "mode": "flow",
                 "rationale": "黑底方块倒计时（演示静态值）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "collab-countdown"
               }
@@ -398,6 +431,8 @@
                 "mode": "flow",
                 "rationale": "右侧入口"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "collab-calendar"
               }
@@ -414,6 +449,8 @@
             },
             "rationale": "专场名 + 倒计时 + 日历入口"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "collab-header"
           }
@@ -472,6 +509,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-install-title"
                   }
@@ -500,6 +539,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-install-reward"
                   }
@@ -525,10 +566,14 @@
                   "characters": "去下载",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "浅紫白渐变胶囊按钮"
                   },
+                  "cornerRadius": 14,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-install-action"
                   }
@@ -540,6 +585,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "task-install"
               }
@@ -578,6 +625,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-follow-title"
                   }
@@ -606,6 +655,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-follow-reward"
                   }
@@ -631,10 +682,14 @@
                   "characters": "去关注",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "浅紫白渐变胶囊按钮"
                   },
+                  "cornerRadius": 14,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-follow-action"
                   }
@@ -646,6 +701,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "task-follow"
               }
@@ -663,6 +720,9 @@
             },
             "rationale": "深紫圆角面板内两张任务卡"
           },
+          "cornerRadius": 14,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "task-list"
           }
@@ -712,6 +772,8 @@
                 "mode": "flow",
                 "rationale": "区块标题"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-title"
               }
@@ -740,6 +802,8 @@
                 "mode": "flow",
                 "rationale": "右侧入口"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-exchange"
               }
@@ -773,10 +837,13 @@
                   ],
                   "characters": "随机7天舞蹈礼包",
                   "fontSize": 10,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "奖励名称"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "benefit-tile-dance-label"
                   }
@@ -788,6 +855,8 @@
                 "gap": 4,
                 "rationale": "物品图标 + 名称"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-tile-dance"
               }
@@ -821,10 +890,13 @@
                   ],
                   "characters": "铲铲币20000",
                   "fontSize": 10,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "奖励名称"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "benefit-tile-coin-label"
                   }
@@ -836,6 +908,8 @@
                 "gap": 4,
                 "rationale": "物品图标 + 名称"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-tile-coin"
               }
@@ -869,10 +943,13 @@
                   ],
                   "characters": "灵契100",
                   "fontSize": 10,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "奖励名称"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "benefit-tile-lingqi-label"
                   }
@@ -884,6 +961,8 @@
                 "gap": 4,
                 "rationale": "物品图标 + 名称"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-tile-lingqi"
               }
@@ -917,10 +996,13 @@
                   ],
                   "characters": "小快头套",
                   "fontSize": 10,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "奖励名称"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "benefit-tile-hat-label"
                   }
@@ -932,6 +1014,8 @@
                 "gap": 4,
                 "rationale": "物品图标 + 名称"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "benefit-tile-hat"
               }
@@ -949,6 +1033,9 @@
             },
             "rationale": "标题行 + 四格奖励"
           },
+          "cornerRadius": 14,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "benefit-panel"
           }
@@ -1007,6 +1094,8 @@
                     "mode": "flow",
                     "rationale": "卡片标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "reward-cash-title"
                   }
@@ -1035,6 +1124,8 @@
                     "mode": "flow",
                     "rationale": "副标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "reward-cash-sub"
                   }
@@ -1060,10 +1151,14 @@
                   "characters": "兑奖",
                   "fontSize": 11,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "金色胶囊按钮"
                   },
+                  "cornerRadius": 11,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "reward-cash-action"
                   }
@@ -1080,6 +1175,9 @@
                 },
                 "rationale": "左文案右按钮"
               },
+              "cornerRadius": 10,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "reward-cash"
               }
@@ -1118,6 +1216,8 @@
                     "mode": "flow",
                     "rationale": "卡片标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "reward-draw-title"
                   }
@@ -1146,6 +1246,8 @@
                     "mode": "flow",
                     "rationale": "副标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "reward-draw-sub"
                   }
@@ -1162,6 +1264,9 @@
                 },
                 "rationale": "左文案右装饰"
               },
+              "cornerRadius": 10,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "reward-draw"
               }
@@ -1179,6 +1284,9 @@
             },
             "rationale": "两张横排兑换卡"
           },
+          "cornerRadius": 14,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "reward-cards"
           }
@@ -1228,6 +1336,8 @@
                 "mode": "flow",
                 "rationale": "区块标题"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "daily-tasks-title"
               }
@@ -1256,6 +1366,8 @@
                 "mode": "flow",
                 "rationale": "右侧灰色小字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "daily-tasks-note"
               }
@@ -1285,6 +1397,8 @@
                 "mode": "flow",
                 "rationale": "任务卡标题（带刷新图标，原图 105,2165）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "daily-tasks-mine"
               }
@@ -1323,6 +1437,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-publish-title"
                   }
@@ -1351,6 +1467,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-publish-reward"
                   }
@@ -1376,10 +1494,14 @@
                   "characters": "去发布",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "白底紫描边胶囊按钮"
                   },
+                  "cornerRadius": 18,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "task-publish-action"
                   }
@@ -1391,6 +1513,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮（原图 100,2230,1160,170，左侧被悬浮胶囊遮挡）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "task-publish"
               }
@@ -1408,6 +1532,9 @@
             },
             "rationale": "标题行 + 我的任务卡 + 发布任务"
           },
+          "cornerRadius": 14,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "daily-tasks"
           }
@@ -1452,10 +1579,13 @@
               "characters": "做任务得星钻",
               "fontSize": 13,
               "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "粉紫渐变选中态"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "tab-tasks"
               }
@@ -1488,10 +1618,13 @@
               ],
               "characters": "主播排行榜",
               "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "深蓝未选中态"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "tab-rank"
               }
@@ -1501,8 +1634,79 @@
             "mode": "fixed",
             "rationale": "固定底部斜切双 Tab"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "activity-tabs"
+          }
+        },
+        {
+          "type": "FRAME",
+          "id": "d2c-live-task-overlay",
+          "name": "直播间任务悬浮",
+          "x": 100,
+          "y": 697,
+          "width": 188,
+          "height": 47,
+          "children": [
+            {
+              "type": "TEXT",
+              "id": "d2c-live-task-label",
+              "name": "悬浮文案",
+              "x": 116,
+              "y": 713,
+              "width": 156,
+              "height": 16,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "color": {
+                    "r": 255,
+                    "g": 255,
+                    "b": 255
+                  }
+                }
+              ],
+              "characters": "去直播间做任务",
+              "fontSize": 13,
+              "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
+              "layout": {
+                "mode": "flow",
+                "rationale": "按钮文案"
+              },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
+              "pluginData": {
+                "d2cNodeId": "live-task-label"
+              }
+            }
+          ],
+          "layout": {
+            "mode": "absolute",
+            "rationale": "粉紫渐变悬浮胶囊，覆盖发布任务行左侧（原图 322-930 × 2252-2405）"
+          },
+          "cornerRadius": 24,
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": 4
+              },
+              "radius": 14,
+              "color": {
+                "r": 138,
+                "g": 92,
+                "b": 255,
+                "a": 0.45
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
+          "pluginData": {
+            "d2cNodeId": "live-task-overlay"
           }
         }
       ],
@@ -1510,6 +1714,9 @@
         "mode": "flow",
         "rationale": "390px 手机完整长页，横向裁切防溢出"
       },
+      "clipsContent": true,
+      "layoutStrategy": "absolute",
+      "renderKind": "native",
       "pluginData": {
         "d2cNodeId": "page"
       }
@@ -1525,7 +1732,8 @@
   ],
   "manifest": {
     "name": "SummerGameFestival",
-    "route": "/game/festival"
+    "route": "/game/festival",
+    "referenceAssetId": "reference"
   },
   "degradations": [
     {

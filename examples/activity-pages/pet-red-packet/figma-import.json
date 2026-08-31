@@ -58,6 +58,8 @@
                 "mode": "flow",
                 "rationale": "选中 Tab 金色加粗带下划线（原图 205-375 × 30-105）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-tab-pet"
               }
@@ -86,6 +88,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-tab-follow"
               }
@@ -114,6 +118,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-tab-mall"
               }
@@ -142,6 +148,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-tab-discover"
               }
@@ -170,6 +178,8 @@
                 "mode": "flow",
                 "rationale": "Tab 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-tab-local"
               }
@@ -186,6 +196,8 @@
             },
             "rationale": "汉堡菜单(99+) + 活动 Tab 组 + 搜索圆钮；原图无系统状态栏，导航从 y0 起"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "pet-app-nav"
           }
@@ -223,6 +235,8 @@
                 "width": 0.6507936507936508,
                 "height": 0.07750472589792061
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "raster",
               "pluginData": {
                 "d2cNodeId": "pet-hero-title"
               }
@@ -267,10 +281,13 @@
                   ],
                   "characters": "活动时间结束后，宠物玩法即将焕新回归",
                   "fontSize": 10,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "公告文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-hero-notice-text"
                   }
@@ -280,6 +297,9 @@
                 "mode": "absolute",
                 "rationale": "深红药丸形公告（原图 175-1090 × 385-455）"
               },
+              "cornerRadius": 11,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-hero-notice"
               }
@@ -313,10 +333,14 @@
               ],
               "characters": "分享",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "absolute",
                 "rationale": "黑色半透明圆角方形入口（原图 1115-1225 × 170-275）"
               },
+              "cornerRadius": 10,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-hero-share"
               }
@@ -350,10 +374,14 @@
               ],
               "characters": "钱包",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "absolute",
                 "rationale": "黑色半透明圆角方形入口（原图 1115-1225 × 330-440）"
               },
+              "cornerRadius": 10,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-hero-wallet"
               }
@@ -363,6 +391,8 @@
             "mode": "flow",
             "rationale": "品牌标 + 立体字主标题 + 公告横幅（原图 135-465）"
           },
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "pet-hero"
           }
@@ -407,10 +437,13 @@
               "characters": "再升4级，开惊喜礼盒",
               "fontSize": 13,
               "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "居中提示"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-progress-hint"
               }
@@ -440,6 +473,8 @@
                 "mode": "flow",
                 "rationale": "红色大字收入"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-income"
               }
@@ -468,6 +503,8 @@
                 "mode": "flow",
                 "rationale": "灰色小字入口"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-income-link"
               }
@@ -497,6 +534,8 @@
                 "mode": "flow",
                 "rationale": "已领里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l1"
               }
@@ -525,6 +564,8 @@
                 "mode": "flow",
                 "rationale": "里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l5"
               }
@@ -553,6 +594,8 @@
                 "mode": "flow",
                 "rationale": "里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l10"
               }
@@ -581,6 +624,8 @@
                 "mode": "flow",
                 "rationale": "里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l15"
               }
@@ -609,6 +654,8 @@
                 "mode": "flow",
                 "rationale": "里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l20"
               }
@@ -637,6 +684,8 @@
                 "mode": "flow",
                 "rationale": "满级里程碑（列扫描实测）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-l55"
               }
@@ -670,10 +719,14 @@
               "characters": "88元",
               "fontSize": 10,
               "fontWeight": 800,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "爆炸贴纸样式大奖（原图 985-1105 × 600-675）"
               },
+              "cornerRadius": 8,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "level-milestone-prize"
               }
@@ -691,6 +744,9 @@
             },
             "rationale": "白色大圆角卡：提示 + 收入 + 六档里程碑（原图 68-1265 × 465-757）"
           },
+          "cornerRadius": 16,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "level-progress"
           }
@@ -728,6 +784,8 @@
                 "width": 1,
                 "height": 0.3516068052930057
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "raster",
               "pluginData": {
                 "d2cNodeId": "pet-stage-art"
               }
@@ -753,10 +811,13 @@
               "characters": "比比拉布",
               "fontSize": 11,
               "fontWeight": 700,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "absolute",
                 "rationale": "宠物名标签（原图 563-698 × 1708-1745）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-name"
               }
@@ -794,6 +855,9 @@
                 "mode": "absolute",
                 "rationale": "橙色等级气泡（原图 405-475 × 1719-1764）"
               },
+              "cornerRadius": 7,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-level-bubble"
               }
@@ -830,6 +894,9 @@
                 "mode": "absolute",
                 "rationale": "白色圆角提示气泡（名牌下方）"
               },
+              "cornerRadius": 7,
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-hint-bubble"
               }
@@ -864,10 +931,13 @@
                   "characters": "每日签到",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-signin-label"
                   }
@@ -877,6 +947,8 @@
                 "mode": "absolute",
                 "rationale": "圆形浮层入口（白圈扫描：右侧列顶部）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-signin"
               }
@@ -911,10 +983,13 @@
                   "characters": "超级夏晚",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-summer-night-label"
                   }
@@ -924,6 +999,8 @@
                 "mode": "absolute",
                 "rationale": "圆形浮层入口（白圈扫描：左侧列）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-summer-night"
               }
@@ -958,10 +1035,13 @@
                   "characters": "18级领取",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-level-claim-label"
                   }
@@ -971,6 +1051,8 @@
                 "mode": "absolute",
                 "rationale": "圆形浮层入口（白圈扫描：签到下方）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-level-claim"
               }
@@ -1005,10 +1087,13 @@
                   "characters": "我的衣橱",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-wardrobe-label"
                   }
@@ -1018,6 +1103,8 @@
                 "mode": "absolute",
                 "rationale": "圆形浮层入口（白圈扫描：夏晚下方）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-wardrobe"
               }
@@ -1052,10 +1139,13 @@
                   "characters": "点击领取",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "入口文字"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-claim-label"
                   }
@@ -1065,6 +1155,8 @@
                 "mode": "absolute",
                 "rationale": "圆形浮层入口（礼物盒，白圈扫描：衣橱下方）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-claim"
               }
@@ -1099,10 +1191,13 @@
                   "characters": "惊喜？",
                   "fontSize": 11,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "盲盒标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-blindbox-title"
                   }
@@ -1136,10 +1231,14 @@
                   "characters": "赢现金",
                   "fontSize": 10,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "绿色胶囊"
                   },
+                  "cornerRadius": 9,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-blindbox-cash"
                   }
@@ -1149,6 +1248,8 @@
                 "mode": "absolute",
                 "rationale": "粉色盲盒 + 绿色赢现金胶囊"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-blindbox"
               }
@@ -1204,6 +1305,9 @@
                         "mode": "flow",
                         "rationale": "绿色标签"
                       },
+                      "cornerRadius": 6,
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
                       "pluginData": {
                         "d2cNodeId": "pet-pk-title"
                       }
@@ -1237,10 +1341,14 @@
                       "characters": "去PK",
                       "fontSize": 11,
                       "fontWeight": 700,
+                      "textAlignHorizontal": "CENTER",
                       "layout": {
                         "mode": "flow",
                         "rationale": "橙色按钮"
                       },
+                      "cornerRadius": 9,
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
                       "pluginData": {
                         "d2cNodeId": "pet-pk-action"
                       }
@@ -1252,6 +1360,8 @@
                     "gap": 2,
                     "rationale": "绿色标签 + 橙色按钮"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-pk-button"
                   }
@@ -1286,10 +1396,13 @@
                       "characters": "首次喂食免费",
                       "fontSize": 13,
                       "fontWeight": 800,
+                      "textAlignHorizontal": "CENTER",
                       "layout": {
                         "mode": "flow",
                         "rationale": "主文案"
                       },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
                       "pluginData": {
                         "d2cNodeId": "pet-feed-label"
                       }
@@ -1314,10 +1427,13 @@
                       ],
                       "characters": "剩余 0 能量",
                       "fontSize": 10,
+                      "textAlignHorizontal": "CENTER",
                       "layout": {
                         "mode": "flow",
                         "rationale": "副文案（初始能量 0）"
                       },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
                       "pluginData": {
                         "d2cNodeId": "pet-feed-energy"
                       }
@@ -1329,6 +1445,25 @@
                     "gap": 2,
                     "rationale": "橙红渐变主按钮"
                   },
+                  "cornerRadius": 18,
+                  "effects": [
+                    {
+                      "type": "DROP_SHADOW",
+                      "offset": {
+                        "x": 0,
+                        "y": 4
+                      },
+                      "radius": 14,
+                      "color": {
+                        "r": 240,
+                        "g": 75,
+                        "b": 12,
+                        "a": 0.4
+                      }
+                    }
+                  ],
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-feed-button"
                   }
@@ -1373,10 +1508,13 @@
                       "characters": "赚能量",
                       "fontSize": 13,
                       "fontWeight": 700,
+                      "textAlignHorizontal": "CENTER",
                       "layout": {
                         "mode": "flow",
                         "rationale": "按钮文案"
                       },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
                       "pluginData": {
                         "d2cNodeId": "pet-earn-energy-label"
                       }
@@ -1387,6 +1525,9 @@
                     "direction": "row",
                     "rationale": "橙色按钮"
                   },
+                  "cornerRadius": 16,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-earn-energy"
                   }
@@ -1396,6 +1537,8 @@
                 "mode": "absolute",
                 "rationale": "PK + 主按钮 + 赚能量 三联行动区（行扫描重锚：舞台底部 1810-1926）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "feed-action"
               }
@@ -1405,6 +1548,9 @@
             "mode": "flow",
             "rationale": "舞台素材 + 名牌/等级/气泡 + 浮层入口 + 喂食行动区（原图 757-1950，行扫描 1948 起为任务区米色）"
           },
+          "clipsContent": true,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "pet-stage"
           }
@@ -1453,6 +1599,8 @@
                 "mode": "flow",
                 "rationale": "深棕粗体标题（行扫描 1978 带）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-task-title"
               }
@@ -1477,10 +1625,13 @@
               ],
               "characters": "全部 ›",
               "fontSize": 10,
+              "textAlignHorizontal": "RIGHT",
               "layout": {
                 "mode": "flow",
                 "rationale": "标题行右侧入口（原图 972-1140 × 1980-2030）"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-task-link"
               }
@@ -1519,6 +1670,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-feed-title"
                   }
@@ -1547,6 +1700,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-feed-reward"
                   }
@@ -1580,10 +1735,14 @@
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "橙色胶囊按钮"
                   },
+                  "cornerRadius": 13,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-feed-action"
                   }
@@ -1595,6 +1754,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-task-feed"
               }
@@ -1633,6 +1794,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-video-title"
                   }
@@ -1661,6 +1824,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-video-reward"
                   }
@@ -1694,10 +1859,14 @@
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "橙色胶囊按钮"
                   },
+                  "cornerRadius": 13,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-video-action"
                   }
@@ -1709,6 +1878,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-task-video"
               }
@@ -1747,6 +1918,8 @@
                     "mode": "flow",
                     "rationale": "任务标题"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-share-title"
                   }
@@ -1775,6 +1948,8 @@
                     "mode": "flow",
                     "rationale": "奖励副文"
                   },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-share-reward"
                   }
@@ -1808,10 +1983,14 @@
                   "characters": "去完成",
                   "fontSize": 12,
                   "fontWeight": 700,
+                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "橙色胶囊按钮"
                   },
+                  "cornerRadius": 13,
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
                   "pluginData": {
                     "d2cNodeId": "pet-task-share-action"
                   }
@@ -1823,6 +2002,8 @@
                 "gap": 10,
                 "rationale": "图标 + 标题/奖励 + 按钮"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "pet-task-share"
               }
@@ -1840,6 +2021,9 @@
             },
             "rationale": "浅黄绿大圆角卡 + 任务列表（行扫描：米色带 1948 起）"
           },
+          "cornerRadius": 18,
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "pet-task-section"
           }
@@ -1883,11 +2067,14 @@
               ],
               "characters": "首页",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-home"
               }
@@ -1912,11 +2099,14 @@
               ],
               "characters": "精选",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-feature"
               }
@@ -1941,11 +2131,14 @@
               ],
               "characters": "消息",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字，带红点"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-message"
               }
@@ -1970,11 +2163,14 @@
               ],
               "characters": "我",
               "fontSize": 10,
+              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
                 "direction": "column",
                 "rationale": "图标 + 文字"
               },
+              "layoutStrategy": "absolute",
+              "renderKind": "native",
               "pluginData": {
                 "d2cNodeId": "bottom-nav-me"
               }
@@ -1984,6 +2180,24 @@
             "mode": "absolute",
             "rationale": "底部 Tab（行扫描：白色起于 2476）"
           },
+          "effects": [
+            {
+              "type": "DROP_SHADOW",
+              "offset": {
+                "x": 0,
+                "y": -2
+              },
+              "radius": 8,
+              "color": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0.06
+              }
+            }
+          ],
+          "layoutStrategy": "absolute",
+          "renderKind": "native",
           "pluginData": {
             "d2cNodeId": "bottom-nav"
           }
@@ -1993,6 +2207,9 @@
         "mode": "flow",
         "rationale": "390px 手机完整长页，横向裁切防溢出"
       },
+      "clipsContent": true,
+      "layoutStrategy": "absolute",
+      "renderKind": "native",
       "pluginData": {
         "d2cNodeId": "page"
       }
@@ -2008,7 +2225,8 @@
   ],
   "manifest": {
     "name": "PetRedPacket",
-    "route": "/pet/red-packet"
+    "route": "/pet/red-packet",
+    "referenceAssetId": "reference"
   },
   "degradations": [
     {

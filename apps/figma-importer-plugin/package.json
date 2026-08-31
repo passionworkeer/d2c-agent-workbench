@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/code.ts --bundle --format=iife --target=es2020 --outfile=dist/code.js && node scripts/copy-static.mjs",
+    "build": "esbuild src/code.ts --bundle --format=iife --target=es2020 --outfile=dist/code.js && esbuild src/ui.ts --bundle --format=iife --target=es2020 --outfile=dist/ui.js && node scripts/copy-static.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

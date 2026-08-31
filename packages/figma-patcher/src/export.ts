@@ -39,9 +39,11 @@ export interface FigmaExportLayout {
 }
 
 export interface FigmaImportDegradation {
-  type: "missing-render-evidence";
+  type: "missing-render-evidence" | "unsupported-style";
   nodeId: string;
   message: string;
+  property?: "border" | "shadow";
+  value?: string;
 }
 
 export interface FigmaExportNode {
@@ -61,6 +63,16 @@ export interface FigmaExportNode {
   layout: FigmaExportLayout;
   imageCrop?: FigmaImageCrop;
   pluginData: { d2cNodeId: string };
+  opacity?: number;
+  cornerRadius?: number;
+  strokes?: Array<{ type: "SOLID"; color: { r: number; g: number; b: number }; opacity?: number; weight: number }>;
+  effects?: Array<{ type: "DROP_SHADOW"; color: { r: number; g: number; b: number; a: number }; offset: { x: number; y: number }; radius: number }>;
+  clipsContent?: boolean;
+  lineHeight?: number;
+  letterSpacing?: number;
+  textAlignHorizontal?: "LEFT" | "CENTER" | "RIGHT" | "JUSTIFIED";
+  layoutStrategy?: "absolute" | "auto";
+  renderKind?: "native" | "raster";
 }
 
 export interface FigmaImportBundle {
@@ -71,6 +83,7 @@ export interface FigmaImportBundle {
   manifest: {
     name: string;
     route: string;
+    referenceAssetId?: string;
   };
   degradations: FigmaImportDegradation[];
 }
@@ -109,6 +122,17 @@ function solidFill(color: ParsedColor): FigmaExportPaint {
     color: { r: color.r, g: color.g, b: color.b },
     ...(color.alpha !== undefined && color.alpha < 1 ? { opacity: color.alpha } : {}),
   };
+}
+
+function parseBorder(value: string | undefined): FigmaExportNode["strokes"] | undefined {
+  const match = /^(\d+(?:\.\d+)?)px\s+solid\s+(.+)$/i.exec(value?.trim() ?? "");
+  const color = match ? parseColor(match[2]) : undefined;
+  return match && color ? [{ type: "SOLID", weight: Number(match[1]), color: { r: color.r, g: color.g, b: color.b }, ...(color.alpha !== undefined && color.alpha < 1 ? { opacity: color.alpha } : {}) }] : undefined;
+}
+function parseShadow(value: string | undefined): FigmaExportNode["effects"] | undefined {
+  const match = /^(0|-?\d+(?:\.\d+)?px)\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(rgba?\(.+\))$/i.exec(value?.trim() ?? "");
+  const color = match ? parseColor(match[4]) : undefined;
+  return match && color ? [{ type: "DROP_SHADOW", offset: { x: Number(match[1]!.replace("px", "")), y: Number(match[2]) }, radius: Number(match[3]), color: { r: color.r, g: color.g, b: color.b, a: color.alpha ?? 1 } }] : undefined;
 }
 
 /** base64 → 字节（atob 在 Node ≥16 与浏览器均为全局） */
@@ -160,12 +184,16 @@ function toFigmaNode(
   nodeId: string,
   assetByPath: Map<string, FigmaImportAsset>,
   dimensionsByAssetId: Map<string, { width: number; height: number }>,
+  degradations: FigmaImportDegradation[],
+  nodesById: Map<string, ActivitySpec["nodes"][number]>,
+  omittedChildrenByParentId: Map<string, string[]>,
 ): FigmaExportNode | null {
-  const node = spec.nodes.find((item) => item.id === nodeId);
+  const node = nodesById.get(nodeId);
   if (!node) return null;
   const styles = rendered[nodeId] ?? {};
-  const children = node.children
-    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId))
+  const childIds = [...node.children, ...(omittedChildrenByParentId.get(node.id) ?? [])];
+  const children = childIds
+    .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId))
     .filter((child): child is FigmaExportNode => child !== null);
   // 背景色：实测样式 → spec 视觉声明（仅 solid；gradient/image 类型如实跳过）
   const background = parseColor(styles.backgroundColor)
@@ -183,7 +211,7 @@ function toFigmaNode(
     fills.push({ type: "IMAGE", assetId: embedded.id });
     // 优先用素材证据区域（图集像素）÷ 嵌入图集实际尺寸做归一化裁切：
     // sourceBox 覆盖整卡（含标题/价格/按钮），按视口归一化会把整页切片塞进卡片
-    const region = asset.evidence.find((item) => item.region)?.region;
+    const region = asset.evidence?.find((item) => item.region)?.region;
     const dims = dimensionsByAssetId.get(embedded.id);
     if (region && dims) {
       imageCrop = {
@@ -208,6 +236,26 @@ function toFigmaNode(
   if (type === "TEXT" && color) {
     fills.push(solidFill(color));
   }
+  const strokes = parseBorder(node.visual.border);
+  const effects = parseShadow(node.visual.shadow);
+  if (node.visual.border?.trim() && !strokes) {
+    degradations.push({
+      type: "unsupported-style",
+      nodeId: node.id,
+      property: "border",
+      value: node.visual.border,
+      message: `无法导出 border：${node.visual.border}`,
+    });
+  }
+  if (node.visual.shadow?.trim() && !effects) {
+    degradations.push({
+      type: "unsupported-style",
+      nodeId: node.id,
+      property: "shadow",
+      value: node.visual.shadow,
+      message: `无法导出 shadow：${node.visual.shadow}`,
+    });
+  }
   return {
     type,
     id: `d2c-${nodeId}`,
@@ -221,11 +269,21 @@ function toFigmaNode(
       characters: node.content?.text ?? "",
       ...(node.visual.fontSize !== undefined ? { fontSize: node.visual.fontSize } : {}),
       ...(node.visual.fontWeight !== undefined ? { fontWeight: node.visual.fontWeight } : {}),
-      ...(styles.fontFamily ? { fontFamily: styles.fontFamily } : {}),
+      ...((styles.fontFamily ?? node.visual.fontFamily) ? { fontFamily: styles.fontFamily ?? node.visual.fontFamily } : {}),
+      ...(node.visual.lineHeight !== undefined ? { lineHeight: node.visual.lineHeight } : {}),
+      ...(node.visual.letterSpacing !== undefined ? { letterSpacing: node.visual.letterSpacing } : {}),
+      ...(node.visual.textAlign ? { textAlignHorizontal: ({ left: "LEFT", center: "CENTER", right: "RIGHT", justify: "JUSTIFIED" } as const)[node.visual.textAlign] } : {}),
     } : {}),
     ...(children.length ? { children } : {}),
     layout: toFigmaLayout(node),
     ...(imageCrop ? { imageCrop } : {}),
+    ...(node.visual.opacity !== 1 ? { opacity: node.visual.opacity } : {}),
+    ...(node.visual.borderRadius !== undefined ? { cornerRadius: node.visual.borderRadius } : {}),
+    ...(node.role === "page" || node.layout.overflow === "hidden" ? { clipsContent: true } : {}),
+    ...(strokes ? { strokes } : {}),
+    ...(effects ? { effects } : {}),
+    layoutStrategy: "absolute",
+    renderKind: node.content?.assetId ? "raster" : "native",
     pluginData: { d2cNodeId: node.id },
   };
 }
@@ -235,6 +293,18 @@ export function buildFigmaImportBundle(
   rendered: RenderedDocument = {},
   embeddedAssets: FigmaImportAsset[] = [],
 ): FigmaImportBundle {
+  const degradations: FigmaImportDegradation[] = [];
+  const nodesById = new Map(spec.nodes.map((node) => [node.id, node]));
+  const omittedChildrenByParentId = new Map<string, string[]>();
+  for (const node of spec.nodes) {
+    if (!node.parentId) continue;
+    const parent = nodesById.get(node.parentId);
+    if (parent && !parent.children.includes(node.id)) {
+      const omitted = omittedChildrenByParentId.get(parent.id) ?? [];
+      omitted.push(node.id);
+      omittedChildrenByParentId.set(parent.id, omitted);
+    }
+  }
   // 同 id 嵌入条目去重（首个生效）；path 缺省时以 id 充当路径匹配键
   const assetsById = new Map<string, FigmaImportAsset>();
   const assetByPath = new Map<string, FigmaImportAsset>();
@@ -253,14 +323,23 @@ export function buildFigmaImportBundle(
       // 非法 base64 / 解码错误 → 走回落路径，不污染导入包
     }
   }
-  const roots = spec.nodes.filter((node) => !node.parentId);
+  const roots = spec.nodes.filter((node) => !node.parentId || !nodesById.has(node.parentId));
   const nodes = roots
-    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId))
+    .map((root) => toFigmaNode(spec, rendered, root.id, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId))
     .filter((node): node is FigmaExportNode => node !== null);
+  const emitted = new Set<string>();
+  const collect = (items: FigmaExportNode[]) => items.forEach((item) => { emitted.add(item.pluginData.d2cNodeId); collect(item.children ?? []); });
+  collect(nodes);
+  // 视觉草稿偶有 parentId 已声明却未挂入 parent.children 的孤立子树；不能让它静默消失。
+  for (const source of spec.nodes) {
+    if (emitted.has(source.id)) continue;
+    const orphan = toFigmaNode(spec, rendered, source.id, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId);
+    if (orphan) { nodes.push(orphan); collect([orphan]); }
+  }
   // 无渲染样式证据的节点如实标注降级（按 spec 视觉导出，插件端不做计算样式回填）
-  const degradations: FigmaImportDegradation[] = spec.nodes
+  degradations.push(...spec.nodes
     .filter((node) => rendered[node.id] === undefined)
-    .map((node) => ({ type: "missing-render-evidence" as const, nodeId: node.id, message: "节点无渲染样式证据，按 spec 视觉导出" }));
+    .map((node) => ({ type: "missing-render-evidence" as const, nodeId: node.id, message: "节点无渲染样式证据，按 spec 视觉导出" })));
   return {
     version: "2.0",
     viewport: spec.page.canonicalViewport,
@@ -269,6 +348,7 @@ export function buildFigmaImportBundle(
     manifest: {
       name: spec.page.name,
       route: spec.page.route,
+      ...(embeddedAssets.length === 1 ? { referenceAssetId: embeddedAssets[0]!.id } : {}),
     },
     degradations,
   };

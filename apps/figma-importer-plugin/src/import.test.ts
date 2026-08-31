@@ -52,7 +52,7 @@ const bundle: FigmaImportBundle = {
         {
           type: "TEXT", id: "d2c-hero-title", name: "标题", x: 20, y: 20, width: 200, height: 28,
           characters: "818 宠粉节", fontSize: 20, fontWeight: 700, fontFamily: "PingFang SC",
-          fills: [{ type: "SOLID", color: { r: 255, g: 80, b: 0 } }],
+          fills: [{ type: "SOLID", color: { r: 255, g: 80, b: 0 }, opacity: 0.62 }],
           layout: { mode: "flow", rationale: "标题" },
           pluginData: { d2cNodeId: "hero-title" },
         },
@@ -82,20 +82,22 @@ describe("importBundle", () => {
     expect(title.type).toBe("TEXT");
     expect(title.characters).toBe("818 宠粉节");
     expect(title.fontSize).toBe(20);
-    expect(title.fills[0]).toMatchObject({ type: "SOLID", color: { r: 255, g: 80, b: 0 } });
+    expect(title.fills[0]).toMatchObject({ type: "SOLID", color: { r: 255, g: 80, b: 0 }, opacity: 0.62 });
   });
 
-  it("maps flex layout onto Auto Layout (direction / spacing / padding)", async () => {
+  it("keeps screenshot bundles absolute unless Auto Layout is explicitly requested", async () => {
     const { facade, calls } = makeFacade();
     await importBundle(bundle, facade);
     const hero = calls.setPluginData.mock.calls.find(([, , value]) => value === "hero")![0]!;
-    expect(hero.layoutMode).toBe("VERTICAL");
-    expect(hero.itemSpacing).toBe(12);
-    expect(hero.paddingTop).toBe(16);
-    expect(hero.paddingLeft).toBe(16);
-    // flow 区块不启用 Auto Layout
+    expect(hero.layoutMode).toBeUndefined();
     const page = calls.setPluginData.mock.calls.find(([, , value]) => value === "page")![0]!;
     expect(page.layoutMode).toBeUndefined();
+    const auto: FigmaImportBundle = { ...bundle, nodes: [{ ...bundle.nodes[0]!, children: [{ ...bundle.nodes[0]!.children![0]!, layoutStrategy: "auto" }] }] };
+    const result = makeFacade();
+    await importBundle(auto, result.facade);
+    const autoHero = result.calls.setPluginData.mock.calls.find(([, , value]) => value === "hero")![0]!;
+    expect(autoHero.layoutMode).toBe("VERTICAL");
+    expect(autoHero.itemSpacing).toBe(12);
   });
 
   it("converts page-absolute coordinates to parent-relative for nested children", async () => {
@@ -143,6 +145,43 @@ describe("importBundle", () => {
     expect(transform[0]![2]).toBeCloseTo(0, 5);
     expect(transform[1]![1]).toBeCloseTo(1 / 0.3, 5);
     expect(transform[1]![2]).toBeCloseTo(-0.1 / 0.3, 5);
+  });
+
+  it("adds a hidden locked reference layer when the bundle identifies its atlas", async () => {
+    const { facade, calls } = makeFacade();
+    await importBundle({ ...bundle, manifest: { ...bundle.manifest, referenceAssetId: "reference" } }, facade);
+    const reference = calls.setPluginData.mock.calls.find(([, key, value]) => key === "d2cReference" && value === "true")![0]!;
+    expect(reference).toMatchObject({ name: "Reference（隐藏）", x: 0, y: 0, width: 390, height: 867, visible: false, locked: true });
+  });
+
+  it("writes native visual and typography properties to the Figma facade", async () => {
+    const styled: FigmaImportBundle = {
+      ...bundle,
+      nodes: [{
+        ...bundle.nodes[0]!,
+        opacity: 0.85,
+        cornerRadius: 12,
+        clipsContent: true,
+        strokes: [{ type: "SOLID", weight: 1, color: { r: 255, g: 255, b: 255 }, opacity: 0.4 }],
+        effects: [{ type: "DROP_SHADOW", color: { r: 0, g: 0, b: 0, a: 0.18 }, offset: { x: 0, y: 2 }, radius: 8 }],
+        children: [{
+          ...bundle.nodes[0]!.children![0]!,
+          children: [{
+            ...bundle.nodes[0]!.children![0]!.children![0]!,
+            lineHeight: 20,
+            letterSpacing: 1,
+            textAlignHorizontal: "CENTER",
+          }],
+        }],
+      }],
+    };
+    const { facade, calls } = makeFacade();
+    await importBundle(styled, facade);
+    const page = calls.setPluginData.mock.calls.find(([, , value]) => value === "page")![0]!;
+    const title = calls.setPluginData.mock.calls.find(([, , value]) => value === "hero-title")![0]!;
+    expect(page).toMatchObject({ opacity: 0.85, cornerRadius: 12, clipsContent: true, strokes: [{ type: "SOLID", opacity: 0.4 }], effects: [{ type: "DROP_SHADOW", radius: 8 }] });
+    expect(title).toMatchObject({ lineHeight: { unit: "PIXELS", value: 20 }, letterSpacing: { unit: "PIXELS", value: 1 }, textAlignHorizontal: "CENTER" });
+    expect(calls.setPluginData).toHaveBeenCalledWith(page, "d2cLayout", JSON.stringify(styled.nodes[0]!.layout));
   });
 
   it("falls back to Inter Regular and records a degradation when the bundle font is unavailable", async () => {
