@@ -19,10 +19,11 @@ Patch-Texture 14 10 20 21 38 10
 Patch-Texture 271 10 108 24 271 0 8
 Patch-Texture 342 50 37 34 349 125 34 $true
 Patch-Texture 343 86 37 34 349 159 34 $true
-# 联动标题位于场景下沿。保留人物中段，其余改为页面原生夜幕色。
+# 联动标题/倒计时/日历分别去除，保留 x=271..320 的人物衣裙下沿。
+Patch-Texture 203 214 68 19 203 233 7
 $night = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml('#100d35'))
-$g.FillRectangle($night, 0, [int](209*$scale), [int](276*$scale), [int](36*$scale)+2)
-$g.FillRectangle($night, [int](276*$scale), [int](209*$scale), [int](114*$scale)+2, [int](36*$scale)+2)
+$g.FillRectangle($night, 0, [int](209*$scale), [int](203*$scale), [int](36*$scale)+2)
+$g.FillRectangle($night, [int](320*$scale), [int](209*$scale), [int](70*$scale)+2, [int](36*$scale)+2)
 $output = Join-Path $PSScriptRoot '..\..\..\activity-target\public\game-festival\hero-scene.png'
 $scene.Save($output, [System.Drawing.Imaging.ImageFormat]::Png)
 $night.Dispose(); $g.Dispose(); $scene.Dispose(); $source.Dispose()
