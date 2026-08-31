@@ -80,6 +80,7 @@ export function TaskCard({
   icon,
   tone = "dark",
   done = false,
+  className,
   style,
   onAction,
 }: {
@@ -90,6 +91,7 @@ export function TaskCard({
   icon?: ReactNode;
   tone?: "dark" | "light";
   done?: boolean;
+  className?: string;
   style?: CSSProperties;
   onAction?: () => void;
 }) {
@@ -97,7 +99,7 @@ export function TaskCard({
   return (
     <div
       data-d2c-node-id={nodeId}
-      className={[styles.taskCard, light ? styles.taskCardLight : ""].filter(Boolean).join(" ")}
+      className={[styles.taskCard, light ? styles.taskCardLight : "", className].filter(Boolean).join(" ")}
       style={style}
     >
       {icon ? <span className={[styles.taskIcon, light ? styles.taskIconLight : ""].filter(Boolean).join(" ")} aria-hidden="true">{icon}</span> : null}

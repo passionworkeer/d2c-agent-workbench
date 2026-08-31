@@ -191,12 +191,43 @@
 
 .taskListCard {
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(111, 69, 255, 0.32), rgba(111, 69, 255, 0.14));
+  background: linear-gradient(180deg, #2c1b68, #23134e);
+  border: 1px solid rgba(170, 149, 255, 0.35);
+}
+
+.gameTaskCard {
+  padding: 4px 10px;
+  background: transparent;
+}
+
+.gameTaskCard .taskIcon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #783d5a, #42205c);
+}
+
+.gameTaskCard .taskTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gameTaskCard .taskReward {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.gameTaskCard .taskAction {
+  min-width: 80px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #e8dcff, #a48aff);
+  box-shadow: inset 0 0 0 2px rgba(117, 88, 220, 0.3);
+  color: #32114c;
+  font-size: 13px;
 }
 
 .benefitPanel {
-  border-radius: 14px;
-  background: linear-gradient(180deg, #2c1a56, #241546);
+  background: transparent;
 }
 
 .benefitTitle {
@@ -217,23 +248,24 @@
 }
 
 .rewardCards {
-  border-radius: 14px;
-  background: #241546;
+  background: transparent;
 }
 
 .rewardCardRed {
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ff5c7a, #e02050);
+  border: 1px solid rgba(196, 187, 255, 0.65);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #303262, #17173f);
 }
 
 .rewardCardGold {
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ffc65c, #f09a2e);
+  border: 1px solid rgba(196, 187, 255, 0.65);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #303262, #17173f);
 }
 
 .rewardCardGold .rewardCardTitle,
 .rewardCardGold .rewardCardSub {
-  color: #4a2c0a;
+  color: #ffffff;
 }
 
 .rewardCardTitle {
@@ -252,8 +284,8 @@
 .rewardCardAction {
   border: none;
   border-radius: 11px;
-  background: #ffffff;
-  color: #e02050;
+  background: linear-gradient(135deg, #fff0ca, #e9bd70);
+  color: #4a2c0a;
   font-size: 11px;
   line-height: 22px;
   font-weight: 700;

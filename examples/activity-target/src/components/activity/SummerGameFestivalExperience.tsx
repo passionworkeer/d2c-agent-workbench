@@ -61,9 +61,10 @@ export function SummerGameFestivalExperience({ atlasUrl, texts, ...root }: { atl
           <span data-d2c-node-id="collab-calendar" style={box(318, 11, 62, 16)} className={pageStyles.collabCalendar}>{t("collab-calendar", "专场日历 ›")}</span>
         </div>
 
-        <section data-d2c-node-id="task-list" style={box(8, 318, 374, 116)} className={pageStyles.taskListCard}>
+        <section data-d2c-node-id="task-list" style={box(8, 318, 374, 192)} className={pageStyles.taskListCard}>
           <TaskCard
             nodeId="task-install"
+            className={pageStyles.gameTaskCard}
             style={box(8, 8, 358, 50)}
             title={t("task-install-title", "下载安装「超自然行动组」")}
             reward={t("task-install-reward", "完成后，我+200 ✦")}
@@ -74,6 +75,7 @@ export function SummerGameFestivalExperience({ atlasUrl, texts, ...root }: { atl
           />
           <TaskCard
             nodeId="task-follow"
+            className={pageStyles.gameTaskCard}
             style={box(8, 66, 358, 44)}
             title={t("task-follow-title", "关注 @AT-瑶瑶🎀（超自然行动组）")}
             reward={t("task-follow-reward", "完成+50 ✦")}
