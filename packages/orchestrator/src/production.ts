@@ -319,6 +319,7 @@ export async function* runProductionWorkflow(
         content: input.semanticReviewScore,
         visualTone: input.semanticReviewScore,
         taskClarity: input.semanticReviewScore,
+        designQuality: null,
         summary: "MiniMax 实时评审不可用（未配置或调用失败），回退服务端注册基准分",
         issues: [],
         provider: "registered-fallback",

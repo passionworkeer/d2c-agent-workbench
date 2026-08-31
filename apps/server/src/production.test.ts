@@ -343,6 +343,7 @@ describe("production routes", () => {
           ...adapters,
           semanticReview: async () => ({
             score: 91, layout: 92, content: 93, visualTone: 90, taskClarity: 88,
+            designQuality: 89,
             summary: "实现与参考高度一致", issues: [], provider: "minimax",
           }),
         },
@@ -351,7 +352,7 @@ describe("production routes", () => {
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
     const runId = created.json().runId;
     const detail = await waitTerminal(app, runId);
-    expect(detail.latestSemanticReview).toMatchObject({ provider: "minimax", score: 91 });
+    expect(detail.latestSemanticReview).toMatchObject({ provider: "minimax", score: 91, designQuality: 89 });
     expect(detail.latestSemanticReview.summary).toBe("实现与参考高度一致");
   });
 

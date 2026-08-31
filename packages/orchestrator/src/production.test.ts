@@ -293,6 +293,7 @@ describe("runProductionWorkflow", () => {
       render: async () => renderFake(0),
       semanticReview: async () => ({
         score: 91, layout: 92, content: 95, visualTone: 90, taskClarity: 88,
+        designQuality: 89,
         summary: "实现与参考高度一致", issues: [], provider: "minimax",
       }),
       evaluate: async (input) => {
@@ -305,9 +306,10 @@ describe("runProductionWorkflow", () => {
     // 评测拿到 VLM 评分，事件携带完整证据（provider 由服务端强制）
     expect(seenScore).toBe(91);
     const evaluated = events.find((event) => event.state === "EVALUATED");
-    const evidence = evaluated?.data?.semanticReview as { provider: string; score: number; summary: string } | undefined;
+    const evidence = evaluated?.data?.semanticReview as { provider: string; score: number; designQuality: number | null; summary: string } | undefined;
     expect(evidence?.provider).toBe("minimax");
     expect(evidence?.score).toBe(91);
+    expect(evidence?.designQuality).toBe(89);
     expect(evidence?.summary).toBe("实现与参考高度一致");
   });
 
