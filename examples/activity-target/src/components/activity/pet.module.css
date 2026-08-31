@@ -1,0 +1,58 @@
+.page { height: 100%; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; background: #751700; color: #461606; }
+.content { position: relative; height: 1035px; background: linear-gradient(#711800 0 135px,#c42100 680px,#fffbdc 800px); }
+.stageArt { position: absolute; top: 133px; left: 0; width: 390px; height: 497px; }
+.navigation { padding: 0 17px; gap: 6px; }
+.navigation > button { width: 30px; flex-shrink: 0; background: none !important; }
+.navigation > button svg { width: 24px; height: 24px; }
+.navigation > button > span { top: 0; right: -17px; min-width: 33px; padding: 0 3px; font-size: 12px; font-weight: 400; line-height: 18px; background: #ff0064; border-radius: 11px; }
+.navigation nav { flex: 1; margin: 0 0 0 10px; justify-content: space-between; gap: 0; }
+.navigation nav button { padding: 4px 0; font-size: 18px; line-height: 24px; color: #fffbe2 !important; }
+.navigation nav button[aria-current] { font-weight: 900; font-size: 19px; }
+.navigation nav button[aria-current]::after { height: 2px; width: 23px; bottom: -3px; }
+.sideEntry { border: 0; padding: 0; border-radius: 50%; color: #fff4d9; font-size: 9px; background: #52120088; }
+.notice { display: flex; align-items: center; gap: 3px; color: #f2d3b0; white-space: nowrap; font-size: 10px; }
+.notice > span:first-child { color: #ffd844; text-shadow: 1px 0 3px #fff59f; font-size: 15px; }
+.progress { border-radius: 23px; background: white; }
+.progressHint { position: absolute; left: 138px; top: 11px; font-size: 11px; color: #333; }
+.income { position: absolute; left: 14px; top: 27px; width: 76px; height: 39px; border-right: 1px solid #eee; }
+.income strong { display: block; color: #f50019; font-size: 15px; line-height: 19px; font-weight: 800; white-space: nowrap; letter-spacing: .1px; }
+.income button { padding: 2px 0 0; border: 0; background: none; color: #404040; font-size: 10px; }
+.milestones { position: absolute; left: 101px; top: 30px; display: flex; width: 167px; height: 53px; overflow: hidden; gap: 7px; }
+.milestones::before { content: ""; position: absolute; top: 14px; width: 175px; height: 4px; background: #f6a8ac; }
+.milestone { position: relative; flex: 0 0 30px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.milestone > span { color: #ccc; font-size: 9px; white-space: nowrap; }
+.milestone:first-child > span { color: #d74c58; }
+.received { height: 31px; width: 29px; border-radius: 5px; background: #fb869e; border: 1px solid #f6c6cd; text-align: center; color: #fff; }
+.received small { display: block; font-size: 8px; line-height: 11px; color: #ffd8df; }
+.received strong { display: block; margin: 0 1px; border-radius: 3px; background: #fff; color: #fa819b; font-size: 13px; line-height: 17px; }
+.prize { position: absolute; right: 13px; top: 30px; width: 39px; background: white; box-shadow: -5px 0 6px white; text-align: center; }
+.prize > div { border: 2px solid #ff0054; border-radius: 5px; height: 31px; color: #ff0054; }
+.prize small { display: block; color: white; background: #ff0054; font-size: 8px; line-height: 11px; white-space: nowrap; }
+.prize strong { font-size: 12px; line-height: 15px; }
+.prize > span { display: block; font-size: 9px; color: #ccc; margin-top: 5px; }
+.stageEntry { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0; border: 0; background: none; }
+.stageEntry > [role="img"] { border-radius: 36%; }
+.stageEntry > span:last-child,.petName { font-size: 10px; line-height: 12px; color: #38200b; font-weight: 900; white-space: nowrap; paint-order: stroke fill; -webkit-text-stroke: 2px white; text-shadow: 0 1px 1px #fff; text-align: center; }
+.orb { display: flex; justify-content: center; align-items: center; width: 40px; height: 35px; border-radius: 50%; border: 1px solid #fff4dd; background: radial-gradient(ellipse at 60% 55%,#ffc6a24f 30%,#fff7e5ba 75%,white); box-shadow: inset 2px 2px 5px white,0 0 3px #ffca68; }
+.lightning { color: #ffd62e; font: 900 39px/30px Arial; text-shadow: 0 1px 3px #ff8a0b; transform: rotate(12deg); }
+.signBadge { position: absolute; right: 0; top: -8px; background: #3a260799; border-radius: 12px; padding: 1px 5px; color: white; font-size: 10px; font-style: normal; }
+.blindbox { border: 0; padding: 0; background: none; }
+.cube { position: absolute; right: 2px; top: 2px; width: 49px; height: 48px; border: 2px solid white; border-radius: 6px 7px 3px 3px; background: linear-gradient(155deg,#fface3 0 17%,#ef77bc 19% 48%,#fa91d1 51%); color: white; font-weight: 800; font-size: 13px; line-height: 43px; transform: skewY(8deg); box-shadow: inset -11px 1px 0 #ffacd4; }
+.cash { position: absolute; top: 43px; left: 0; display: flex; flex-direction: column; align-items: center; width: 65px; height: 31px; border: 2px solid white; border-radius: 20px 0 0 20px; background: linear-gradient(100deg,#b6ff52,#91e618); color: #256208; }
+.cash strong { font-size: 12px; line-height: 15px; }
+.cash small { font-size: 9px; color: #6faa09; }
+.levelRail { border: 1px solid #fff8; border-radius: 11px; background: #ffd5cb; }
+.levelRail span { display: block; width: 28px; height: 23px; margin: -5px 0 0 -1px; border-radius: 12px; padding-top: 6px; text-align: center; background: #ff8a16; color: white; font-size: 9px; font-weight: 800; }
+.hint { z-index: 2; display: grid; place-items: center; border-radius: 14px; background: #fffffff5; color: #444; font-size: 11px; }
+.hint::after { content: ""; position: absolute; bottom: -5px; left: 45px; width: 10px; height: 10px; transform: rotate(45deg); background: #fffffff5; }
+.feedButton,.sideAction { border: 2px solid #fffbe4; color: white; background: linear-gradient(180deg,#fff4b8 0%,#ffbd47 25%,#ff5a00 66%,#ff7415); box-shadow: inset 0 0 0 2px #ffd399,inset 0 6px 7px #ffffff95; }
+.feedButton { border-radius: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; background: radial-gradient(ellipse at 9% 32%,#ff96d8,transparent 60%),linear-gradient(125deg,#ff88b9,#ff6c56 57%,#ffa100); }
+.feedButton strong { font-size: 26px; line-height: 31px; font-weight: 900; font-style: italic; letter-spacing: -.6px; text-shadow: 0 1px 1px #ffdfc8; }
+.feedButton > span { font-size: 11px; color: #ffdd9d; }
+.feedButton > span::before { content: "ϟ"; color: #ffe83c; font-size: 18px; line-height: 10px; padding-right: 3px; }
+.sideAction { border-radius: 22px; font-size: 20px; font-weight: 900; }
+.pkBadge { z-index: 2; display: grid; place-items: center; border-radius: 10px 10px 10px 0; background: linear-gradient(120deg,#f8ff21,#1fda16); border: 1px solid white; font-weight: 900; font-size: 13px; color: #001800; }
+.taskSection { border-radius: 28px 28px 0 0; border: 1px solid #fff; background: linear-gradient(#f1ffd2,#fffdf1 95px); }
+.taskSection h2 { margin: 29px 18px 0; font-size: 23px; line-height: 28px; font-weight: 900; letter-spacing: -.7px; color: #421500; }
+.allTasks { position: absolute; right: 17px; top: 64px; border: 0; padding: 0; font-size: 10px; background: none; color: #825c22; }
+.taskNumber { color: #f08023; font-size: 18px; font-weight: 800; }

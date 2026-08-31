@@ -3,7 +3,15 @@
   "atlas": "reference.jpg",
   "atlasSize": { "width": 1260, "height": 2645 },
   "atlasSha256": "8a8f4e60a24e07130bea024d65a87fc618ce0175b3ed3f4f285218ddca4c2847",
-  "notes": "crop 为整图归一化坐标（0-1）。宠物舞台（含香蕉服饰宠物与聚光灯）与立体字主标题为复杂艺术素材，从原图裁切；导航/进度卡/浮层/任务/底栏全部语义化重建。",
+  "notes": "2026-08-31：前端使用 build-scene.ps1 生成的 stage-scene.png，已移除全部进度、入口、气泡和按钮 UI；只保留复杂舞台/宠物。旧 pet-stage-art crop 仅保留供原有 Figma 导出兼容，禁止前端直接使用并叠加文字。所有前端 crop 是单次四边映射，不再对整个 atlas 使用 object-fit:cover。",
+  "frontendCropsCss390": {
+    "wardrobe-art": [8, 313, 48, 31],
+    "claim-art": [8, 377, 43, 32],
+    "summer-night-art": [335, 313, 54, 32],
+    "wand-art": [291, 337, 13, 20],
+    "gift-art": [174, 174, 28, 32],
+    "packet-art": [212, 174, 26, 32]
+  },
   "assets": [
     {
       "id": "pet-hero-title",

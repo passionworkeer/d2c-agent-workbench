@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import styles from "./activity.module.css";
 
 // 活动页企业组件（共享层）：三个真实活动页共用的骨架、导航、底栏与素材裁切。
@@ -80,18 +80,20 @@ export function KwaiTopNavigation({
   activeTab,
   dark = false,
   style,
+  className,
   onTabClick,
 }: NodeProps & {
   tabs: ActivityTabItem[];
   activeTab?: string;
   dark?: boolean;
   style?: CSSProperties;
+  className?: string;
   onTabClick?: (tab: ActivityTabItem) => void;
 }) {
   return (
     <header
       data-d2c-node-id={nodeId}
-      className={[styles.topNav, dark ? styles.topNavDark : ""].filter(Boolean).join(" ")}
+      className={[styles.topNav, dark ? styles.topNavDark : "", className].filter(Boolean).join(" ")}
       style={style}
     >
       <button type="button" className={styles.topNavMenu} aria-label="菜单">
@@ -146,14 +148,17 @@ export function BottomTabBar({
   activeTab = "home",
   texts,
   onTabClick,
+  appearance = "icons",
 }: Partial<NodeProps> & {
   publishBadge?: string;
   height?: number;
   activeTab?: string;
   texts?: Record<string, string>;
   onTabClick?: (tabId: string) => void;
+  appearance?: "icons" | "reference";
 }) {
   const t = (id: string, fallback: string) => texts?.[id] ?? fallback;
+  const [selected, setSelected] = useState(activeTab === "home" ? `${nodeId}-home` : activeTab);
   const tabs = [
     { id: `${nodeId}-home`, label: t(`${nodeId}-home`, "首页") },
     { id: `${nodeId}-feature`, label: t(`${nodeId}-feature`, "精选") },
@@ -165,8 +170,10 @@ export function BottomTabBar({
       key={tab.id}
       type="button"
       data-d2c-node-id={tab.id}
-      className={[styles.bottomTab, activeTab === tab.id ? styles.bottomTabActive : ""].filter(Boolean).join(" ")}
-      onClick={onTabClick ? () => onTabClick(tab.id) : undefined}
+      className={[styles.bottomTab, selected === tab.id ? styles.bottomTabActive : ""].filter(Boolean).join(" ")}
+      aria-current={selected === tab.id ? "page" : undefined}
+      data-badge={appearance === "reference" && iconIndex === 2 ? "23" : undefined}
+      onClick={() => { setSelected(tab.id); onTabClick?.(tab.id); }}
     >
       <svg viewBox="0 0 20 20" aria-hidden="true">
         <path d={BOTTOM_TAB_ICONS[iconIndex]} />
@@ -175,7 +182,7 @@ export function BottomTabBar({
     </button>
   );
   return (
-    <nav data-d2c-node-id={nodeId} className={styles.bottomNav} style={height === 65 ? undefined : { height: `${height}px` }} aria-label="底部导航">
+    <nav data-d2c-node-id={nodeId} className={[styles.bottomNav, appearance === "reference" ? styles.bottomNavReference : ""].filter(Boolean).join(" ")} style={height === 65 ? undefined : { height: `${height}px` }} aria-label="底部导航">
       {tabButton(tabs[0]!, 0)}
       {tabButton(tabs[1]!, 1)}
       <button type="button" className={styles.bottomPublish} aria-label={publishBadge ? `发布，${publishBadge} 条新内容` : "发布"}>
@@ -202,7 +209,6 @@ export function ArtworkSlice({
   alt,
   className,
   style,
-  fit = "cover",
 }: NodeProps & {
   atlasUrl: string;
   crop: ActivityCrop;
@@ -229,7 +235,8 @@ export function ArtworkSlice({
           height: `${100 / crop.height}%`,
           left: `${(-crop.x / crop.width) * 100}%`,
           top: `${(-crop.y / crop.height) * 100}%`,
-          objectFit: fit,
+          // crop 已经决定四条边。cover 会在框比例改变时再次缩放整张 atlas，混入相邻区域。
+          objectFit: "fill",
         }}
       />
     </div>
