@@ -4,6 +4,7 @@
 /* ---------- 桌面端两侧深色（移动端画布占满不可见） ---------- */
 
 :global(body:has([data-activity-canvas-root])) {
+  margin: 0;
   background: #17181f;
 }
 

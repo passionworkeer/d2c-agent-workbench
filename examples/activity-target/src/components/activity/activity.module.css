@@ -16,6 +16,12 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.canvas *,
+.canvas *::before,
+.canvas *::after {
+  box-sizing: border-box;
+}
+
 /* ---------- 系统状态栏 ---------- */
 
 .statusBar {
