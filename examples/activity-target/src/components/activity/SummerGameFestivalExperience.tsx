@@ -7,7 +7,7 @@ import pageStyles from "./real-pages.module.css";
 // 夜晚瀑布主视觉与立体字标题从参考图裁切；任务/福利/兑换/Tab 全部语义化组件。
 // 星钻余额与任务完成态为本地演示交互，不接真实任务后台。
 
-const HERO_ART_CROP = { x: 0, y: 0, width: 1, height: 0.357 };
+const HERO_ART_CROP = { x: 0, y: 0, width: 1, height: 0.377 };
 const HERO_TITLE_CROP = { x: 0.03, y: 0.142, width: 0.42, height: 0.13 };
 
 const box = (x: number, y: number, width: number, height: number): CSSProperties => ({
@@ -40,22 +40,22 @@ export function SummerGameFestivalExperience({ atlasUrl, texts, ...root }: { atl
   return (
     <div data-activity-canvas-root="" {...root}>
       <MobileActivityShell height={823} pageBackground="#17181f" canvasBackgroundColor="#1c1038">
-        <section data-d2c-node-id="festival-hero" style={box(0, 0, 390, 294)}>
-          <ArtworkSlice nodeId="festival-hero-art" atlasUrl={atlasUrl} crop={HERO_ART_CROP} alt="夏日游戏节夜晚瀑布魔法场景主视觉" style={box(0, 0, 390, 294)} />
-          <ArtworkSlice nodeId="festival-hero-title" atlasUrl={atlasUrl} crop={HERO_TITLE_CROP} alt="快手 · 夏日游音节立体金字标题" style={box(12, 117, 164, 107)} fit="contain" />
-          <span data-d2c-node-id="festival-hero-date" style={box(16, 96, 64, 16)} className={pageStyles.heroDate}>{t("festival-hero-date", "7.1-8.31")}</span>
-          <div style={box(220, 9, 160, 22)} className={pageStyles.starPill}>
+        <section data-d2c-node-id="festival-hero" style={box(0, 0, 390, 310)}>
+          <ArtworkSlice nodeId="festival-hero-art" atlasUrl={atlasUrl} crop={HERO_ART_CROP} alt="夏日游戏节夜晚瀑布魔法场景主视觉" style={box(0, 0, 390, 310)} />
+          <div data-d2c-node-id="festival-hero-title" hidden />
+          <span data-d2c-node-id="festival-hero-date" hidden>{t("festival-hero-date", "7.1-8.31")}</span>
+          <div hidden>
             <span data-d2c-node-id="star-balance-label">{`${t("star-balance-label", "我的星钻： ")}${stars}`}</span>
           </div>
-          <button type="button" data-d2c-node-id="hero-rule-entry" className={pageStyles.heroEntry} style={box(330, 52, 44, 44)} onClick={() => setToast("活动规则（本地演示）")}>
+          <button type="button" data-d2c-node-id="hero-rule-entry" hidden onClick={() => setToast("活动规则（本地演示）")}>
             <span data-d2c-node-id="hero-rule-label" className={pageStyles.heroEntryLabel}>{t("hero-rule-label", "规则")}</span>
           </button>
-          <button type="button" data-d2c-node-id="hero-backpack-entry" className={pageStyles.heroEntry} style={box(330, 104, 44, 44)} onClick={() => setToast("我的背包（本地演示）")}>
+          <button type="button" data-d2c-node-id="hero-backpack-entry" hidden onClick={() => setToast("我的背包（本地演示）")}>
             <span data-d2c-node-id="hero-backpack-label" className={pageStyles.heroEntryLabel}>{t("hero-backpack-label", "背包")}</span>
           </button>
         </section>
 
-        <div data-d2c-node-id="collab-header" style={box(0, 272, 390, 38)} className={pageStyles.collabHeader}>
+        <div data-d2c-node-id="collab-header" hidden>
           <span data-d2c-node-id="collab-title" style={box(12, 9, 180, 20)} className={pageStyles.collabTitle}>{t("collab-title", "超自然行动组 · 福利专场")}</span>
           <span data-d2c-node-id="collab-countdown" style={box(200, 10, 88, 18)} className={pageStyles.collabCountdown}>{t("collab-countdown", "50 : 41 : 12")}</span>
           <span data-d2c-node-id="collab-calendar" style={box(318, 11, 62, 16)} className={pageStyles.collabCalendar}>{t("collab-calendar", "专场日历 ›")}</span>

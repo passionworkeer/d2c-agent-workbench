@@ -69,6 +69,13 @@ describe("SummerGameFestivalExperience", () => {
     fireEvent.click(queryNode("task-follow-action")!);
     expect(queryNode("star-balance-label")?.textContent).toBe("我的星钻： 250");
   });
+
+  it("将已烘焙的游戏主视觉作为单个视觉切片，避免标题和入口重复覆盖", () => {
+    render(<SummerGameFestivalExperience atlasUrl={atlasUrl} />);
+    for (const id of ["festival-hero-title", "festival-hero-date", "hero-rule-entry", "hero-backpack-entry", "collab-header"]) {
+      expect(queryNode(id), id).toHaveAttribute("hidden");
+    }
+  });
 });
 
 describe("PetRedPacketExperience", () => {
