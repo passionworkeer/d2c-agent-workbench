@@ -17,8 +17,15 @@
     { "name": "color/festival-gold", "value": "#ffd76a", "source": "reference" }
   ],
   "assets": [
-    { "id": "festival-hero-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 0, "y": 0, "width": 1260, "height": 950 }, "observation": "夜晚瀑布魔法场景主视觉（含人物立绘）", "confidence": 0.85 }] },
-    { "id": "festival-hero-title", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 38, "y": 378, "width": 529, "height": 346 }, "observation": "夏日游音节立体金字标题", "confidence": 0.8 }] }
+    { "id": "festival-hero-art", "path": "../../activity-target/public/game-festival/hero-scene.png", "mimeType": "image/png", "evidence": [{ "type": "asset", "sourceId": "assets/build-scene.ps1", "region": { "x": 0, "y": 0, "width": 1260, "height": 792 }, "observation": "已移除账户、侧入口和联动标题的场景主视觉，保留艺术字与人物立绘", "confidence": 1 }] },
+    { "id": "festival-hero-title", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 38, "y": 378, "width": 529, "height": 346 }, "observation": "仅保留为不可见追溯层；可见标题已包含在无重复场景素材内", "confidence": 0.95 }] },
+    { "id": "install-avatar", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 97, "y": 843, "width": 123, "height": 120 }, "observation": "下载任务无文字头像", "confidence": 0.95 }] },
+    { "id": "follow-avatar", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 100, "y": 1060, "width": 120, "height": 123 }, "observation": "关注任务无文字头像", "confidence": 0.95 }] },
+    { "id": "dance-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 187, "y": 1331, "width": 132, "height": 110 }, "observation": "舞蹈礼包道具", "confidence": 0.95 }] },
+    { "id": "coin-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 510, "y": 1334, "width": 142, "height": 103 }, "observation": "铲铲币道具", "confidence": 0.95 }] },
+    { "id": "lingqi-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 798, "y": 1334, "width": 81, "height": 107 }, "observation": "灵契道具", "confidence": 0.95 }] },
+    { "id": "hat-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 1011, "y": 1334, "width": 100, "height": 110 }, "observation": "小快头套道具", "confidence": 0.95 }] },
+    { "id": "cash-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 81, "y": 1783, "width": 171, "height": 116 }, "observation": "紫金红包道具", "confidence": 0.95 }] }
   ],
   "nodes": [
     {
@@ -82,7 +89,7 @@
       "sourceBox": { "x": 40, "y": 73, "width": 177, "height": 71 },
       "layout": { "mode": "absolute", "position": { "top": 73, "left": 40 }, "width": { "mode": "fixed", "value": 177 }, "height": { "mode": "fixed", "value": 71 }, "rationale": "立体金字效果复杂，整块裁切（原图 38-567 × 378-724）" },
       "responsive": [],
-      "visual": { "opacity": 1, "objectFit": "contain" },
+      "visual": { "opacity": 0, "objectFit": "contain" },
       "content": { "assetId": "festival-hero-title", "alt": "快手 · 夏日游音节 SUMMER GAME FESTIVAL 立体金字标题" },
       "tokenRefs": [],
       "evidence": [{ "type": "asset", "sourceId": "festival-hero-title", "region": { "x": 38, "y": 378, "width": 529, "height": 346 }, "observation": "立体字标题裁切素材", "confidence": 0.8 }],
@@ -98,7 +105,7 @@
       "sourceBox": { "x": 180, "y": 94, "width": 34, "height": 13 },
       "layout": { "mode": "absolute", "position": { "top": 94, "left": 180 }, "width": { "mode": "hug" }, "height": { "mode": "hug" }, "rationale": "黑底金字日期条" },
       "responsive": [],
-      "visual": { "opacity": 1, "color": "#ffd76a", "background": { "type": "solid", "value": "rgba(12,6,32,0.8)" }, "borderRadius": 8, "fontSize": 11, "fontWeight": 600 },
+      "visual": { "opacity": 0, "color": "#ffd76a", "background": { "type": "solid", "value": "rgba(12,6,32,0.8)" }, "borderRadius": 8, "fontSize": 11, "fontWeight": 600 },
       "content": { "text": "7.1-8.31" },
       "tokenRefs": ["color/festival-gold"],
       "evidence": [{ "type": "pixel", "sourceId": "reference.jpg", "region": { "x": 52, "y": 310, "width": 207, "height": 52 }, "observation": "日期标签 7.1-8.31", "confidence": 0.9 }],
@@ -910,6 +917,45 @@
       "confidence": 0.9,
       "reviewState": "accepted",
       "children": []
+    },
+    {
+      "id": "install-avatar", "parentId": "task-install", "role": "image", "name": "下载任务头像",
+      "sourceBox": { "x": 30, "y": 261, "width": 38, "height": 37 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 38 }, "height": { "mode": "fixed", "value": 37 }, "rationale": "无文字头像裁切" },
+      "visual": { "opacity": 1, "objectFit": "fill", "borderRadius": 11 }, "content": { "assetId": "install-avatar", "alt": "超自然行动组头像" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "下载任务头像", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "follow-avatar", "parentId": "task-follow", "role": "image", "name": "关注任务头像",
+      "sourceBox": { "x": 31, "y": 328, "width": 37, "height": 38 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 37 }, "height": { "mode": "fixed", "value": 38 }, "rationale": "无文字头像裁切" },
+      "visual": { "opacity": 1, "objectFit": "fill", "borderRadius": 19 }, "content": { "assetId": "follow-avatar", "alt": "瑶瑶头像" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "关注任务头像", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "benefit-tile-dance-art", "parentId": "benefit-tile-dance", "role": "image", "name": "舞蹈礼包道具",
+      "sourceBox": { "x": 58, "y": 412, "width": 41, "height": 34 }, "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 41 }, "height": { "mode": "fixed", "value": 34 }, "rationale": "无文字奖励道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "dance-art", "alt": "舞蹈礼包" }, "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "舞蹈礼包", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "benefit-tile-coin-art", "parentId": "benefit-tile-coin", "role": "image", "name": "铲铲币道具",
+      "sourceBox": { "x": 158, "y": 413, "width": 44, "height": 32 }, "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 44 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "无文字奖励道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "coin-art", "alt": "铲铲币" }, "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "铲铲币", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "benefit-tile-lingqi-art", "parentId": "benefit-tile-lingqi", "role": "image", "name": "灵契道具",
+      "sourceBox": { "x": 247, "y": 413, "width": 25, "height": 33 }, "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 25 }, "height": { "mode": "fixed", "value": 33 }, "rationale": "无文字奖励道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "lingqi-art", "alt": "灵契" }, "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "灵契", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "benefit-tile-hat-art", "parentId": "benefit-tile-hat", "role": "image", "name": "小快头套道具",
+      "sourceBox": { "x": 313, "y": 413, "width": 31, "height": 34 }, "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 31 }, "height": { "mode": "fixed", "value": 34 }, "rationale": "无文字奖励道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "hat-art", "alt": "小快头套" }, "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "小快头套", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "cash-art", "parentId": "reward-cash", "role": "image", "name": "现金红包道具",
+      "sourceBox": { "x": 25, "y": 552, "width": 53, "height": 36 }, "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 53 }, "height": { "mode": "fixed", "value": 36 }, "rationale": "无文字奖励道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "cash-art", "alt": "现金红包" }, "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "现金红包", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
     }
   ],
   "interactions": [

@@ -4,13 +4,15 @@ import type { FigmaImportBundle, FigmaExportNode } from "@d2c/figma-patcher";
 // 不发网络请求、不读取任何令牌或凭证——所有素材与文本都来自用户选择的本地 JSON 导入包。
 
 export interface FigmaFacadePaint {
-  type: "SOLID" | "IMAGE";
+  type: "SOLID" | "IMAGE" | "GRADIENT_LINEAR";
   color?: { r: number; g: number; b: number };
   opacity?: number;
   scaleMode?: "CROP";
   imageHash?: string;
   /** 2×3 仿射矩阵，把归一化裁切区域映射到节点空间 */
   imageTransform?: number[][];
+  gradientStops?: Array<{ position: number; color: { r: number; g: number; b: number; a: number } }>;
+  gradientTransform?: number[][];
 }
 
 export interface FigmaFacadeNode {
@@ -22,6 +24,7 @@ export interface FigmaFacadeNode {
   width: number;
   height: number;
   fills: FigmaFacadePaint[];
+  resize?(width: number, height: number): void;
   layoutMode?: "NONE" | "HORIZONTAL" | "VERTICAL";
   itemSpacing?: number;
   paddingTop?: number;
@@ -35,6 +38,7 @@ export interface FigmaFacadeNode {
   opacity?: number;
   cornerRadius?: number;
   strokes?: FigmaFacadePaint[];
+  strokeWeight?: number;
   effects?: Array<{ type: "DROP_SHADOW"; color: { r: number; g: number; b: number; a: number }; offset: { x: number; y: number }; radius: number }>;
   clipsContent?: boolean;
   lineHeight?: { unit: "PIXELS"; value: number };
@@ -67,6 +71,9 @@ export interface FigmaImportReport {
 }
 
 const FALLBACK_FONT = { family: "Inter", style: "Regular" } as const;
+
+const unitColor = (color: { r: number; g: number; b: number }) => ({ r: color.r / 255, g: color.g / 255, b: color.b / 255 });
+const unitRgba = (color: { r: number; g: number; b: number; a: number }) => ({ ...unitColor(color), a: color.a });
 
 function fontWeightToStyle(weight: number | undefined): string {
   return weight !== undefined && weight >= 600 ? "Bold" : "Regular";
@@ -105,23 +112,45 @@ async function importNode(
   const node = source.type === "TEXT" ? facade.createText()
     : source.type === "RECTANGLE" ? facade.createRectangle()
     : facade.createFrame();
+  if (source.type === "TEXT") {
+    const family = source.fontFamily ?? FALLBACK_FONT.family;
+    const style = fontWeightToStyle(source.fontWeight);
+    try {
+      await facade.loadFontAsync(family, style);
+      node.fontName = { family, style };
+    } catch {
+      await facade.loadFontAsync(FALLBACK_FONT.family, FALLBACK_FONT.style);
+      node.fontName = { ...FALLBACK_FONT };
+      report.degradations.push({ type: "font-fallback", nodeId: source.pluginData.d2cNodeId, message: `字体 ${family} ${style} 不可用，已回退 Inter Regular` });
+    }
+  }
   node.name = source.name;
   // 导入包携带页面绝对坐标（与 spec sourceBox 一致）；Figma 的子节点 x/y 相对父级 →
   // 按父级页面原点换算，否则嵌套子节点会叠加祖先 origin 逐层下漂
   node.x = source.x - originX;
   node.y = source.y - originY;
-  node.width = source.width;
-  node.height = source.height;
+  if (node.resize) node.resize(source.width, source.height);
+  else { node.width = source.width; node.height = source.height; }
   if (source.opacity !== undefined) node.opacity = source.opacity;
   if (source.cornerRadius !== undefined && source.type !== "TEXT") node.cornerRadius = source.cornerRadius;
-  if (source.strokes) node.strokes = source.strokes.map((stroke) => ({ type: stroke.type, color: stroke.color, opacity: stroke.opacity }));
-  if (source.effects) node.effects = source.effects.map((effect) => ({ ...effect, color: { ...effect.color }, offset: { ...effect.offset } }));
+  if (source.strokes) {
+    node.strokes = source.strokes.map((stroke) => ({ type: stroke.type, color: unitColor(stroke.color), opacity: stroke.opacity }));
+    if (source.strokes[0]) node.strokeWeight = source.strokes[0].weight;
+  }
+  if (source.effects) node.effects = source.effects.map((effect) => ({ ...effect, color: unitRgba(effect.color), offset: { ...effect.offset } }));
   if (source.clipsContent !== undefined) node.clipsContent = source.clipsContent;
   report.createdNodes += 1;
 
+  if (source.fills?.length) node.fills = [];
   for (const fill of source.fills ?? []) {
     if (fill.type === "SOLID" && fill.color) {
-      node.fills.push({ type: "SOLID", color: fill.color, ...(fill.opacity !== undefined ? { opacity: fill.opacity } : {}) });
+      node.fills = [...node.fills, { type: "SOLID", color: unitColor(fill.color), ...(fill.opacity !== undefined ? { opacity: fill.opacity } : {}) }];
+    } else if (fill.type === "GRADIENT_LINEAR" && fill.gradientStops && fill.gradientTransform) {
+      node.fills = [...node.fills, {
+        type: "GRADIENT_LINEAR",
+        gradientStops: fill.gradientStops.map((stop) => ({ position: stop.position, color: unitRgba(stop.color) })),
+        gradientTransform: fill.gradientTransform.map((row) => [...row]),
+      }];
     } else if (fill.type === "IMAGE" && fill.assetId !== undefined) {
       const asset = bundle.assets.find((item) => item.id === fill.assetId);
       if (!asset) {
@@ -129,12 +158,12 @@ async function importNode(
         continue;
       }
       const image = facade.createImage(facade.decodeBase64(asset.data));
-      node.fills.push({
+      node.fills = [...node.fills, {
         type: "IMAGE",
         scaleMode: "CROP",
         imageHash: image.hash,
         ...(source.imageCrop ? { imageTransform: cropTransform(source.imageCrop) } : {}),
-      });
+      }];
     }
   }
 
@@ -144,17 +173,6 @@ async function importNode(
     if (source.lineHeight !== undefined) node.lineHeight = { unit: "PIXELS", value: source.lineHeight };
     if (source.letterSpacing !== undefined) node.letterSpacing = { unit: "PIXELS", value: source.letterSpacing };
     if (source.textAlignHorizontal !== undefined) node.textAlignHorizontal = source.textAlignHorizontal;
-    const family = source.fontFamily ?? FALLBACK_FONT.family;
-    const style = fontWeightToStyle(source.fontWeight);
-    try {
-      await facade.loadFontAsync(family, style);
-      node.fontName = { family, style };
-    } catch {
-      // 字体不可用：回退 Inter Regular 并如实记录降级
-      await facade.loadFontAsync(FALLBACK_FONT.family, FALLBACK_FONT.style);
-      node.fontName = { ...FALLBACK_FONT };
-      report.degradations.push({ type: "font-fallback", nodeId: source.pluginData.d2cNodeId, message: `字体 ${family} ${style} 不可用，已回退 Inter Regular` });
-    }
   }
 
   applyLayout(node, source);
@@ -178,10 +196,12 @@ export async function importBundle(bundle: FigmaImportBundle, facade: FigmaFacad
       if (!asset) report.degradations.push({ type: "missing-asset", nodeId: root.pluginData.d2cNodeId, message: `参考图素材缺少 ${referenceId}` });
       else {
         const reference = facade.createRectangle();
-        reference.name = "Reference（隐藏）"; reference.x = 0; reference.y = 0; reference.width = root.width; reference.height = root.height;
+        reference.name = "Reference（隐藏）"; reference.x = 0; reference.y = 0;
+        if (reference.resize) reference.resize(root.width, root.height);
+        else { reference.width = root.width; reference.height = root.height; }
         reference.visible = false; reference.locked = true;
         const image = facade.createImage(facade.decodeBase64(asset.data));
-        reference.fills.push({ type: "IMAGE", scaleMode: "CROP", imageHash: image.hash });
+        reference.fills = [{ type: "IMAGE", scaleMode: "CROP", imageHash: image.hash }];
         facade.setPluginData(reference, "d2cReference", "true"); facade.appendChild(node, reference);
       }
     }

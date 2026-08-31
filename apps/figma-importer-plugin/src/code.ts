@@ -9,8 +9,9 @@ interface FigmaGlobalNode {
   name: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
+  readonly width: number;
+  readonly height: number;
+  resize(width: number, height: number): void;
   fills: unknown[];
   layoutMode?: "NONE" | "HORIZONTAL" | "VERTICAL";
   itemSpacing?: number;

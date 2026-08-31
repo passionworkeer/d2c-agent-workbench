@@ -5,10 +5,12 @@ import type { ActivitySpec } from "@d2c/contracts";
 // 每个节点保留 pluginData.d2cNodeId，插件导入后仍能按稳定节点 id 追溯与二次回写。
 
 export interface FigmaExportPaint {
-  type: "SOLID" | "IMAGE";
+  type: "SOLID" | "IMAGE" | "GRADIENT_LINEAR";
   color?: { r: number; g: number; b: number };
   opacity?: number;
   assetId?: string;
+  gradientStops?: Array<{ position: number; color: { r: number; g: number; b: number; a: number } }>;
+  gradientTransform?: number[][];
 }
 
 /** 自包含素材：base64 数据随包携带；path 用于把 spec 的 assetId 解析到嵌入条目 */
@@ -165,6 +167,42 @@ export function jpegDimensions(bytes: Uint8Array): { width: number; height: numb
   return undefined;
 }
 
+function pngDimensions(bytes: Uint8Array): { width: number; height: number } | undefined {
+  const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (bytes.length < 24 || !signature.every((value, index) => bytes[index] === value)) return undefined;
+  const width = ((bytes[16]! << 24) | (bytes[17]! << 16) | (bytes[18]! << 8) | bytes[19]!) >>> 0;
+  const height = ((bytes[20]! << 24) | (bytes[21]! << 16) | (bytes[22]! << 8) | bytes[23]!) >>> 0;
+  return width > 0 && height > 0 ? { width, height } : undefined;
+}
+
+export function imageDimensions(bytes: Uint8Array, mimeType: string): { width: number; height: number } | undefined {
+  if (mimeType === "image/png") return pngDimensions(bytes);
+  if (mimeType === "image/jpeg") return jpegDimensions(bytes);
+  return jpegDimensions(bytes) ?? pngDimensions(bytes);
+}
+
+function parseLinearGradient(value: string | undefined): FigmaExportPaint | undefined {
+  const match = /^linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,\s*(#[0-9a-f]{3,6})\s*,\s*(#[0-9a-f]{3,6})\s*\)$/i.exec(value?.trim() ?? "");
+  if (!match) return undefined;
+  const start = parseColor(match[2]);
+  const end = parseColor(match[3]);
+  if (!start || !end) return undefined;
+  const rotation = (Number(match[1]) - 90) * Math.PI / 180;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  return {
+    type: "GRADIENT_LINEAR",
+    gradientStops: [
+      { position: 0, color: { r: start.r, g: start.g, b: start.b, a: start.alpha ?? 1 } },
+      { position: 1, color: { r: end.r, g: end.g, b: end.b, a: end.alpha ?? 1 } },
+    ],
+    gradientTransform: [
+      [cos, -sin, .5 - .5 * cos + .5 * sin],
+      [sin, cos, .5 - .5 * sin - .5 * cos],
+    ],
+  };
+}
+
 function toFigmaLayout(node: ActivitySpec["nodes"][number]): FigmaExportLayout {
   const layout = node.layout;
   return {
@@ -195,12 +233,19 @@ function toFigmaNode(
   const children = childIds
     .map((childId) => toFigmaNode(spec, rendered, childId, assetByPath, dimensionsByAssetId, degradations, nodesById, omittedChildrenByParentId))
     .filter((child): child is FigmaExportNode => child !== null);
-  // 背景色：实测样式 → spec 视觉声明（仅 solid；gradient/image 类型如实跳过）
-  const background = parseColor(styles.backgroundColor)
-    ?? (node.visual.background?.type === "solid" ? parseColor(node.visual.background.value) : undefined);
-  const type: FigmaExportNode["type"] = node.role === "text" ? "TEXT"
+  // 透明 computed background 不覆盖 spec 声明；离线预生成仍能保留规格里的纯色或简单线性渐变。
+  const renderedBackground = parseColor(styles.backgroundColor);
+  const background = renderedBackground && (renderedBackground.alpha ?? 1) > 0
+    ? renderedBackground
+    : node.visual.background?.type === "solid" ? parseColor(node.visual.background.value) : undefined;
+  const gradient = node.visual.background?.type === "gradient" ? parseLinearGradient(node.visual.background.value) : undefined;
+  const rawType: FigmaExportNode["type"] = node.role === "text" ? "TEXT"
     : node.role === "image" || node.role === "icon" || node.role === "decoration" ? "RECTANGLE"
       : "FRAME";
+  // Figma 的 TEXT 没有独立背景盒。带背景/圆角的可编辑文案导出成 FRAME + 原生 TEXT 子层，
+  // 否则渐变会错误地涂到字形本身，按钮也不会出现圆角底板。
+  const boxedText = rawType === "TEXT" && !node.content?.assetId && Boolean(node.visual.background);
+  const type: FigmaExportNode["type"] = boxedText ? "FRAME" : rawType;
   const fills: FigmaExportPaint[] = [];
   let imageCrop: FigmaImageCrop | undefined;
   if (node.content?.assetId) {
@@ -231,6 +276,8 @@ function toFigmaNode(
     }
   } else if (background) {
     fills.push(solidFill(background));
+  } else if (gradient) {
+    fills.push(gradient);
   }
   const color = parseColor(styles.color) ?? parseColor(node.visual.color);
   if (type === "TEXT" && color) {
@@ -256,6 +303,32 @@ function toFigmaNode(
       message: `无法导出 shadow：${node.visual.shadow}`,
     });
   }
+  const characters = node.content?.text ?? "";
+  const fontFamily = styles.fontFamily ?? node.visual.fontFamily ?? (/\p{Script=Han}/u.test(characters) ? "Noto Sans SC" : undefined);
+  const typography = {
+    characters,
+    ...(node.visual.fontSize !== undefined ? { fontSize: node.visual.fontSize } : {}),
+    ...(node.visual.fontWeight !== undefined ? { fontWeight: node.visual.fontWeight } : {}),
+    ...(fontFamily ? { fontFamily } : {}),
+    ...(node.visual.lineHeight !== undefined ? { lineHeight: node.visual.lineHeight } : {}),
+    ...(node.visual.letterSpacing !== undefined ? { letterSpacing: node.visual.letterSpacing } : {}),
+    ...(node.visual.textAlign ? { textAlignHorizontal: ({ left: "LEFT", center: "CENTER", right: "RIGHT", justify: "JUSTIFIED" } as const)[node.visual.textAlign] } : {}),
+  };
+  const outputChildren = boxedText ? [{
+    type: "TEXT" as const,
+    id: `d2c-${nodeId}__text`,
+    name: `${node.name}/文本`,
+    x: node.sourceBox.x,
+    y: node.sourceBox.y,
+    width: node.sourceBox.width,
+    height: node.sourceBox.height,
+    ...(color ? { fills: [solidFill(color)] } : {}),
+    ...typography,
+    layout: toFigmaLayout(node),
+    layoutStrategy: "absolute" as const,
+    renderKind: "native" as const,
+    pluginData: { d2cNodeId: `${node.id}__text` },
+  }, ...children] : children;
   return {
     type,
     id: `d2c-${nodeId}`,
@@ -265,21 +338,13 @@ function toFigmaNode(
     width: node.sourceBox.width,
     height: node.sourceBox.height,
     ...(fills.length ? { fills } : {}),
-    ...(type === "TEXT" ? {
-      characters: node.content?.text ?? "",
-      ...(node.visual.fontSize !== undefined ? { fontSize: node.visual.fontSize } : {}),
-      ...(node.visual.fontWeight !== undefined ? { fontWeight: node.visual.fontWeight } : {}),
-      ...((styles.fontFamily ?? node.visual.fontFamily) ? { fontFamily: styles.fontFamily ?? node.visual.fontFamily } : {}),
-      ...(node.visual.lineHeight !== undefined ? { lineHeight: node.visual.lineHeight } : {}),
-      ...(node.visual.letterSpacing !== undefined ? { letterSpacing: node.visual.letterSpacing } : {}),
-      ...(node.visual.textAlign ? { textAlignHorizontal: ({ left: "LEFT", center: "CENTER", right: "RIGHT", justify: "JUSTIFIED" } as const)[node.visual.textAlign] } : {}),
-    } : {}),
-    ...(children.length ? { children } : {}),
+    ...(type === "TEXT" ? typography : {}),
+    ...(outputChildren.length ? { children: outputChildren } : {}),
     layout: toFigmaLayout(node),
     ...(imageCrop ? { imageCrop } : {}),
     ...(node.visual.opacity !== 1 ? { opacity: node.visual.opacity } : {}),
     ...(node.visual.borderRadius !== undefined ? { cornerRadius: node.visual.borderRadius } : {}),
-    ...(node.role === "page" || node.layout.overflow === "hidden" ? { clipsContent: true } : {}),
+    ...(node.role === "page" || boxedText || node.layout.overflow === "hidden" ? { clipsContent: true } : {}),
     ...(strokes ? { strokes } : {}),
     ...(effects ? { effects } : {}),
     layoutStrategy: "absolute",
@@ -317,7 +382,7 @@ export function buildFigmaImportBundle(
   const dimensionsByAssetId = new Map<string, { width: number; height: number }>();
   for (const asset of assetsById.values()) {
     try {
-      const dims = jpegDimensions(decodeBase64(asset.data));
+      const dims = imageDimensions(decodeBase64(asset.data), asset.mimeType);
       if (dims) dimensionsByAssetId.set(asset.id, dims);
     } catch {
       // 非法 base64 / 解码错误 → 走回落路径，不污染导入包
@@ -340,6 +405,8 @@ export function buildFigmaImportBundle(
   degradations.push(...spec.nodes
     .filter((node) => rendered[node.id] === undefined)
     .map((node) => ({ type: "missing-render-evidence" as const, nodeId: node.id, message: "节点无渲染样式证据，按 spec 视觉导出" })));
+  const referenceAsset = embeddedAssets.find((asset) => asset.path === "reference.jpg" || asset.path === "reference")
+    ?? (embeddedAssets.length === 1 ? embeddedAssets[0] : undefined);
   return {
     version: "2.0",
     viewport: spec.page.canonicalViewport,
@@ -348,7 +415,7 @@ export function buildFigmaImportBundle(
     manifest: {
       name: spec.page.name,
       route: spec.page.route,
-      ...(embeddedAssets.length === 1 ? { referenceAssetId: embeddedAssets[0]!.id } : {}),
+      ...(referenceAsset ? { referenceAssetId: referenceAsset.id } : {}),
     },
     degradations,
   };

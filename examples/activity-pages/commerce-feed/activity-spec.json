@@ -17,11 +17,11 @@
     { "name": "color/price-red", "value": "#ff3b30", "source": "reference" }
   ],
   "assets": [
-    { "id": "banner-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 0, "y": 672, "width": 1260, "height": 218 }, "observation": "818 宠粉节粉红渐变 Banner 氛围图", "confidence": 0.85 }] },
-    { "id": "product-tissue", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 18, "y": 890, "width": 604, "height": 607 }, "observation": "心相印抽纸商品主图", "confidence": 0.8 }] },
-    { "id": "product-tea", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 640, "y": 890, "width": 602, "height": 607 }, "observation": "康师傅整箱饮料商品主图", "confidence": 0.8 }] },
-    { "id": "product-detergent", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 30, "y": 1875, "width": 585, "height": 645 }, "observation": "大师香氛洗衣液商品主图", "confidence": 0.75 }] },
-    { "id": "product-comb", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 645, "y": 1875, "width": 600, "height": 645 }, "observation": "迷你排骨梳商品主图", "confidence": 0.75 }] }
+    { "id": "banner-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 1053, "y": 730, "width": 152, "height": 84 }, "observation": "横幅内无文字手机商品图", "confidence": 0.98 }] },
+    { "id": "product-tissue", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 13, "y": 921, "width": 611, "height": 614 }, "observation": "心相印抽纸商品营销主图", "confidence": 0.98 }] },
+    { "id": "product-tea", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 636, "y": 921, "width": 611, "height": 614 }, "observation": "康师傅整箱饮料商品营销主图", "confidence": 0.98 }] },
+    { "id": "product-detergent", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 13, "y": 1874, "width": 611, "height": 614 }, "observation": "大师香氛洗衣液商品营销主图", "confidence": 0.98 }] },
+    { "id": "product-comb", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 636, "y": 1874, "width": 611, "height": 614 }, "observation": "迷你排骨梳商品营销主图", "confidence": 0.98 }] }
   ],
   "nodes": [
     {

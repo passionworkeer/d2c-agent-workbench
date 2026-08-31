@@ -3,7 +3,7 @@
   "atlas": "reference.jpg",
   "atlasSize": { "width": 1260, "height": 2645 },
   "atlasSha256": "8a8f4e60a24e07130bea024d65a87fc618ce0175b3ed3f4f285218ddca4c2847",
-  "notes": "2026-08-31：前端使用 build-scene.ps1 生成的 stage-scene.png，已移除全部进度、入口、气泡和按钮 UI；只保留复杂舞台/宠物。旧 pet-stage-art crop 仅保留供原有 Figma 导出兼容，禁止前端直接使用并叠加文字。所有前端 crop 是单次四边映射，不再对整个 atlas 使用 object-fit:cover。",
+  "notes": "2026-08-31：前端与 Figma 原型共同使用 build-scene.ps1 生成的 stage-scene.png，只保留复杂舞台/宠物；进度、入口、气泡和按钮均由可编辑节点重建。小道具按 frontendCropsCss390 从 reference.jpg 无文字区域裁切。",
   "frontendCropsCss390": {
     "wardrobe-art": [8, 313, 48, 31],
     "claim-art": [8, 377, 43, 32],
@@ -23,9 +23,51 @@
     {
       "id": "pet-stage-art",
       "nodeId": "pet-stage-art",
-      "purpose": "宠物舞台：红色绒面圆台 + 聚光灯 + 香蕉服饰宠物「比比拉布」（原图 760-1690）",
+      "purpose": "stage-scene.png 全幅：红色绒面圆台 + 聚光灯 + 香蕉服饰宠物「比比拉布」，已移除可编辑控件",
       "alt": "穿香蕉服饰的棕白花色宠物站在红色圆台上",
-      "crop": { "x": 0, "y": 0.2873, "width": 1, "height": 0.3516 }
+      "crop": { "x": 0, "y": 0, "width": 1, "height": 1 }
+    },
+    {
+      "id": "wardrobe-art",
+      "nodeId": "wardrobe-art",
+      "purpose": "无文字香蕉衣橱图标",
+      "alt": "香蕉衣橱",
+      "crop": { "x": 0.0206, "y": 0.3822, "width": 0.123, "height": 0.0378 }
+    },
+    {
+      "id": "claim-art",
+      "nodeId": "claim-art",
+      "purpose": "无文字领取礼盒图标",
+      "alt": "领取礼盒",
+      "crop": { "x": 0.0206, "y": 0.4605, "width": 0.1103, "height": 0.0389 }
+    },
+    {
+      "id": "summer-night-art",
+      "nodeId": "summer-night-art",
+      "purpose": "无文字超级夏晚图标",
+      "alt": "超级夏晚",
+      "crop": { "x": 0.8587, "y": 0.3822, "width": 0.1381, "height": 0.0389 }
+    },
+    {
+      "id": "wand-art",
+      "nodeId": "wand-art",
+      "purpose": "无文字等级魔法棒",
+      "alt": "星星魔法棒",
+      "crop": { "x": 0.746, "y": 0.4117, "width": 0.0333, "height": 0.0246 }
+    },
+    {
+      "id": "level-gift-art",
+      "nodeId": "level-gift-l5-art",
+      "purpose": "无文字等级礼盒，可复用于 5/15/20 级",
+      "alt": "等级礼盒",
+      "crop": { "x": 0.446, "y": 0.2125, "width": 0.0714, "height": 0.0389 }
+    },
+    {
+      "id": "level-packet-art",
+      "nodeId": "level-packet-l10-art",
+      "purpose": "无文字等级红包",
+      "alt": "等级红包",
+      "crop": { "x": 0.5437, "y": 0.2125, "width": 0.0667, "height": 0.0389 }
     }
   ]
 }

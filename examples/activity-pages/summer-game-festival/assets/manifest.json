@@ -3,7 +3,7 @@
   "atlas": "reference.jpg",
   "atlasSize": { "width": 1260, "height": 2660 },
   "atlasSha256": "81cff7409565c2d99cffbca0fa2caa76b5d96d1fee47134ff21344cfcdaff3bd",
-  "notes": "2026-08-31 按原图校正。前端 hero-scene.png 由 build-scene.ps1 仅提取 y=0..245 CSS px 的复杂场景，并以邻近无字纹理移除账户、侧入口及联动标题。任务/福利/兑奖/Tab 均为 React；不再使用含下载任务的旧大切片。下列旧 atlas 条目保留给已有 Figma 导出，前端不叠加 festival-hero-title。",
+  "notes": "2026-08-31 按原图校正。前端与 Figma 原型共同使用 hero-scene.png，只保留复杂场景、人物和艺术标题，并移除账户、侧入口及联动标题。任务、福利、兑奖和 Tab 均为可编辑节点；头像与奖励道具按 frontendCropsCss390 从 reference.jpg 无文字区域裁切。",
   "frontendCropsCss390": {
     "install-avatar": [30, 261, 38, 37],
     "follow-avatar": [31, 328, 37, 38],
@@ -17,9 +17,9 @@
     {
       "id": "festival-hero-art",
       "nodeId": "festival-hero-art",
-      "purpose": "顶部主视觉：夜晚瀑布与深色树林魔法场景（含人物立绘与灯笼装饰）",
+      "purpose": "hero-scene.png 全幅：夜晚瀑布、人物立绘与艺术标题，已移除可编辑入口和联动标题",
       "alt": "夏日游戏节夜晚瀑布魔法场景主视觉",
-      "crop": { "x": 0, "y": 0, "width": 1, "height": 0.357 }
+      "crop": { "x": 0, "y": 0, "width": 1, "height": 1 }
     },
     {
       "id": "festival-hero-title",
@@ -27,6 +27,55 @@
       "purpose": "活动名立体金字：快手 · 夏日游音节 / SUMMER GAME FESTIVAL",
       "alt": "夏日游音节立体金字标题",
       "crop": { "x": 0.03, "y": 0.142, "width": 0.42, "height": 0.13 }
+    },
+    {
+      "id": "install-avatar",
+      "nodeId": "install-avatar",
+      "purpose": "下载任务无文字头像",
+      "alt": "超自然行动组头像",
+      "crop": { "x": 0.077, "y": 0.3169, "width": 0.0976, "height": 0.0451 }
+    },
+    {
+      "id": "follow-avatar",
+      "nodeId": "follow-avatar",
+      "purpose": "关注任务无文字头像",
+      "alt": "瑶瑶头像",
+      "crop": { "x": 0.0794, "y": 0.3985, "width": 0.0952, "height": 0.0462 }
+    },
+    {
+      "id": "dance-art",
+      "nodeId": "benefit-tile-dance-art",
+      "purpose": "无文字舞蹈礼包道具",
+      "alt": "舞蹈礼包",
+      "crop": { "x": 0.1484, "y": 0.5004, "width": 0.1048, "height": 0.0414 }
+    },
+    {
+      "id": "coin-art",
+      "nodeId": "benefit-tile-coin-art",
+      "purpose": "无文字铲铲币道具",
+      "alt": "铲铲币",
+      "crop": { "x": 0.4048, "y": 0.5015, "width": 0.1127, "height": 0.0387 }
+    },
+    {
+      "id": "lingqi-art",
+      "nodeId": "benefit-tile-lingqi-art",
+      "purpose": "无文字灵契道具",
+      "alt": "灵契",
+      "crop": { "x": 0.6333, "y": 0.5015, "width": 0.0643, "height": 0.0402 }
+    },
+    {
+      "id": "hat-art",
+      "nodeId": "benefit-tile-hat-art",
+      "purpose": "无文字小快头套道具",
+      "alt": "小快头套",
+      "crop": { "x": 0.8024, "y": 0.5015, "width": 0.0794, "height": 0.0414 }
+    },
+    {
+      "id": "cash-art",
+      "nodeId": "cash-art",
+      "purpose": "无文字紫金红包道具",
+      "alt": "现金红包",
+      "crop": { "x": 0.0643, "y": 0.6703, "width": 0.1357, "height": 0.0436 }
     }
   ]
 }

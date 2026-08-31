@@ -82,7 +82,7 @@ describe("importBundle", () => {
     expect(title.type).toBe("TEXT");
     expect(title.characters).toBe("818 宠粉节");
     expect(title.fontSize).toBe(20);
-    expect(title.fills[0]).toMatchObject({ type: "SOLID", color: { r: 255, g: 80, b: 0 }, opacity: 0.62 });
+    expect(title.fills[0]).toMatchObject({ type: "SOLID", color: { r: 1, g: 80 / 255, b: 0 }, opacity: 0.62 });
   });
 
   it("keeps screenshot bundles absolute unless Auto Layout is explicitly requested", async () => {

@@ -3,7 +3,7 @@
   "atlas": "reference.jpg",
   "atlasSize": { "width": 1260, "height": 2800 },
   "atlasSha256": "64d1a32b58b4f3b28db3e6204d12382b20fc41c33833fc81973a153c2a8dcad1",
-  "notes": "2026-08-31：前端以 frontendCropsCss390 为真实裁切范围，除商品营销图及横幅手机外，横幅文案/券按钮/导航/商品正文/价格均由 React 呈现。下方 assets 为历史 Figma 图集兼容记录，不得将旧通栏 banner-art 叠加到 React 文案上。",
+  "notes": "2026-08-31：前端与 Figma 原型共用 frontendCropsCss390 的真实裁切范围。只有商品营销图和横幅手机走栅格素材；横幅文案、券按钮、导航、商品正文与价格均为可编辑节点。",
   "frontendCropsCss390": {
     "banner-art": [326, 226, 47, 26],
     "product-tissue": [4, 285, 189, 190],
@@ -15,37 +15,37 @@
     {
       "id": "banner-art",
       "nodeId": "banner-art",
-      "purpose": "Banner 粉红渐变背景与手机/茅台商品氛围图（原图 y672-890 通栏）",
-      "alt": "快手818宠粉节粉红渐变 Banner，展示手机金豆与茅台一元起拍商品",
-      "crop": { "x": 0, "y": 0.24, "width": 1, "height": 0.0779 }
+      "purpose": "横幅右侧无文字手机商品图",
+      "alt": "手机商品图",
+      "crop": { "x": 0.8357, "y": 0.2607, "width": 0.1206, "height": 0.03 }
     },
     {
       "id": "product-tissue",
       "nodeId": "product-tissue",
-      "purpose": "心相印抽纸商品主图（原图 18-622 × 890-1497）",
+      "purpose": "心相印抽纸商品营销主图（原图 13-624 × 921-1535）",
       "alt": "心相印抽纸商品图",
-      "crop": { "x": 0.0143, "y": 0.3179, "width": 0.4794, "height": 0.2168 }
+      "crop": { "x": 0.0103, "y": 0.3289, "width": 0.4849, "height": 0.2193 }
     },
     {
       "id": "product-tea",
       "nodeId": "product-tea",
-      "purpose": "康师傅整箱饮料商品主图（原图 640-1242 × 890-1497）",
+      "purpose": "康师傅整箱饮料商品营销主图（原图 636-1247 × 921-1535）",
       "alt": "康师傅多口味混合整箱饮料商品图",
-      "crop": { "x": 0.5079, "y": 0.3179, "width": 0.4778, "height": 0.2168 }
+      "crop": { "x": 0.5048, "y": 0.3289, "width": 0.4849, "height": 0.2193 }
     },
     {
       "id": "product-detergent",
       "nodeId": "product-detergent",
-      "purpose": "大师香氛洗衣液商品主图（原图 30-615 × 1875-2520）",
+      "purpose": "大师香氛洗衣液商品营销主图（原图 13-624 × 1874-2488）",
       "alt": "大师香氛洗衣液商品图",
-      "crop": { "x": 0.0238, "y": 0.6696, "width": 0.4643, "height": 0.2304 }
+      "crop": { "x": 0.0103, "y": 0.6693, "width": 0.4849, "height": 0.2193 }
     },
     {
       "id": "product-comb",
       "nodeId": "product-comb",
-      "purpose": "迷你排骨梳商品主图（原图 645-1245 × 1875-2520）",
+      "purpose": "迷你排骨梳商品营销主图（原图 636-1247 × 1874-2488）",
       "alt": "迷你排骨梳镂空按摩梳子商品图",
-      "crop": { "x": 0.512, "y": 0.6696, "width": 0.4762, "height": 0.2304 }
+      "crop": { "x": 0.5048, "y": 0.6693, "width": 0.4849, "height": 0.2193 }
     }
   ]
 }

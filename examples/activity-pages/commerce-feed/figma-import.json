@@ -28,10 +28,10 @@
           "type": "FRAME",
           "id": "d2c-status-bar",
           "name": "系统状态栏",
-          "x": 0,
-          "y": 0,
-          "width": 390,
-          "height": 31,
+          "x": 22,
+          "y": 15,
+          "width": 345,
+          "height": 19,
           "layout": {
             "mode": "flex",
             "direction": "row",
@@ -79,6 +79,7 @@
               "characters": "关注",
               "fontSize": 15,
               "fontWeight": 500,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "Tab 文字"
@@ -110,6 +111,7 @@
               "characters": "商城",
               "fontSize": 17,
               "fontWeight": 700,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "选中 Tab 加粗带下划线"
@@ -141,6 +143,7 @@
               "characters": "发现",
               "fontSize": 15,
               "fontWeight": 500,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "Tab 文字"
@@ -172,6 +175,7 @@
               "characters": "同城",
               "fontSize": 15,
               "fontWeight": 500,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "Tab 文字"
@@ -204,10 +208,10 @@
           "type": "FRAME",
           "id": "d2c-commerce-search",
           "name": "搜索框",
-          "x": 12,
-          "y": 94,
-          "width": 366,
-          "height": 42,
+          "x": 11,
+          "y": 95,
+          "width": 368,
+          "height": 41,
           "fills": [
             {
               "type": "SOLID",
@@ -223,10 +227,10 @@
               "type": "TEXT",
               "id": "d2c-commerce-search-keyword",
               "name": "搜索关键词",
-              "x": 40,
-              "y": 108,
+              "x": 47,
+              "y": 107,
               "width": 44,
-              "height": 16,
+              "height": 20,
               "fills": [
                 {
                   "type": "SOLID",
@@ -239,6 +243,7 @@
               ],
               "characters": "猫粮",
               "fontSize": 14,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "输入占位"
@@ -250,12 +255,12 @@
               }
             },
             {
-              "type": "TEXT",
+              "type": "FRAME",
               "id": "d2c-commerce-search-submit",
               "name": "搜索按钮",
-              "x": 326,
+              "x": 318,
               "y": 99,
-              "width": 50,
+              "width": 58,
               "height": 32,
               "fills": [
                 {
@@ -265,24 +270,48 @@
                     "g": 22,
                     "b": 69
                   }
-                },
+                }
+              ],
+              "children": [
                 {
-                  "type": "SOLID",
-                  "color": {
-                    "r": 255,
-                    "g": 255,
-                    "b": 255
+                  "type": "TEXT",
+                  "id": "d2c-commerce-search-submit__text",
+                  "name": "搜索按钮/文本",
+                  "x": 318,
+                  "y": 99,
+                  "width": 58,
+                  "height": 32,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255
+                      }
+                    }
+                  ],
+                  "characters": "搜索",
+                  "fontSize": 13,
+                  "fontFamily": "Noto Sans SC",
+                  "textAlignHorizontal": "CENTER",
+                  "layout": {
+                    "mode": "flow",
+                    "rationale": "红底白字按钮"
+                  },
+                  "layoutStrategy": "absolute",
+                  "renderKind": "native",
+                  "pluginData": {
+                    "d2cNodeId": "commerce-search-submit__text"
                   }
                 }
               ],
-              "characters": "搜索",
-              "fontSize": 13,
-              "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
                 "rationale": "红底白字按钮"
               },
               "cornerRadius": 16,
+              "clipsContent": true,
               "layoutStrategy": "absolute",
               "renderKind": "native",
               "pluginData": {
@@ -314,9 +343,9 @@
           "id": "d2c-quick-actions",
           "name": "金刚区快捷入口",
           "x": 0,
-          "y": 142,
+          "y": 139,
           "width": 390,
-          "height": 59,
+          "height": 63,
           "fills": [
             {
               "type": "SOLID",
@@ -332,10 +361,10 @@
               "type": "TEXT",
               "id": "d2c-quick-action-orders",
               "name": "我的订单",
-              "x": 4,
-              "y": 142,
-              "width": 70,
-              "height": 59,
+              "x": 8,
+              "y": 176,
+              "width": 66,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -348,6 +377,7 @@
               ],
               "characters": "我的订单",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -364,10 +394,10 @@
               "type": "TEXT",
               "id": "d2c-quick-action-cart",
               "name": "购物车",
-              "x": 82,
-              "y": 142,
-              "width": 70,
-              "height": 59,
+              "x": 78,
+              "y": 176,
+              "width": 66,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -380,6 +410,7 @@
               ],
               "characters": "购物车",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -396,10 +427,10 @@
               "type": "TEXT",
               "id": "d2c-quick-action-recharge",
               "name": "充值中心",
-              "x": 160,
-              "y": 142,
-              "width": 70,
-              "height": 59,
+              "x": 148,
+              "y": 176,
+              "width": 66,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -412,6 +443,7 @@
               ],
               "characters": "充值中心",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -428,10 +460,10 @@
               "type": "TEXT",
               "id": "d2c-quick-action-auction",
               "name": "一元拍",
-              "x": 238,
-              "y": 142,
-              "width": 70,
-              "height": 59,
+              "x": 218,
+              "y": 176,
+              "width": 66,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -444,6 +476,7 @@
               ],
               "characters": "一元拍",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -460,10 +493,10 @@
               "type": "TEXT",
               "id": "d2c-quick-action-coins",
               "name": "赚金币",
-              "x": 316,
-              "y": 142,
-              "width": 70,
-              "height": 59,
+              "x": 288,
+              "y": 176,
+              "width": 66,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -476,6 +509,7 @@
               ],
               "characters": "赚金币",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -510,19 +544,19 @@
           "type": "FRAME",
           "id": "d2c-promo-banner",
           "name": "宠粉节 Banner",
-          "x": 0,
+          "x": 8,
           "y": 208,
-          "width": 390,
-          "height": 67,
+          "width": 375,
+          "height": 68,
           "children": [
             {
               "type": "RECTANGLE",
               "id": "d2c-banner-art",
               "name": "Banner 氛围图",
-              "x": 0,
-              "y": 208,
-              "width": 390,
-              "height": 67,
+              "x": 326,
+              "y": 226,
+              "width": 47,
+              "height": 26,
               "fills": [
                 {
                   "type": "IMAGE",
@@ -534,10 +568,10 @@
                 "rationale": "背景铺满裁切素材，文字浮于其上"
               },
               "imageCrop": {
-                "x": 0,
-                "y": 0.24,
-                "width": 1,
-                "height": 0.07785714285714286
+                "x": 0.8357142857142857,
+                "y": 0.26071428571428573,
+                "width": 0.12063492063492064,
+                "height": 0.03
               },
               "layoutStrategy": "absolute",
               "renderKind": "raster",
@@ -549,10 +583,10 @@
               "type": "TEXT",
               "id": "d2c-banner-title",
               "name": "Banner 主标题",
-              "x": 12,
-              "y": 216,
-              "width": 100,
-              "height": 18,
+              "x": 16,
+              "y": 223,
+              "width": 116,
+              "height": 20,
               "fills": [
                 {
                   "type": "SOLID",
@@ -566,6 +600,7 @@
               "characters": "快手818宠粉节",
               "fontSize": 17,
               "fontWeight": 800,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "absolute",
                 "rationale": "Banner 主标题"
@@ -580,10 +615,10 @@
               "type": "TEXT",
               "id": "d2c-banner-line-auction",
               "name": "金豆一元拍",
-              "x": 12,
-              "y": 238,
-              "width": 120,
-              "height": 12,
+              "x": 16,
+              "y": 248,
+              "width": 116,
+              "height": 15,
               "fills": [
                 {
                   "type": "SOLID",
@@ -596,6 +631,7 @@
               ],
               "characters": "手机金豆 1元起拍 ›",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "absolute",
                 "rationale": "Banner 副文案"
@@ -610,10 +646,10 @@
               "type": "TEXT",
               "id": "d2c-banner-line-coupon",
               "name": "消费券领取",
-              "x": 12,
-              "y": 254,
-              "width": 122,
-              "height": 12,
+              "x": 137,
+              "y": 211,
+              "width": 120,
+              "height": 62,
               "fills": [
                 {
                   "type": "SOLID",
@@ -626,6 +662,7 @@
               ],
               "characters": "80元 消费券 去领取",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "absolute",
                 "rationale": "Banner 副文案"
@@ -640,10 +677,10 @@
               "type": "TEXT",
               "id": "d2c-banner-line-moutai",
               "name": "茅台一元拍",
-              "x": 135,
-              "y": 238,
-              "width": 120,
-              "height": 12,
+              "x": 275,
+              "y": 218,
+              "width": 39,
+              "height": 45,
               "fills": [
                 {
                   "type": "SOLID",
@@ -656,6 +693,7 @@
               ],
               "characters": "手机茅台 一元起拍",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "absolute",
                 "rationale": "Banner 中列副文案"
@@ -670,10 +708,10 @@
               "type": "TEXT",
               "id": "d2c-banner-price",
               "name": "Banner 价格",
-              "x": 310,
-              "y": 228,
-              "width": 68,
-              "height": 22,
+              "x": 336,
+              "y": 255,
+              "width": 37,
+              "height": 15,
               "fills": [
                 {
                   "type": "SOLID",
@@ -714,9 +752,9 @@
           "id": "d2c-product-grid",
           "name": "商品双列网格",
           "x": 0,
-          "y": 276,
+          "y": 285,
           "width": 390,
-          "height": 548,
+          "height": 544,
           "fills": [
             {
               "type": "SOLID",
@@ -732,10 +770,10 @@
               "type": "FRAME",
               "id": "d2c-product-tissue-card",
               "name": "商品卡-心相印抽纸",
-              "x": 6,
-              "y": 276,
-              "width": 190,
-              "height": 300,
+              "x": 4,
+              "y": 285,
+              "width": 189,
+              "height": 291,
               "fills": [
                 {
                   "type": "SOLID",
@@ -751,10 +789,10 @@
                   "type": "RECTANGLE",
                   "id": "d2c-product-tissue",
                   "name": "抽纸商品图",
-                  "x": 6,
-                  "y": 276,
-                  "width": 190,
-                  "height": 188,
+                  "x": 4,
+                  "y": 285,
+                  "width": 189,
+                  "height": 190,
                   "fills": [
                     {
                       "type": "IMAGE",
@@ -766,10 +804,10 @@
                     "rationale": "商品主图"
                   },
                   "imageCrop": {
-                    "x": 0.014285714285714285,
-                    "y": 0.31785714285714284,
-                    "width": 0.4793650793650794,
-                    "height": 0.21678571428571428
+                    "x": 0.010317460317460317,
+                    "y": 0.3289285714285714,
+                    "width": 0.4849206349206349,
+                    "height": 0.21928571428571428
                   },
                   "layoutStrategy": "absolute",
                   "renderKind": "raster",
@@ -778,13 +816,13 @@
                   }
                 },
                 {
-                  "type": "TEXT",
+                  "type": "FRAME",
                   "id": "d2c-product-tissue-brand",
                   "name": "抽纸品牌标",
-                  "x": 14,
-                  "y": 470,
-                  "width": 22,
-                  "height": 15,
+                  "x": 12,
+                  "y": 484,
+                  "width": 27,
+                  "height": 16,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -793,23 +831,47 @@
                         "g": 24,
                         "b": 31
                       }
-                    },
+                    }
+                  ],
+                  "children": [
                     {
-                      "type": "SOLID",
-                      "color": {
-                        "r": 255,
-                        "g": 255,
-                        "b": 255
+                      "type": "TEXT",
+                      "id": "d2c-product-tissue-brand__text",
+                      "name": "抽纸品牌标/文本",
+                      "x": 12,
+                      "y": 484,
+                      "width": 27,
+                      "height": 16,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
+                      "characters": "品牌",
+                      "fontSize": 10,
+                      "fontWeight": 600,
+                      "fontFamily": "Noto Sans SC",
+                      "layout": {
+                        "mode": "flow",
+                        "rationale": "标题行首黑底品牌标"
+                      },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
+                      "pluginData": {
+                        "d2cNodeId": "product-tissue-brand__text"
                       }
                     }
                   ],
-                  "characters": "品牌",
-                  "fontSize": 10,
-                  "fontWeight": 600,
                   "layout": {
                     "mode": "flow",
                     "rationale": "标题行首黑底品牌标"
                   },
+                  "clipsContent": true,
                   "layoutStrategy": "absolute",
                   "renderKind": "native",
                   "pluginData": {
@@ -820,10 +882,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tissue-title",
                   "name": "抽纸标题",
-                  "x": 38,
-                  "y": 470,
-                  "width": 154,
-                  "height": 15,
+                  "x": 42,
+                  "y": 482,
+                  "width": 143,
+                  "height": 23,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -837,6 +899,7 @@
                   "characters": "【第三件0.01元】心相印抽纸",
                   "fontSize": 12,
                   "fontWeight": 600,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "单行标题（品牌标右侧）"
@@ -851,10 +914,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tissue-badge",
                   "name": "抽纸榜单",
-                  "x": 14,
-                  "y": 516,
+                  "x": 27,
+                  "y": 510,
                   "width": 150,
-                  "height": 12,
+                  "height": 19,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -867,6 +930,7 @@
                   ],
                   "characters": "品牌抽纸热销榜·第1名",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "榜单标签"
@@ -881,10 +945,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tissue-price-label",
                   "name": "抽纸价格标签",
-                  "x": 14,
-                  "y": 546,
-                  "width": 34,
-                  "height": 12,
+                  "x": 17,
+                  "y": 542,
+                  "width": 39,
+                  "height": 18,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -897,6 +961,7 @@
                   ],
                   "characters": "新人价",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "到手价前缀标签"
@@ -911,9 +976,9 @@
                   "type": "TEXT",
                   "id": "d2c-product-tissue-price",
                   "name": "抽纸价格",
-                  "x": 50,
+                  "x": 57,
                   "y": 542,
-                  "width": 52,
+                  "width": 44,
                   "height": 20,
                   "fills": [
                     {
@@ -939,32 +1004,91 @@
                   }
                 },
                 {
-                  "type": "TEXT",
+                  "type": "FRAME",
                   "id": "d2c-product-tissue-action",
                   "name": "抽纸抢购按钮",
-                  "x": 168,
-                  "y": 544,
-                  "width": 26,
-                  "height": 20,
+                  "x": 151,
+                  "y": 533,
+                  "width": 34,
+                  "height": 35,
                   "fills": [
                     {
-                      "type": "SOLID",
-                      "color": {
-                        "r": 255,
-                        "g": 255,
-                        "b": 255
+                      "type": "GRADIENT_LINEAR",
+                      "gradientStops": [
+                        {
+                          "position": 0,
+                          "color": {
+                            "r": 255,
+                            "g": 106,
+                            "b": 0,
+                            "a": 1
+                          }
+                        },
+                        {
+                          "position": 1,
+                          "color": {
+                            "r": 255,
+                            "g": 59,
+                            "b": 48,
+                            "a": 1
+                          }
+                        }
+                      ],
+                      "gradientTransform": [
+                        [
+                          6.123233995736766e-17,
+                          -1,
+                          1
+                        ],
+                        [
+                          1,
+                          6.123233995736766e-17,
+                          -3.061616997868383e-17
+                        ]
+                      ]
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "TEXT",
+                      "id": "d2c-product-tissue-action__text",
+                      "name": "抽纸抢购按钮/文本",
+                      "x": 151,
+                      "y": 533,
+                      "width": 34,
+                      "height": 35,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
+                      "characters": "抢",
+                      "fontSize": 12,
+                      "fontWeight": 700,
+                      "fontFamily": "Noto Sans SC",
+                      "textAlignHorizontal": "CENTER",
+                      "layout": {
+                        "mode": "flow",
+                        "rationale": "闪电抢按钮"
+                      },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
+                      "pluginData": {
+                        "d2cNodeId": "product-tissue-action__text"
                       }
                     }
                   ],
-                  "characters": "抢",
-                  "fontSize": 12,
-                  "fontWeight": 700,
-                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "闪电抢按钮"
                   },
                   "cornerRadius": 10,
+                  "clipsContent": true,
                   "layoutStrategy": "absolute",
                   "renderKind": "native",
                   "pluginData": {
@@ -988,10 +1112,10 @@
               "type": "FRAME",
               "id": "d2c-product-tea-card",
               "name": "商品卡-康师傅整箱",
-              "x": 198,
-              "y": 276,
-              "width": 186,
-              "height": 300,
+              "x": 197,
+              "y": 285,
+              "width": 189,
+              "height": 291,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1007,10 +1131,10 @@
                   "type": "RECTANGLE",
                   "id": "d2c-product-tea",
                   "name": "整箱饮料商品图",
-                  "x": 198,
-                  "y": 276,
-                  "width": 186,
-                  "height": 188,
+                  "x": 197,
+                  "y": 285,
+                  "width": 189,
+                  "height": 190,
                   "fills": [
                     {
                       "type": "IMAGE",
@@ -1022,10 +1146,10 @@
                     "rationale": "商品主图"
                   },
                   "imageCrop": {
-                    "x": 0.5079365079365079,
-                    "y": 0.31785714285714284,
-                    "width": 0.4777777777777778,
-                    "height": 0.21678571428571428
+                    "x": 0.5047619047619047,
+                    "y": 0.3289285714285714,
+                    "width": 0.4849206349206349,
+                    "height": 0.21928571428571428
                   },
                   "layoutStrategy": "absolute",
                   "renderKind": "raster",
@@ -1037,10 +1161,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tea-title",
                   "name": "整箱饮料标题",
-                  "x": 206,
-                  "y": 470,
-                  "width": 170,
-                  "height": 15,
+                  "x": 205,
+                  "y": 482,
+                  "width": 173,
+                  "height": 23,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1054,6 +1178,7 @@
                   "characters": "康师傅多口味混合任选整箱",
                   "fontSize": 12,
                   "fontWeight": 600,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "单行标题"
@@ -1068,10 +1193,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tea-badge",
                   "name": "整箱饮料榜单",
-                  "x": 206,
-                  "y": 516,
+                  "x": 220,
+                  "y": 510,
                   "width": 150,
-                  "height": 12,
+                  "height": 19,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1084,6 +1209,7 @@
                   ],
                   "characters": "整箱装饮料热销榜·第6名",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "榜单标签"
@@ -1098,10 +1224,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-tea-price-label",
                   "name": "整箱饮料价格标签",
-                  "x": 206,
-                  "y": 546,
-                  "width": 34,
-                  "height": 12,
+                  "x": 210,
+                  "y": 542,
+                  "width": 39,
+                  "height": 18,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1114,6 +1240,7 @@
                   ],
                   "characters": "新人价",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "到手价前缀标签"
@@ -1128,9 +1255,9 @@
                   "type": "TEXT",
                   "id": "d2c-product-tea-price",
                   "name": "整箱饮料价格",
-                  "x": 242,
+                  "x": 250,
                   "y": 542,
-                  "width": 52,
+                  "width": 44,
                   "height": 20,
                   "fills": [
                     {
@@ -1156,32 +1283,91 @@
                   }
                 },
                 {
-                  "type": "TEXT",
+                  "type": "FRAME",
                   "id": "d2c-product-tea-action",
                   "name": "整箱饮料抢购按钮",
-                  "x": 356,
-                  "y": 544,
-                  "width": 26,
-                  "height": 20,
+                  "x": 344,
+                  "y": 533,
+                  "width": 34,
+                  "height": 35,
                   "fills": [
                     {
-                      "type": "SOLID",
-                      "color": {
-                        "r": 255,
-                        "g": 255,
-                        "b": 255
+                      "type": "GRADIENT_LINEAR",
+                      "gradientStops": [
+                        {
+                          "position": 0,
+                          "color": {
+                            "r": 255,
+                            "g": 106,
+                            "b": 0,
+                            "a": 1
+                          }
+                        },
+                        {
+                          "position": 1,
+                          "color": {
+                            "r": 255,
+                            "g": 59,
+                            "b": 48,
+                            "a": 1
+                          }
+                        }
+                      ],
+                      "gradientTransform": [
+                        [
+                          6.123233995736766e-17,
+                          -1,
+                          1
+                        ],
+                        [
+                          1,
+                          6.123233995736766e-17,
+                          -3.061616997868383e-17
+                        ]
+                      ]
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "TEXT",
+                      "id": "d2c-product-tea-action__text",
+                      "name": "整箱饮料抢购按钮/文本",
+                      "x": 344,
+                      "y": 533,
+                      "width": 34,
+                      "height": 35,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "color": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255
+                          }
+                        }
+                      ],
+                      "characters": "抢",
+                      "fontSize": 12,
+                      "fontWeight": 700,
+                      "fontFamily": "Noto Sans SC",
+                      "textAlignHorizontal": "CENTER",
+                      "layout": {
+                        "mode": "flow",
+                        "rationale": "闪电抢按钮"
+                      },
+                      "layoutStrategy": "absolute",
+                      "renderKind": "native",
+                      "pluginData": {
+                        "d2cNodeId": "product-tea-action__text"
                       }
                     }
                   ],
-                  "characters": "抢",
-                  "fontSize": 12,
-                  "fontWeight": 700,
-                  "textAlignHorizontal": "CENTER",
                   "layout": {
                     "mode": "flow",
                     "rationale": "闪电抢按钮"
                   },
                   "cornerRadius": 10,
+                  "clipsContent": true,
                   "layoutStrategy": "absolute",
                   "renderKind": "native",
                   "pluginData": {
@@ -1205,10 +1391,10 @@
               "type": "FRAME",
               "id": "d2c-product-detergent-card",
               "name": "商品卡-香氛洗衣液",
-              "x": 6,
-              "y": 579,
-              "width": 190,
-              "height": 245,
+              "x": 4,
+              "y": 580,
+              "width": 189,
+              "height": 249,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1224,10 +1410,10 @@
                   "type": "RECTANGLE",
                   "id": "d2c-product-detergent",
                   "name": "洗衣液商品图",
-                  "x": 6,
-                  "y": 579,
-                  "width": 188,
-                  "height": 199,
+                  "x": 4,
+                  "y": 580,
+                  "width": 189,
+                  "height": 190,
                   "fills": [
                     {
                       "type": "IMAGE",
@@ -1239,10 +1425,10 @@
                     "rationale": "商品主图"
                   },
                   "imageCrop": {
-                    "x": 0.023809523809523808,
-                    "y": 0.6696428571428571,
-                    "width": 0.4642857142857143,
-                    "height": 0.23035714285714284
+                    "x": 0.010317460317460317,
+                    "y": 0.6692857142857143,
+                    "width": 0.4849206349206349,
+                    "height": 0.21928571428571428
                   },
                   "layoutStrategy": "absolute",
                   "renderKind": "raster",
@@ -1254,10 +1440,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-detergent-title",
                   "name": "洗衣液标题",
-                  "x": 14,
-                  "y": 783,
-                  "width": 176,
-                  "height": 15,
+                  "x": 12,
+                  "y": 777,
+                  "width": 173,
+                  "height": 23,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1271,6 +1457,7 @@
                   "characters": "【爆品推荐】大师香氛洗衣",
                   "fontSize": 12,
                   "fontWeight": 600,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "单行标题"
@@ -1285,10 +1472,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-detergent-service",
                   "name": "洗衣液服务标签",
-                  "x": 14,
-                  "y": 804,
-                  "width": 150,
-                  "height": 13,
+                  "x": 12,
+                  "y": 802,
+                  "width": 173,
+                  "height": 22,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1301,6 +1488,7 @@
                   ],
                   "characters": "先用后付 已售890件",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "先用后付 + 销量"
@@ -1328,10 +1516,10 @@
               "type": "FRAME",
               "id": "d2c-product-comb-card",
               "name": "商品卡-迷你排骨梳",
-              "x": 198,
-              "y": 579,
-              "width": 186,
-              "height": 245,
+              "x": 197,
+              "y": 580,
+              "width": 189,
+              "height": 249,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1347,10 +1535,10 @@
                   "type": "RECTANGLE",
                   "id": "d2c-product-comb",
                   "name": "排骨梳商品图",
-                  "x": 198,
-                  "y": 579,
-                  "width": 186,
-                  "height": 199,
+                  "x": 197,
+                  "y": 580,
+                  "width": 189,
+                  "height": 190,
                   "fills": [
                     {
                       "type": "IMAGE",
@@ -1362,10 +1550,10 @@
                     "rationale": "商品主图"
                   },
                   "imageCrop": {
-                    "x": 0.5119047619047619,
-                    "y": 0.6696428571428571,
-                    "width": 0.47619047619047616,
-                    "height": 0.23035714285714284
+                    "x": 0.5047619047619047,
+                    "y": 0.6692857142857143,
+                    "width": 0.4849206349206349,
+                    "height": 0.21928571428571428
                   },
                   "layoutStrategy": "absolute",
                   "renderKind": "raster",
@@ -1377,10 +1565,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-comb-title",
                   "name": "排骨梳标题",
-                  "x": 206,
-                  "y": 783,
-                  "width": 170,
-                  "height": 15,
+                  "x": 205,
+                  "y": 777,
+                  "width": 173,
+                  "height": 23,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1394,6 +1582,7 @@
                   "characters": "迷你排骨梳镂空按摩梳子",
                   "fontSize": 12,
                   "fontWeight": 600,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "单行标题"
@@ -1408,10 +1597,10 @@
                   "type": "TEXT",
                   "id": "d2c-product-comb-service",
                   "name": "排骨梳服务标签",
-                  "x": 206,
-                  "y": 804,
-                  "width": 150,
-                  "height": 13,
+                  "x": 205,
+                  "y": 802,
+                  "width": 173,
+                  "height": 22,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1424,6 +1613,7 @@
                   ],
                   "characters": "先用后付 已售2.0万件",
                   "fontSize": 10,
+                  "fontFamily": "Noto Sans SC",
                   "layout": {
                     "mode": "flow",
                     "rationale": "先用后付 + 销量"
@@ -1463,9 +1653,9 @@
           "id": "d2c-floating-back",
           "name": "悬浮返回",
           "x": 0,
-          "y": 718,
+          "y": 717,
           "width": 102,
-          "height": 33,
+          "height": 36,
           "fills": [
             {
               "type": "SOLID",
@@ -1482,10 +1672,10 @@
               "type": "TEXT",
               "id": "d2c-floating-back-label",
               "name": "返回文案",
-              "x": 12,
+              "x": 6,
               "y": 727,
-              "width": 82,
-              "height": 15,
+              "width": 91,
+              "height": 16,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1498,6 +1688,7 @@
               ],
               "characters": "‹ 回到赚钱任务",
               "fontSize": 11,
+              "fontFamily": "Noto Sans SC",
               "layout": {
                 "mode": "flow",
                 "rationale": "按钮文案"
@@ -1540,10 +1731,10 @@
           "type": "FRAME",
           "id": "d2c-float-close",
           "name": "悬浮组件关闭钮",
-          "x": 370,
-          "y": 675,
-          "width": 11,
-          "height": 11,
+          "x": 367,
+          "y": 666,
+          "width": 23,
+          "height": 30,
           "layout": {
             "mode": "absolute",
             "rationale": "右侧悬浮小组件 × 关闭钮"
@@ -1559,10 +1750,10 @@
           "type": "FRAME",
           "id": "d2c-float-reward",
           "name": "悬浮金币奖励",
-          "x": 338,
-          "y": 699,
-          "width": 50,
-          "height": 26,
+          "x": 332,
+          "y": 698,
+          "width": 52,
+          "height": 35,
           "fills": [
             {
               "type": "SOLID",
@@ -1578,10 +1769,10 @@
               "type": "TEXT",
               "id": "d2c-float-reward-label",
               "name": "金币文案",
-              "x": 348,
-              "y": 705,
-              "width": 30,
-              "height": 14,
+              "x": 341,
+              "y": 707,
+              "width": 34,
+              "height": 18,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1622,10 +1813,10 @@
           "type": "FRAME",
           "id": "d2c-float-browse",
           "name": "悬浮再逛引导",
-          "x": 338,
-          "y": 725,
-          "width": 50,
-          "height": 47,
+          "x": 332,
+          "y": 733,
+          "width": 52,
+          "height": 25,
           "fills": [
             {
               "type": "SOLID",
@@ -1642,10 +1833,10 @@
               "type": "TEXT",
               "id": "d2c-float-browse-label",
               "name": "再逛文案",
-              "x": 342,
-              "y": 735,
-              "width": 42,
-              "height": 28,
+              "x": 336,
+              "y": 740,
+              "width": 45,
+              "height": 14,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1659,6 +1850,7 @@
               "characters": "再逛30秒",
               "fontSize": 10,
               "fontWeight": 600,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flow",
@@ -1703,9 +1895,9 @@
           "id": "d2c-bottom-nav",
           "name": "底部导航",
           "x": 0,
-          "y": 824,
+          "y": 814,
           "width": 390,
-          "height": 43,
+          "height": 53,
           "fills": [
             {
               "type": "SOLID",
@@ -1721,10 +1913,10 @@
               "type": "TEXT",
               "id": "d2c-bottom-nav-home",
               "name": "底栏-首页",
-              "x": 14,
-              "y": 829,
+              "x": 13,
+              "y": 819,
               "width": 50,
-              "height": 34,
+              "height": 39,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1737,6 +1929,7 @@
               ],
               "characters": "首页",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -1753,10 +1946,10 @@
               "type": "TEXT",
               "id": "d2c-bottom-nav-feature",
               "name": "底栏-精选",
-              "x": 92,
-              "y": 829,
+              "x": 93,
+              "y": 819,
               "width": 50,
-              "height": 34,
+              "height": 39,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1769,6 +1962,7 @@
               ],
               "characters": "精选",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -1785,10 +1979,10 @@
               "type": "TEXT",
               "id": "d2c-bottom-nav-message",
               "name": "底栏-消息",
-              "x": 248,
-              "y": 829,
+              "x": 247,
+              "y": 819,
               "width": 50,
-              "height": 34,
+              "height": 39,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1801,6 +1995,7 @@
               ],
               "characters": "消息",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",
@@ -1817,10 +2012,10 @@
               "type": "TEXT",
               "id": "d2c-bottom-nav-me",
               "name": "底栏-我",
-              "x": 326,
-              "y": 829,
+              "x": 327,
+              "y": 819,
               "width": 50,
-              "height": 34,
+              "height": 39,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1833,6 +2028,7 @@
               ],
               "characters": "我",
               "fontSize": 10,
+              "fontFamily": "Noto Sans SC",
               "textAlignHorizontal": "CENTER",
               "layout": {
                 "mode": "flex",

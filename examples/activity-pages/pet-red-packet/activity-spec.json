@@ -19,7 +19,13 @@
   ],
   "assets": [
     { "id": "pet-hero-title", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 215, "y": 165, "width": 820, "height": 205 }, "observation": "快手 logo 行 + 养萌宠赢88元红包立体字主标题", "confidence": 0.85 }] },
-    { "id": "pet-stage-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 0, "y": 760, "width": 1260, "height": 930 }, "observation": "红色圆台舞台与香蕉服饰宠物「比比拉布」", "confidence": 0.85 }] }
+    { "id": "pet-stage-art", "path": "../../activity-target/public/pet-red-packet/stage-scene.png", "mimeType": "image/png", "evidence": [{ "type": "asset", "sourceId": "assets/build-scene.ps1", "region": { "x": 0, "y": 0, "width": 1260, "height": 1606 }, "observation": "已移除进度、入口文字和喂食控件的红色舞台与香蕉宠物场景", "confidence": 1 }] },
+    { "id": "wardrobe-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 26, "y": 1011, "width": 155, "height": 100 }, "observation": "无文字香蕉衣橱图标", "confidence": 0.95 }] },
+    { "id": "claim-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 26, "y": 1218, "width": 139, "height": 103 }, "observation": "无文字礼物盒图标", "confidence": 0.95 }] },
+    { "id": "summer-night-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 1082, "y": 1011, "width": 174, "height": 103 }, "observation": "无文字超级夏晚图标", "confidence": 0.95 }] },
+    { "id": "wand-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 940, "y": 1089, "width": 42, "height": 65 }, "observation": "无文字星星魔法棒", "confidence": 0.95 }] },
+    { "id": "level-gift-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 562, "y": 562, "width": 90, "height": 103 }, "observation": "无文字等级礼盒", "confidence": 0.95 }] },
+    { "id": "level-packet-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 685, "y": 562, "width": 84, "height": 103 }, "observation": "无文字等级红包", "confidence": 0.95 }] }
   ],
   "nodes": [
     {
@@ -1156,6 +1162,62 @@
       "confidence": 0.9,
       "reviewState": "accepted",
       "children": []
+    },
+    {
+      "id": "wardrobe-art", "parentId": "pet-wardrobe", "role": "image", "name": "香蕉衣橱图标",
+      "sourceBox": { "x": 8, "y": 313, "width": 48, "height": 31 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 48 }, "height": { "mode": "fixed", "value": 31 }, "rationale": "仅裁无文字道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "wardrobe-art", "alt": "香蕉衣橱" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "无文字衣橱图标", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "claim-art", "parentId": "pet-claim", "role": "image", "name": "领取礼盒图标",
+      "sourceBox": { "x": 8, "y": 377, "width": 43, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 43 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "仅裁无文字道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "claim-art", "alt": "领取礼盒" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "无文字礼盒图标", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "summer-night-art", "parentId": "pet-summer-night", "role": "image", "name": "超级夏晚图标",
+      "sourceBox": { "x": 335, "y": 313, "width": 54, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 54 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "仅裁无文字道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "summer-night-art", "alt": "超级夏晚" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "无文字活动图标", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "wand-art", "parentId": "pet-level-claim", "role": "image", "name": "等级魔法棒",
+      "sourceBox": { "x": 291, "y": 337, "width": 13, "height": 20 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 13 }, "height": { "mode": "fixed", "value": 20 }, "rationale": "仅裁无文字道具" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "wand-art", "alt": "星星魔法棒" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "无文字魔法棒", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "level-gift-l5-art", "parentId": "level-progress", "role": "image", "name": "5级礼盒",
+      "sourceBox": { "x": 175, "y": 174, "width": 28, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 28 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "等级礼盒" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "level-gift-art", "alt": "5级礼盒" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "等级礼盒", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "level-packet-l10-art", "parentId": "level-progress", "role": "image", "name": "10级红包",
+      "sourceBox": { "x": 212, "y": 174, "width": 26, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 26 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "等级红包" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "level-packet-art", "alt": "10级红包" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "等级红包", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "level-gift-l15-art", "parentId": "level-progress", "role": "image", "name": "15级礼盒",
+      "sourceBox": { "x": 249, "y": 174, "width": 28, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 28 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "等级礼盒" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "level-gift-art", "alt": "15级礼盒" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "等级礼盒", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
+    },
+    {
+      "id": "level-gift-l20-art", "parentId": "level-progress", "role": "image", "name": "20级礼盒",
+      "sourceBox": { "x": 286, "y": 174, "width": 28, "height": 32 },
+      "layout": { "mode": "absolute", "width": { "mode": "fixed", "value": 28 }, "height": { "mode": "fixed", "value": 32 }, "rationale": "等级礼盒" },
+      "visual": { "opacity": 1, "objectFit": "fill" }, "content": { "assetId": "level-gift-art", "alt": "20级礼盒" },
+      "evidence": [{ "type": "asset", "sourceId": "reference.jpg", "observation": "等级礼盒", "confidence": 0.95 }], "confidence": 0.95, "reviewState": "accepted", "children": []
     }
   ],
   "interactions": [
