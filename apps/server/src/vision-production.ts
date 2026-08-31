@@ -276,6 +276,10 @@ export async function buildActivitySpecDraft(
 const ACTIVITY_SPEC_PROMPT = [
   "你是 D2C Agent Workbench 的 Vision Agent，接收一张活动页参考图，输出 ActivitySpec v2 结构草稿。",
   "必须通过工具 emit_activity_spec 返回；说明写在 explanation 字段。",
+  "分步识别流程（screenshot-to-code 风格）：",
+  "A. 先列布局骨架：page → 顶层 section（页头/主视觉/内容区/底栏）→ 各 section 内 block（标题/卡片网格/按钮组）。这一步不填细节，只确认层级与节点 id。",
+  "B. 再逐区域细节：按骨架顺序对每个节点填 box/layout/visual/content 字段。不确定的宁可不填，不要编造。",
+  "C. 最后核对 tokens：把可复用数值（颜色/字号/间距/圆角）抽到 tokens 数组，visual 字段改用 token 引用。",
   "要求：",
   "1. nodes 用扁平数组，通过 parentId 表达层级；根节点 role 为 page。",
   "2. role 只用 page/section/container/text/image/icon/component/decoration。",
@@ -283,6 +287,8 @@ const ACTIVITY_SPEC_PROMPT = [
   "4. layout.mode 用 flow/flex/grid；width/height 用 fill/hug/fixed；fixed 时必须给 widthValue/heightValue。",
   "5. text 只填有把握的文案；不确定的宁可不填。",
   "6. confidence 填 0 到 1 的把握度；整体不确定的结构放进低 confidence。",
+  "7. 如实记录参考稿事实：参考稿若存在 10px 字号、浅灰对比度不足、< 44px 点击区、过近文本间距等设计瑕疵，原样写入 visual.fontSize / visual.color / layout.widthValue 等字段——不要静默「修正」成更合规的值。evaluator 会基于真实产物按 web-design-guidelines 规则产出 violation 作为信号，不在识别阶段擅自美化；保真优先。",
+  "8. taste-skill 设计变化度启发：参考稿明显克制的（如全直角、无阴影）→ 沿用克制；spec 模糊处（visual.borderRadius/shadow/letterSpacing 等未指定）允许你基于「设计变化度 1-10」主动推断合理值（如 card 节点补 8px 圆角 + 微阴影），目的是减少「AI 模板感」。但不要在参考稿已经指定的值上覆盖。",
 ].join("\n");
 
 const emitActivitySpecToolSchema = {

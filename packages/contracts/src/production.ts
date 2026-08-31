@@ -221,6 +221,15 @@ export const semanticReviewEvidenceSchema = z.object({
   content: z.number().min(0).max(100),
   visualTone: z.number().min(0).max(100),
   taskClarity: z.number().min(0).max(100),
+  /**
+   * VLM 对生成页设计质量的主观评分（0-100）：排版密度、节奏感、对比度感受、视觉成熟度。
+   * 与 evaluator 确定性 designQuality 互补：
+   * - evaluator 评「生成页是否违反硬规则」（已在最小字号/对比度/点击区/间距阶段 1）
+   * - VLM designQuality 评「整体设计成熟度」（排版/节奏/视觉协调）
+   * 缺字段时返回 null（兼容旧 schema/旧模型响应）；不影响主 score。
+   * 不进入 visual.designQuality 字段（evaluator 那条规则已占位），仅作为评审证据观察项。
+   */
+  designQuality: z.number().min(0).max(100).nullable().default(null),
   summary: z.string().min(1),
   issues: z.array(semanticReviewIssueSchema).max(5),
   provider: z.enum(["minimax", "registered-fallback"]),
@@ -246,6 +255,10 @@ export const productionMetricsSchema = z.object({
     assetConsistencyAvailable: z.boolean(),
     semanticReview: z.number().min(0).max(100).nullable(),
     semanticReviewAvailable: z.boolean(),
+    /** 设计质量分（0–100）：来自 evaluator 的确定性规则（最小字号 / 对比度 / 点击区域 / 间距节奏）。
+     * 仅检查 role=text / role=icon / role=component 节点，跳过装饰像素。Playwright 渲染产物
+     * 始终存在该证据，故不带 available 字段；但 violations 缺数据时返回 null 表示缺证据。 */
+    designQuality: z.number().min(0).max(100).nullable(),
   }).strict(),
   engineering: z.object({ buildSuccess: z.number().min(0).max(100), componentReuse: z.number().min(0).max(100), tokenUsage: z.number().min(0).max(100), structuralAbsoluteRatio: z.number().min(0).max(100), hardcodeRatio: z.number().min(0).max(100), responsiveBehavior: z.number().min(0).max(100), semanticHtml: z.number().min(0).max(100), accessibility: z.number().min(0).max(100), codeComplexity: z.number().min(0).max(100) }).strict(),
   visualScore: z.number().min(0).max(100),
@@ -256,7 +269,7 @@ export const productionMetricsSchema = z.object({
 export const productionViolationSchema = z.object({
   id: z.string().min(1),
   severity: z.enum(["P0", "P1", "P2", "P3"]),
-  type: z.enum(["build", "layout", "style", "asset", "text", "component", "responsive"]),
+  type: z.enum(["build", "layout", "style", "asset", "text", "component", "responsive", "design"]),
   region: rectSchema.optional(),
   nodeIds: z.array(z.string()).default([]),
   sourceLocators: sourceMapSchema.shape.locators,
@@ -308,6 +321,7 @@ export type Rect = z.infer<typeof rectSchema>;
 export type AssetCrop = z.infer<typeof assetCropSchema>;
 export type EvidenceRef = z.infer<typeof evidenceRefSchema>;
 export type ActivityNode = z.infer<typeof activityNodeSchema>;
+export type ActivityNodeRole = ActivityNode["role"];
 export type ActivitySpec = z.infer<typeof activitySpecSchema>;
 export type TargetProjectProfile = z.infer<typeof targetProjectProfileSchema>;
 export type CodePlan = z.infer<typeof codePlanSchema>;

@@ -143,6 +143,8 @@ export async function getProductionArtifact(runId: string, artifactId: string): 
 
 export interface SemanticReviewOutcome {
   score: number;
+  /** 设计质量软观察（VLM 对参考图与渲染图的主观评估），不进 finalScore */
+  designQuality: number | null;
   summary: string;
   observations: string[];
   model: string;

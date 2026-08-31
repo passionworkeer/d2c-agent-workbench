@@ -16,6 +16,8 @@ export type SemanticReviewResult =
   | { ok: false; code: SemanticReviewErrorCode; message: string };
 
 // 手写纯 JSON Schema（与 contracts 的 semanticReviewEvidenceSchema 对齐，provider 由服务端注入）。
+// designQuality 是 optional：缺字段时 schema 解析失败，调用方会落到 INVALID_OUTPUT。
+// 但为了兼容旧版模型响应（未升级到新 prompt 时），调用方也会容错处理 designQuality 缺字段的情况。
 const semanticReviewToolSchema = {
   type: "object",
   properties: {
@@ -24,6 +26,7 @@ const semanticReviewToolSchema = {
     content: { type: "number", description: "文案内容一致性 0-100" },
     visualTone: { type: "number", description: "视觉风格一致性 0-100" },
     taskClarity: { type: "number", description: "任务链路清晰度 0-100" },
+    designQuality: { type: "number", description: "设计质量主观评分 0-100（排版密度/节奏感/视觉成熟度，独立维度，不影响 score）" },
     summary: { type: "string", description: "一句话总评" },
     issues: {
       type: "array",
@@ -41,7 +44,7 @@ const semanticReviewToolSchema = {
               width: { type: "number" },
               height: { type: "number" },
             },
-            required: ["x", "y", "width", "height"],
+            required: ["x", "width", "height"],
             additionalProperties: false,
           },
         },
@@ -57,6 +60,8 @@ const semanticReviewToolSchema = {
 const SYSTEM_PROMPT = [
   "你是 D2C Agent Workbench 的语义评审员，比较同一活动页的参考截图与实现截图。",
   "评分维度（0-100）：layout 布局结构、content 文案内容、visualTone 视觉风格、taskClarity 任务链路清晰度；score 为综合分。",
+  "附加维度 designQuality（可选）：对生成页设计质量的主观评分 0-100，评估排版密度、节奏感、对比度感受、视觉成熟度。",
+  "该维度独立：不计入 score，不进 finalScore（evaluator 确定性规则已覆盖硬规则评判），仅作为评审证据观察项供工作台展示。",
   "要求：",
   "1. 只依据两张图的可见事实评分，不做推测；实现与参考一致时敢于给高分。",
   "2. issues 最多 5 条，按严重度 P1（关键缺失/错位）/ P2（明显差异）/ P3（轻微瑕疵）标注，region 填实现截图上的像素区域（可省略）。",
@@ -145,6 +150,14 @@ export async function reviewActivitySemantics(request: {
 export interface SemanticFidelitySuccess {
   ok: true;
   score: number;
+  /**
+   * 设计质量软观察 0-100：来自视觉模型对参考图本身的设计质量评估（排版密度、节奏感、对比度等）。
+   * 不计入综合分、不落盘不进 finalScore；与 evaluator 确定性 designQuality 互补：
+   * - evaluator 评「生成页是否违反硬规则」（最小字号/对比度/点击区/间距）
+   * - fidelity.designQuality 评「参考稿本身的设计成熟度」与「生成页是否继承其成熟度」
+   * 缺字段或解析失败时为 null，表示该次评审未产出该维度（不影响 score）
+   */
+  designQuality: number | null;
   summary: string;
   observations: string[];
   model: string;
@@ -174,6 +187,8 @@ const FIDELITY_SYSTEM_PROMPT = [
   "评分标准（0-100）：",
   "90+ 语义完全对应，仅有可忽略的细节差异；70-89 主要结构一致但存在明显可见的偏差（如层级错位、区块缺失、文案不符）；",
   "40-69 多个区块缺失或顺序错乱；40 以下页面语义与参考稿完全不符。",
+  "designQuality 是对参考图与渲染图设计质量的主观软观察（0-100）：排版密度、节奏感、对比度感受、视觉成熟度。",
+  "该分数是独立维度：不计入 score、不进生产闭环 finalScore，只作为实验性观察供工作台展示。",
   "observations 用中文逐条列出具体差异（缺失/多余/错位的区块与文案）；没有差异时输出空数组，不要编造。",
   "必须通过工具 emit_semantic_review 返回结果。",
 ].join("\n");
@@ -182,6 +197,7 @@ const emitSemanticReviewToolSchema = {
   type: "object",
   properties: {
     score: { type: "number" },
+    designQuality: { type: "number", description: "设计质量软观察 0-100（不进 score，独立维度）" },
     summary: { type: "string", description: "一句话总体结论" },
     observations: { type: "array", items: { type: "string" } },
   },
@@ -222,13 +238,18 @@ export async function reviewSemanticFidelity(request: SemanticReviewRequest): Pr
   if (!result.ok) {
     return { ok: false, code: result.code === "VISION_NO_TOOL" ? "SEMANTIC_NO_TOOL" : "SEMANTIC_UNAVAILABLE", message: result.message };
   }
-  const input = result.input as { score?: unknown; summary?: unknown; observations?: unknown };
+  const input = result.input as { score?: unknown; summary?: unknown; observations?: unknown; designQuality?: unknown };
   if (typeof input.score !== "number" || !Number.isFinite(input.score)) {
     return { ok: false, code: "SEMANTIC_INVALID", message: "视觉模型返回的 score 不是数字" };
   }
+  // designQuality 是软观察维度：缺字段或解析失败时返回 null，不影响 score 主结果
+  const designQuality = typeof input.designQuality === "number" && Number.isFinite(input.designQuality)
+    ? Math.max(0, Math.min(100, input.designQuality))
+    : null;
   return {
     ok: true,
     score: Math.max(0, Math.min(100, input.score)),
+    designQuality,
     summary: typeof input.summary === "string" ? input.summary : "",
     observations: Array.isArray(input.observations) ? input.observations.filter((item): item is string => typeof item === "string") : [],
     model: request.model,

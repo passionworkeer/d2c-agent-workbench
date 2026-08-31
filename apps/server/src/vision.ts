@@ -163,6 +163,10 @@ const emitUiSpecToolSchema = {
 const SYSTEM_PROMPT = [
   "你是 D2C Agent Workbench 的 Vision Agent，接收一张 UI 参考图（截图 / 线框 / 设计稿），输出结构化的 UISpec 设计稿。",
   "你必须通过工具调用 emit_ui_spec 返回；不要在 content 字段里讲任何中文，解释放在 explanation 字段里（一句话）。",
+  "分步识别流程（screenshot-to-code 风格）：",
+  "A. 先列布局骨架：root → 顶层 children（页头/主体/底栏）→ 各 child 内 block。不填细节，只确认层级与节点 id。",
+  "B. 再逐区域细节：按骨架顺序对每个节点填 layout/visual/content 字段。不确定的宁可不填。",
+  "C. 最后核对 tokens：可复用数值抽到 tokens 数组，styles 字段改用 {value, variable} 引用形式。",
   "识别要求：",
   "1. 从图中推断整体布局骨架：页头 / 文案区 / 卡片网格 / 表单区等，填进 uiSpec.root 的 children。",
   "2. 每个节点的 layout.direction 用 row/column/grid；宽度高度用 fill/hug/fixed；间距 gap 与 padding 用具体数字（px）。",
@@ -171,6 +175,8 @@ const SYSTEM_PROMPT = [
   "5. mappings 数组为每个 INSTANCE 节点给出一条映射记录，codeComponent 用 PascalCase（如 ProductCard），importPath 用 '@/components/ProductCard' 形式。",
   "6. 文本内容填 content 字段；无法识别的字段宁可省略，不要编造。",
   "7. viewport 用图中推断的画布尺寸；不确定时用 1440x900。",
+  "8. 如实记录参考稿事实：参考稿若存在 10px 字号、浅灰对比度不足、< 44px 点击区、过近文本间距等设计瑕疵，原样写入 spec.tokenValue / padding / size 字段——不要静默「修正」成更合规的值。evaluator 会基于真实产物按 web-design-guidelines 规则（最小字号 / WCAG AA / 点击区 / 间距节奏）产出 violation 作为信号，不在识别阶段擅自美化。",
+  "9. taste-skill 设计变化度启发：参考稿明显克制的（如全直角、无阴影）→ 沿用克制；spec 模糊处（styles.borderRadius / boxShadow / 间距未指定）允许你基于「设计变化度 1-10」主动推断合理值（如 card 节点补 8px 圆角 + 微阴影），目的是减少「AI 模板感」。但不要在参考稿已经指定的值上覆盖。",
 ].join("\n");
 
 export async function interpretReferenceImage(request: VisionRequest): Promise<VisionResult> {

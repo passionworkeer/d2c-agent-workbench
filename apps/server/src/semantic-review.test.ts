@@ -29,17 +29,47 @@ describe("reviewSemanticFidelity", () => {
         const body = JSON.parse(String(init.body)) as { messages: Array<{ content: Array<{ type: string; source?: { media_type: string; data: string } }> }> };
         const images = body.messages[0]!.content.filter((block) => block.type === "image").map((block) => block.source!);
         bodies.push({ images, apiKey: (init.headers as Record<string, string>)["x-api-key"] });
-        return toolUse({ score: 108, summary: "结构一致", observations: ["主视觉间距偏小", 42] });
+        return toolUse({ score: 108, designQuality: 95.4, summary: "结构一致", observations: ["主视觉间距偏小", 42] });
       }),
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 参考图在前、渲染在后；score 夹紧到 100；非字符串观察被过滤
+    // 参考图在前、渲染在后；score 夹紧到 100；非字符串观察被过滤；designQuality 夹紧到整数
     expect(bodies[0]!.images.map((image) => image.media_type)).toEqual(["image/png", "image/jpeg"]);
     expect(bodies[0]!.apiKey).toBe("sk-test");
     expect(result.score).toBe(100);
+    expect(result.designQuality).toBe(95.4);
     expect(result.observations).toEqual(["主视觉间距偏小"]);
     expect(result.model).toBe("test-model");
+  });
+
+  it("designQuality 缺字段或非数字时返回 null，兼容旧版模型响应", async () => {
+    const result = await reviewSemanticFidelity({
+      baseUrl: "https://api.example.com",
+      apiKey: "k",
+      model: "m",
+      referenceDataUrl: REFERENCE,
+      renderedDataUrl: RENDERED,
+      fetchImpl: makeFetch(() => toolUse({ score: 80, summary: "ok", observations: [] })),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.designQuality).toBeNull();
+  });
+
+  it("designQuality 超出 [0,100] 时夹紧到边界", async () => {
+    const overCase = await reviewSemanticFidelity({
+      baseUrl: "https://api.example.com", apiKey: "k", model: "m",
+      referenceDataUrl: REFERENCE, renderedDataUrl: RENDERED,
+      fetchImpl: makeFetch(() => toolUse({ score: 80, designQuality: 150, summary: "", observations: [] })),
+    });
+    if (overCase.ok) expect(overCase.designQuality).toBe(100);
+    const underCase = await reviewSemanticFidelity({
+      baseUrl: "https://api.example.com", apiKey: "k", model: "m",
+      referenceDataUrl: REFERENCE, renderedDataUrl: RENDERED,
+      fetchImpl: makeFetch(() => toolUse({ score: 80, designQuality: -20, summary: "", observations: [] })),
+    });
+    if (underCase.ok) expect(underCase.designQuality).toBe(0);
   });
 
   it("缺 key 或坏 dataUrl → SEMANTIC_BAD_REQUEST，不打网络", async () => {
@@ -123,6 +153,28 @@ describe("reviewActivitySemantics", () => {
       expect(result.evidence.provider).toBe("minimax");
       expect(result.evidence.issues[0]?.severity).toBe("P3");
     }
+  });
+
+  it("designQuality 字段缺省时落入 null（兼容旧模型响应），不影响主解析", async () => {
+    const result = await reviewActivitySemantics({
+      config: { apiKey: "sk-test", baseUrl: "https://mm.test", model: "MiniMax-M3" },
+      referenceDataUrl: PNG_DATA_URL,
+      renderDataUrl: PNG_DATA_URL,
+      fetchImpl: (async () => toolResponse(VALID_REVIEW)) as unknown as typeof fetch,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.evidence.designQuality).toBeNull();
+  });
+
+  it("designQuality 字段显式返回时保留夹紧后的整数", async () => {
+    const result = await reviewActivitySemantics({
+      config: { apiKey: "sk-test", baseUrl: "https://mm.test", model: "MiniMax-M3" },
+      referenceDataUrl: PNG_DATA_URL,
+      renderDataUrl: PNG_DATA_URL,
+      fetchImpl: (async () => toolResponse({ ...VALID_REVIEW, designQuality: 88 })) as unknown as typeof fetch,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.evidence.designQuality).toBe(88);
   });
 
   it("模型输出不合 schema 时返回 INVALID_OUTPUT，不透传原始内容", async () => {
