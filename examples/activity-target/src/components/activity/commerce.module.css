@@ -1,5 +1,5 @@
-.page { position: relative; height: 100%; color: #252525; background: #f5f5f5; }
-.pinkSky { position: absolute; inset: 0 0 auto; height: 138px; background: radial-gradient(ellipse 175px 52px at 30px 20px,#ffd1e7 64%,#ffdcee 65%,transparent 67%),radial-gradient(ellipse 165px 70px at 246px -19px,#ffc3df 70%,#ffd5e8 72%,transparent 74%),linear-gradient(#ffa6d5,#ffcce5 60%,#ffe7ef); }
+.page { position: relative; height: 100%; color: #252525; background: #f5f5f5; font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+.pinkSky { position: absolute; inset: 0 0 auto; height: 138px; background: radial-gradient(ellipse 175px 52px at 30px 20px,#ffd5e9 64%,#ffe1ee 65%,transparent 67%),radial-gradient(ellipse 165px 70px at 246px -19px,#ffc9e1 70%,#ffdaea 72%,transparent 74%),linear-gradient(#ffa9d5,#ffcce5 60%,#ffe7ef); }
 .status { position: absolute; top: 15px; left: 22px; right: 23px; height: 19px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-family: Arial,sans-serif; }
 .status > div { display: flex; align-items: center; gap: 3px; }
 .status svg { width: 16px; height: 15px; fill: none; stroke: #262626; stroke-width: 1.7; }
@@ -27,17 +27,18 @@
 .searchSubmit { position: absolute; right: 3px; top: 3px; width: 58px; height: 32px; border: 0; border-radius: 7px; background: #ff003c; color: white; font-size: 16px; font-weight: 600; }
 .quickActions { overflow: hidden; }
 .quickAction { position: absolute; top: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; height: 50px; padding: 0; border: 0; background: none; color: #757575; font-size: 12px; white-space: nowrap; }
-.quickAction svg { width: 28px; height: 28px; fill: none; stroke: #070707; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.quickAction svg { width: 29px; height: 29px; fill: none; stroke: #070707; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .quickAction small { position: absolute; left: 35px; top: -2px; padding: 1px 3px; border-radius: 6px; color: white; background: #ff0034; font-size: 8px; line-height: 11px; font-weight: 700; }
 .dots { position: absolute; bottom: 1px; left: 187px; display: flex; gap: 2px; }
 .dots i { width: 4px; height: 3px; border-radius: 4px; background: #ff1b46; }
 .dots i + i { width: 10px; background: #ccc; }
 .banner { display: flex; align-items: center; gap: 3px; padding: 3px; border-radius: 12px; background: linear-gradient(90deg,#ff004a,#ff008c); }
 .bannerLead { width: 123px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding-left: 5px; color: white; white-space: nowrap; }
-.bannerLead strong { color: #fff893; font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
+.bannerLead strong { color: #fff893; font-size: 16px; font-weight: 800; letter-spacing: -.35px; text-shadow: 0 1px #ff395d; }
 .bannerLead > span { font-size: 11px; }
 .coupon { position: relative; width: 120px; height: 62px; padding: 0; border: 0; border-radius: 8px; background: #fff4d7; color: #641c00; }
 .coupon::before { content: ""; position: absolute; left: 60px; top: 5px; bottom: 5px; border-left: 1px dashed #f7e5b9; }
+.coupon::after { content: ""; position: absolute; left: 56px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: #ff0076; box-shadow: 0 64px #ff0076; }
 .coupon > span { display: flex; align-items: center; justify-content: space-evenly; }
 .coupon strong { font: 700 21px Arial,sans-serif; }
 .coupon strong small { font-size: 11px; }
@@ -45,7 +46,7 @@
 .coupon em { display: block; border-radius: 2px; background: #762000; color: #fff8d8; padding: 2px 7px; font-style: normal; font-size: 10px; }
 .bannerGoods { position: relative; align-self: stretch; flex: 1; border: 1px solid #f5d2e4; border-radius: 10px; background: white; }
 .bannerGoods > span:first-child { position: absolute; left: 8px; top: 4px; color: #ff1b49; font-size: 10px; text-align: center; }
-.bannerGoods strong { display: block; color: #fff9ed; font-size: 16px; line-height: 15px; font-weight: 700; paint-order: stroke fill; -webkit-text-stroke: 1px #ff2447; }
+.bannerGoods strong { display: block; color: #fff9ed; font-size: 16px; line-height: 15px; font-weight: 900; paint-order: stroke fill; -webkit-text-stroke: 1px #ff2447; text-shadow: 0 1px #ff3154; }
 .bannerGoods > span:first-child > span { display: block; margin-top: 3px; background: #fff2f5; color: #ff3154; font-size: 11px; }
 .bannerPrice { position: absolute; right: 8px; bottom: 3px; background: #fff1f4; color: #ff0036; font: 700 12px Arial,sans-serif; }
 .product { border-radius: 7px; }
