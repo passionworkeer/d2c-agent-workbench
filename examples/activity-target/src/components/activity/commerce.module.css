@@ -1,0 +1,71 @@
+.page { position: relative; height: 100%; color: #252525; background: #f5f5f5; }
+.pinkSky { position: absolute; inset: 0 0 auto; height: 138px; background: radial-gradient(ellipse 175px 52px at 30px 20px,#ffd1e7 64%,#ffdcee 65%,transparent 67%),radial-gradient(ellipse 165px 70px at 246px -19px,#ffc3df 70%,#ffd5e8 72%,transparent 74%),linear-gradient(#ffa6d5,#ffcce5 60%,#ffe7ef); }
+.status { position: absolute; top: 15px; left: 22px; right: 23px; height: 19px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-family: Arial,sans-serif; }
+.status > div { display: flex; align-items: center; gap: 3px; }
+.status svg { width: 16px; height: 15px; fill: none; stroke: #262626; stroke-width: 1.7; }
+.status small { font-size: 11px; }
+.status .speed { font-weight: 700; font-size: 6px; line-height: 7px; }
+.signal { font-size: 11px; line-height: 8px; display: flex; flex-direction: column; letter-spacing: 1px; }
+.signal small { font-size: 7px; font-weight: 700; }
+.battery { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 10px; color: white; background: #ffbd00; box-shadow: 2px 0 0 #c897a1; }
+.navigation > button { position: absolute; top: 7px; width: 27px; height: 28px; padding: 0; background: none; }
+.navigation > button:first-child { left: 17px; }
+.navigation > button:last-child { right: 17px; }
+.navigation > button svg { width: 25px; height: 25px; }
+.navigation > button > span { top: -2px; right: -23px; min-width: 34px; padding: 0 2px; font-size: 12px; line-height: 17px; font-weight: 400; border-radius: 10px; background: #ff0062; }
+.navigation nav { position: absolute; inset: 0 68px 0 123px; display: flex; justify-content: space-between; gap: 0; margin: 0; }
+.navigation nav button { font-size: 18px; font-weight: 600; padding: 0; color: #737373; }
+.navigation nav button[aria-current] { color: #202020; font-weight: 700; }
+.navigation nav button[aria-current]::after { bottom: 6px; width: 24px; height: 2px; }
+.petBrand { border: 0; padding: 0; background: none; color: #ffec8c; font-size: 17px; font-weight: 900; }
+.search { display: flex; align-items: center; border: 1.3px solid #ff003c; border-radius: 10px; background: white; }
+.searchIcon { position: absolute; left: 11px; top: 11px; width: 18px; height: 18px; }
+.searchIcon svg { fill: none; stroke: #1a2025; stroke-width: 2; }
+.keyword { margin-left: 36px; font-size: 15px; font-weight: 500; }
+.camera { position: absolute; right: 72px; top: 6px; width: 31px; height: 28px; padding: 2px; border: 0; background: none; }
+.camera svg { width: 23px; fill: none; stroke: #667084; stroke-width: 1.8; stroke-linejoin: round; }
+.searchSubmit { position: absolute; right: 3px; top: 3px; width: 58px; height: 32px; border: 0; border-radius: 7px; background: #ff003c; color: white; font-size: 16px; font-weight: 600; }
+.quickActions { overflow: hidden; }
+.quickAction { position: absolute; top: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; height: 50px; padding: 0; border: 0; background: none; color: #757575; font-size: 12px; white-space: nowrap; }
+.quickAction svg { width: 28px; height: 28px; fill: none; stroke: #070707; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.quickAction small { position: absolute; left: 35px; top: -2px; padding: 1px 3px; border-radius: 6px; color: white; background: #ff0034; font-size: 8px; line-height: 11px; font-weight: 700; }
+.dots { position: absolute; bottom: 1px; left: 187px; display: flex; gap: 2px; }
+.dots i { width: 4px; height: 3px; border-radius: 4px; background: #ff1b46; }
+.dots i + i { width: 10px; background: #ccc; }
+.banner { display: flex; align-items: center; gap: 3px; padding: 3px; border-radius: 12px; background: linear-gradient(90deg,#ff004a,#ff008c); }
+.bannerLead { width: 123px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding-left: 5px; color: white; white-space: nowrap; }
+.bannerLead strong { color: #fff893; font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
+.bannerLead > span { font-size: 11px; }
+.coupon { position: relative; width: 120px; height: 62px; padding: 0; border: 0; border-radius: 8px; background: #fff4d7; color: #641c00; }
+.coupon::before { content: ""; position: absolute; left: 60px; top: 5px; bottom: 5px; border-left: 1px dashed #f7e5b9; }
+.coupon > span { display: flex; align-items: center; justify-content: space-evenly; }
+.coupon strong { font: 700 21px Arial,sans-serif; }
+.coupon strong small { font-size: 11px; }
+.coupon > span > span { display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 11px; }
+.coupon em { display: block; border-radius: 2px; background: #762000; color: #fff8d8; padding: 2px 7px; font-style: normal; font-size: 10px; }
+.bannerGoods { position: relative; align-self: stretch; flex: 1; border: 1px solid #f5d2e4; border-radius: 10px; background: white; }
+.bannerGoods > span:first-child { position: absolute; left: 8px; top: 4px; color: #ff1b49; font-size: 10px; text-align: center; }
+.bannerGoods strong { display: block; color: #fff9ed; font-size: 16px; line-height: 15px; font-weight: 700; paint-order: stroke fill; -webkit-text-stroke: 1px #ff2447; }
+.bannerGoods > span:first-child > span { display: block; margin-top: 3px; background: #fff2f5; color: #ff3154; font-size: 11px; }
+.bannerPrice { position: absolute; right: 8px; bottom: 3px; background: #fff1f4; color: #ff0036; font: 700 12px Arial,sans-serif; }
+.product { border-radius: 7px; }
+.product > [role="img"] { flex-shrink: 0; }
+.product > span:nth-child(2) { align-items: center; padding: 6px 8px 0; gap: 3px; height: 32px; flex-shrink: 0; width: 100%; overflow: hidden; }
+.product [data-d2c-node-id$="-title"] { display: block; white-space: nowrap; overflow: hidden; text-overflow: clip; font-size: 15px; line-height: 23px; color: #222; }
+.product [data-d2c-node-id$="-brand"] { background: #43494f; border-radius: 1px; padding: 0 2px; color: white; font-size: 12px; line-height: 16px; margin: 0; }
+.product > span:has([data-d2c-node-id$="-badge"]) { display: flex; align-items: center; gap: 2px; padding: 0 8px; height: 26px; width: 100%; color: #bc9859; white-space: nowrap; font-size: 13px; letter-spacing: -.2px; }
+.product > span:has([data-d2c-node-id$="-badge"]) svg { flex: 0 0 13px; width: 13px; height: 13px; }
+.product > span:has([data-d2c-node-id$="-price"]) { display: flex; align-items: center; gap: 1px; position: relative; width: calc(100% - 16px); height: 35px; margin: 0 8px; padding: 0 5px; border-radius: 4px; background: #fff2f2; overflow: hidden; }
+.product [data-d2c-node-id$="-price-label"] { font-size: 13px; color: #f20524; }
+.product [data-d2c-node-id$="-price"] { color: #f10022; font: 600 17px Arial,sans-serif; padding: 0; }
+.product [data-d2c-node-id$="-price"]::first-letter { font-size: 12px; }
+.product [data-d2c-node-id$="-action"] { position: absolute; right: 0; top: 0; width: 34px; height: 35px; display: grid; place-items: center; padding: 0 0 0 5px; border-radius: 0; background: #ff2936; color: white; font-size: 18px; font-weight: 500; }
+.product [data-d2c-node-id$="-action"]::before { content: ""; position: absolute; left: -7px; top: 0; width: 12px; height: 35px; background: #ffd04c; clip-path: polygon(45% 0,100% 0,52% 46%,91% 45%,0 100%,25% 53%,0 53%); }
+.product [data-d2c-node-id$="-service"] { padding: 0 8px; color: #969ca8; font-size: 13px; white-space: nowrap; }
+.product [data-d2c-node-id$="-service"] > span { color: #00a48a; font-size: 15px; }
+.floatingBack { border: 0; border-radius: 0 22px 22px 0; padding: 0; background: #000a; color: white; font-size: 12px; white-space: nowrap; }
+.floatClose { border: 0; padding: 0; color: #ddd; background: none; font-size: 19px; text-shadow: 0 0 4px #000; }
+.rewardFloat { border: 2px solid #fff000; border-radius: 6px; overflow: hidden; background: #fff6cd; }
+.rewardFloat button { display: block; width: 100%; border: 0; background: none; padding: 0; color: #442300; }
+.rewardFloat button:first-child { height: 35px; font: 700 16px Arial,sans-serif; }
+.rewardFloat button:last-child { height: 25px; font-size: 10px; font-weight: 600; background: #fff000; }

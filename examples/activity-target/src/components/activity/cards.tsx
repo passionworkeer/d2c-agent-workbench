@@ -19,11 +19,13 @@ export function ProductCard({
   title,
   brand,
   badge,
+  badgeIcon,
   priceLabel,
   price,
   actionLabel,
   service,
   imageHeight,
+  className,
   style,
   onClick,
 }: {
@@ -32,19 +34,21 @@ export function ProductCard({
   title: string;
   brand?: string;
   badge?: string;
+  badgeIcon?: ReactNode;
   priceLabel?: string;
   price?: string;
   actionLabel?: string;
   service?: string;
   /** 商品图区域高度（实测 CSS px）；不传时由内容自然堆叠 */
   imageHeight?: number;
+  className?: string;
   style?: CSSProperties;
   onClick?: () => void;
 }) {
   const base = nodeId.replace(/-card$/, "");
   const hasPriceRow = Boolean(price || priceLabel || actionLabel);
   return (
-    <button type="button" data-d2c-node-id={nodeId} className={styles.productCard} style={style} onClick={onClick}>
+    <button type="button" data-d2c-node-id={nodeId} className={[styles.productCard, className].filter(Boolean).join(" ")} style={style} onClick={onClick}>
       <ArtworkSlice
         nodeId={base}
         atlasUrl={image.atlasUrl}
@@ -57,7 +61,7 @@ export function ProductCard({
         {brand ? <span data-d2c-node-id={`${base}-brand`} className={styles.productBrand}>{brand}</span> : null}
         <span data-d2c-node-id={`${base}-title`} className={[styles.productTitle, brand ? styles.productTitleInline : ""].filter(Boolean).join(" ")}>{title}</span>
       </span>
-      {badge ? <span data-d2c-node-id={`${base}-badge`} className={styles.productBadge}>{badge}</span> : null}
+      {badge ? <span className={styles.productBadge}>{badgeIcon}<span data-d2c-node-id={`${base}-badge`}>{badge}</span></span> : null}
       {hasPriceRow ? (
         <span className={styles.productPriceRow}>
           {priceLabel ? <span data-d2c-node-id={`${base}-price-label`} className={styles.productPriceLabel}>{priceLabel}</span> : null}
@@ -65,7 +69,7 @@ export function ProductCard({
           {actionLabel ? <span data-d2c-node-id={`${base}-action`} className={styles.productAction}>{actionLabel}</span> : null}
         </span>
       ) : null}
-      {service ? <span data-d2c-node-id={`${base}-service`} className={styles.productService}>{service}</span> : null}
+      {service ? <span data-d2c-node-id={`${base}-service`} className={styles.productService}><span>{service.split(" ")[0]}</span>{service.includes(" ") ? service.slice(service.indexOf(" ")) : ""}</span> : null}
     </button>
   );
 }

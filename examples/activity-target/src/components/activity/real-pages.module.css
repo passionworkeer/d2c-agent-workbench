@@ -1,5 +1,4 @@
-/* 三张真实活动页的页面级样式：区块底色、渐变、药丸与浮层。
-   区块坐标与尺寸全部由组件内联（对应 spec 实测 sourceBox），这里只承载色彩与形态。 */
+/* 真实活动页共用画布环境与轻提示；各页视觉在独立 CSS Module 中维护。 */
 
 /* ---------- 桌面端两侧深色（移动端画布占满不可见） ---------- */
 
@@ -24,108 +23,6 @@
   line-height: 1.4;
   white-space: nowrap;
   pointer-events: none;
-}
-
-/* ---------- 商城信息流页 ---------- */
-
-.searchPill {
-  border-radius: 21px;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(17, 18, 24, 0.06);
-}
-
-.searchIcon {
-  position: absolute;
-  left: 14px;
-  top: 11px;
-  width: 20px;
-  height: 20px;
-}
-
-.searchKeyword {
-  color: #17181f;
-  font-size: 15px;
-  line-height: 16px;
-}
-
-.searchSubmit {
-  border: none;
-  border-radius: 16px;
-  background: #ff1645;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.quickActions {
-  background: #ffffff;
-}
-
-.quickActionItem {
-  position: absolute;
-  top: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 70px;
-  height: 51px;
-  border: none;
-  background: none;
-  font-size: 11px;
-  line-height: 1.2;
-  color: #44464e;
-  cursor: pointer;
-}
-
-.quickActionItem svg {
-  width: 27px;
-  height: 27px;
-}
-
-.bannerTitle {
-  color: #ffffff;
-  font-size: 15px;
-  line-height: 18px;
-  font-weight: 800;
-  text-shadow: 0 1px 3px rgba(90, 20, 60, 0.35);
-}
-
-.bannerLine {
-  color: #ffffff;
-  font-size: 10px;
-  line-height: 12px;
-  text-shadow: 0 1px 2px rgba(90, 20, 60, 0.35);
-}
-
-.bannerPrice {
-  color: #ffe08a;
-  font-size: 18px;
-  line-height: 22px;
-  font-weight: 800;
-  text-shadow: 0 1px 3px rgba(90, 20, 60, 0.4);
-}
-
-.productGrid {
-  background: #f1f2f4;
-}
-
-.floatClose {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: rgba(17, 18, 24, 0.55);
-  cursor: pointer;
-}
-
-.floatClose svg {
-  width: 11px;
-  height: 11px;
 }
 
 

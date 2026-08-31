@@ -42,11 +42,13 @@ describe("CommerceFeedExperience", () => {
     expect(queryNode("float-reward")).toBeNull();
   });
 
-  it("将已烘焙文案的 Banner 作为单个视觉切片，避免重复文字覆盖", () => {
+  it("Banner 只裁切无文案商品图，每个文案由可见组件单独呈现", () => {
     render(<CommerceFeedExperience atlasUrl={atlasUrl} />);
     for (const id of ["banner-title", "banner-line-auction", "banner-line-coupon", "banner-line-moutai", "banner-price"]) {
-      expect(queryNode(id), id).toHaveAttribute("hidden");
+      expect(queryNode(id), id).toBeVisible();
+      expect(document.querySelectorAll(`[data-d2c-node-id="${id}"]`), id).toHaveLength(1);
     }
+    expect(queryNode("banner-art")).toHaveStyle({ width: "47px", height: "26px" });
   });
 });
 

@@ -3,10 +3,19 @@ import { describe, expect, it } from "vitest";
 import { SummerGameFestivalExperience } from "./SummerGameFestivalExperience";
 import { PetRedPacketExperience } from "./PetRedPacketExperience";
 import { ArtworkSlice } from "./shared";
+import { CommerceFeedExperience } from "./CommerceFeedExperience";
 
 const node = (id: string) => document.querySelector(`[data-d2c-node-id="${id}"]`)!;
 
 describe("真实原图的可编辑视觉边界", () => {
+  it("商城横幅文案、领券按钮和相机入口可编辑可交互", () => {
+    render(<CommerceFeedExperience atlasUrl="/commerce-feed/reference.jpg" texts={{ "product-tissue-title": "可编辑商品标题" }} />);
+    expect(node("banner-title")).toBeVisible();
+    expect(node("product-tissue-title")).toHaveTextContent("可编辑商品标题");
+    expect(screen.getByRole("button", { name: "拍照搜索" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "去领取" }));
+    expect(screen.getByRole("status")).toHaveTextContent("消费券");
+  });
   it("裁切映射不对整张 atlas 再执行 cover，避免带入邻近文字", () => {
     render(<ArtworkSlice nodeId="crop-test" atlasUrl="/reference.jpg" crop={{ x: .2, y: .3, width: .1, height: .2 }} alt="道具" style={{ width: 28, height: 32 }} />);
     expect(node("crop-test").querySelector("img")).toHaveStyle({ objectFit: "fill" });
