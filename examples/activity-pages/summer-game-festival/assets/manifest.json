@@ -3,7 +3,16 @@
   "atlas": "reference.jpg",
   "atlasSize": { "width": 1260, "height": 2660 },
   "atlasSha256": "81cff7409565c2d99cffbca0fa2caa76b5d96d1fee47134ff21344cfcdaff3bd",
-  "notes": "crop 为整图归一化坐标（0-1）。夜晚瀑布场景与立体字主标题为复杂艺术素材，从原图裁切；任务卡/福利格/兑换卡/Tab 全部语义化重建。",
+  "notes": "2026-08-31 按原图校正。前端 hero-scene.png 由 build-scene.ps1 仅提取 y=0..245 CSS px 的复杂场景，并以邻近无字纹理移除账户、侧入口及联动标题。任务/福利/兑奖/Tab 均为 React；不再使用含下载任务的旧大切片。下列旧 atlas 条目保留给已有 Figma 导出，前端不叠加 festival-hero-title。",
+  "frontendCropsCss390": {
+    "install-avatar": [30, 261, 38, 37],
+    "follow-avatar": [31, 328, 37, 38],
+    "dance-art": [58, 412, 41, 34],
+    "coin-art": [158, 413, 44, 32],
+    "lingqi-art": [247, 413, 25, 33],
+    "hat-art": [313, 413, 31, 34],
+    "cash-art": [25, 552, 53, 36]
+  },
   "assets": [
     {
       "id": "festival-hero-art",

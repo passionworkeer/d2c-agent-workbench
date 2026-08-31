@@ -70,10 +70,13 @@ describe("SummerGameFestivalExperience", () => {
     expect(queryNode("star-balance-label")?.textContent).toBe("我的星钻： 250");
   });
 
-  it("将已烘焙的游戏主视觉作为单个视觉切片，避免标题和入口重复覆盖", () => {
+  it("仅艺术字保留裁切，游戏账户、侧入口及联动标题由可见组件呈现", () => {
     render(<SummerGameFestivalExperience atlasUrl={atlasUrl} />);
-    for (const id of ["festival-hero-title", "festival-hero-date", "hero-rule-entry", "hero-backpack-entry", "collab-header"]) {
+    for (const id of ["festival-hero-title", "festival-hero-date"]) {
       expect(queryNode(id), id).toHaveAttribute("hidden");
+    }
+    for (const id of ["star-balance-label", "hero-rule-entry", "hero-backpack-entry", "collab-header"]) {
+      expect(queryNode(id), id).toBeVisible();
     }
   });
 });
