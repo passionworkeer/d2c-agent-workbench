@@ -49,7 +49,7 @@ import {
   type ProviderSettings,
 } from "./lib/provider";
 import { SettingsPopover } from "./components/SettingsPopover";
-import { ProductionWorkbench } from "./components/ProductionWorkbench";
+import { ProductionWorkbench, type ProductionStatus } from "./components/ProductionWorkbench";
 
 type Mode = "d2c" | "i2d" | "production";
 
@@ -289,6 +289,7 @@ export default function App() {
   const [run, setRun] = useState<RunDetail | null>(null);
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [running, setRunning] = useState(false);
+  const [productionStatus, setProductionStatus] = useState<ProductionStatus>({ running: false, runId: null, events: [], error: null });
   const [error, setError] = useState("");
   const [canFallback, setCanFallback] = useState(false);
   const [uploadedFile, setUploadedFile] = useState("");
@@ -551,6 +552,8 @@ export default function App() {
     generation.current += 1;
     resetRun();
     setMode(target);
+    setRunning(false);
+    setProductionStatus({ running: false, runId: null, events: [], error: null });
     setRun(null);
     setError("");
     setCanFallback(false);
@@ -713,7 +716,11 @@ export default function App() {
     : { nodes: 12, instances: 6, tokens: 9 };
 
   const stages = pipelineStages[mode];
-  const seenStates = new Set(events.map((event) => event.state));
+  const visibleEvents = mode === "production" ? productionStatus.events : events;
+  const visibleRunning = mode === "production" ? productionStatus.running : running;
+  const visibleState = mode === "production" ? productionStatus.events.at(-1)?.state ?? "READY" : currentState;
+  const visibleRunId = mode === "production" ? productionStatus.runId : run?.id;
+  const seenStates = new Set(visibleEvents.map((event) => event.state));
   const stageDone = stageStateMap[mode].map((states) => states.some((state) => seenStates.has(state)));
   const activeStageIndex = stageDone.findIndex((done) => !done);
 
@@ -722,23 +729,28 @@ export default function App() {
       <header className="topbar">
         <div className="brand-lockup"><span className="brand-mark"><Braces size={17} /></span><div><strong>FORGE / D2C</strong><span>Agent 工作台</span></div></div>
         <div className="run-summary">
-          <span className={`live-dot ${running ? "active" : ""}`} />
-          <span>{running ? "流程运行中" : stateNames[currentState]}</span>
-          {run?.id && <code>{run.id}</code>}
+          <span className={`live-dot ${visibleRunning ? "active" : ""}`} />
+          {mode === "production" && <span>{productionStatus.replay ? "本地实跑回放" : "真实生产"}</span>}
+          <span>{visibleRunning ? "流程运行中" : mode === "production" && productionStatus.error ? "运行失败 / 中断" : stateNames[visibleState]}</span>
+          {visibleRunId && <code>{visibleRunId}</code>}
           {mode === "i2d" && stepping && <code>design-run</code>}
         </div>
         <div className="header-actions">
           {mode === "d2c" ? (
             <input data-testid="bundle-input" ref={fileInput} type="file" accept=".zip" hidden onChange={handleFileChange} />
-          ) : (
+          ) : mode === "i2d" ? (
             <input data-testid="image-input" ref={imageInput} type="file" accept="image/*" hidden onChange={handleImageChange} />
-          )}
+          ) : null}
           {mode === "d2c" ? (
             <>
               <button className="button secondary" disabled={running} onClick={() => fileInput.current?.click()}><Upload size={15} />上传 Figma 资产包</button>
               <a className="button ghost skill-export" href="/d2c-agent-workbench-skill.zip" download="d2c-agent-workbench-skill.zip"><PackageOpen size={15} />导出 D2C Skill</a>
               <button className="button primary" disabled={running} onClick={startStepDemo}><Play size={15} fill="currentColor" />运行完整演示</button>
             </>
+          ) : mode === "production" ? (
+            <button className="button secondary" type="submit" form="production-demo-form" disabled={!productionStatus.canReplay} title="展示当前活动页已保存的真实运行记录、代码和截图">
+              <Play size={15} fill="currentColor" />运行 Mock 演示
+            </button>
           ) : (
             <>
               <button
@@ -785,7 +797,7 @@ export default function App() {
         />
       )}
 
-      {stepQueue && (
+      {mode !== "production" && stepQueue && (
         <div className="step-bar">
           <div className="step-progress">
             {stepDone ? "演示已完成" : `第 ${stepIndex} / ${stepQueue.length} 步`}
@@ -825,7 +837,7 @@ export default function App() {
         <div className="pipeline-rail">
           {stages.map((label, index) => (
             <div
-              className={stageDone[index] ? "done" : index === activeStageIndex ? "active" : ""}
+              className={mode === "production" && visibleState === "FAILED" && stageStateMap.production[index]?.includes("FAILED") ? "failed" : stageDone[index] ? "done" : index === activeStageIndex ? "active" : ""}
               key={label}
             >
               <span>{String(index + 1).padStart(2, "0")}</span>{label}
@@ -837,7 +849,7 @@ export default function App() {
       {error && <div className="error-banner"><span>{error}{uploadedFile && `（${uploadedFile}）`}</span>{canFallback && <button className="button fallback" onClick={startStepDemo}>使用演示数据继续</button>}</div>}
 
       {mode === "production" ? (
-        <ProductionWorkbench />
+        <ProductionWorkbench onStatusChange={setProductionStatus} />
       ) : (
       <section className="workspace-grid">
         {mode === "d2c" ? (

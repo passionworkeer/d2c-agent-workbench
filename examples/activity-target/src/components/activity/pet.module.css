@@ -60,3 +60,44 @@
 .taskSection h2 { margin: 29px 18px 0; font-size: 23px; line-height: 28px; font-weight: 900; letter-spacing: -.7px; color: #421500; }
 .allTasks { position: absolute; right: 17px; top: 64px; border: 0; padding: 0; font-size: 10px; background: none; color: #825c22; }
 .taskNumber { color: #f08023; font-size: 18px; font-weight: 800; }
+
+/* 修复实跑检出的可读性问题，保留原有布局与素材。 */
+.page [data-d2c-node-id="pet-hero-share"],
+.page [data-d2c-node-id="pet-hero-wallet"],
+.page [data-d2c-node-id="pet-hero-notice-text"],
+.page [data-d2c-node-id="level-progress-hint"],
+.page [data-d2c-node-id="level-income-link"],
+.page span[data-d2c-node-id="level-milestone-l1"],
+.page [data-d2c-node-id="level-milestone-l5"],
+.page [data-d2c-node-id="level-milestone-l10"],
+.page [data-d2c-node-id="level-milestone-l15"],
+.page [data-d2c-node-id="level-milestone-l20"],
+.page [data-d2c-node-id="level-milestone-l55"],
+.page span[data-d2c-node-id="pet-signin-label"],
+.page span[data-d2c-node-id="pet-wardrobe-label"],
+.page span[data-d2c-node-id="pet-claim-label"],
+.page span[data-d2c-node-id="pet-summer-night-label"],
+.page span[data-d2c-node-id="pet-level-claim-label"],
+.page [data-d2c-node-id="pet-name"],
+.page [data-d2c-node-id="pet-level-bubble"],
+.page [data-d2c-node-id="pet-hint-bubble"],
+.page [data-d2c-node-id="pet-feed-energy"],
+.page [data-d2c-node-id="pet-task-link"],
+.page [data-d2c-node-id="pet-task-feed-reward"],
+.page [data-d2c-node-id="pet-task-video-reward"],
+.page [data-d2c-node-id="pet-task-share-reward"] { font-size: 12px; }
+.page [data-d2c-node-id="level-income"] { color: #e60018; }
+.page span[data-d2c-node-id="level-milestone-l1"] { color: #c64651; }
+.page [data-d2c-node-id="level-milestone-l5"],
+.page [data-d2c-node-id="level-milestone-l10"],
+.page [data-d2c-node-id="level-milestone-l15"],
+.page [data-d2c-node-id="level-milestone-l20"],
+.page [data-d2c-node-id="level-milestone-l55"],
+.page ~ nav [data-d2c-node-id="bottom-nav-feature"],
+.page ~ nav [data-d2c-node-id="bottom-nav-message"],
+.page ~ nav [data-d2c-node-id="bottom-nav-me"] { color: #727272; }
+.page [data-d2c-node-id="level-milestone-prize"] { color: #e5004c; }
+.page [data-d2c-node-id="pet-level-bubble"] { background-color: #ad5e0f; }
+.page [data-d2c-node-id="pet-task-feed-action"],
+.page [data-d2c-node-id="pet-task-video-action"],
+.page [data-d2c-node-id="pet-task-share-action"] { background-color: #c44c13; }

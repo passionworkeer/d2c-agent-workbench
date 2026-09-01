@@ -1,5 +1,5 @@
 import type { TraceEvent } from "@d2c/contracts";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProductionWorkbench } from "./ProductionWorkbench";
@@ -124,6 +124,113 @@ afterEach(() => {
 });
 
 describe("ProductionWorkbench", () => {
+  it("keeps generated code inspectable when the browser fails before a screenshot is produced", async () => {
+    apiMocks.subscribeToProductionRun.mockImplementation((_id, onEvent) => {
+      onEvent(event("GENERATED", "真实代码已写入工作区", { artifactId: "generated-1", files: ["src/Page.tsx"] }));
+      onEvent(event("BUILT", "真实构建通过"));
+      onEvent({ ...event("FAILED", "生产闭环执行失败"), detail: "browserType.launch: browser closed" });
+      return () => undefined;
+    });
+    apiMocks.getProductionArtifact.mockResolvedValue({ artifact: { id: "generated-1", kind: "generated", path: "generated.json" }, content: { contents: { "src/Page.tsx": "export const Page = () => <main />;" } } });
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    expect(screen.getByText("本次运行失败，尚未生成截图")).toBeVisible();
+    expect(screen.queryByTestId("render-shots")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "查看已生成代码" }));
+    expect(screen.getByRole("button", { name: /GENERATED.*真实代码已写入工作区/ })).toHaveAttribute("aria-expanded", "true");
+    await user.click(await screen.findByText("src/Page.tsx"));
+    expect(screen.getByText("export const Page = () => <main />;")).toBeVisible();
+  });
+
+  it("ignores a delayed screenshot response from the previous sample", async () => {
+    let resolveArtifact!: (value: unknown) => void;
+    apiMocks.getProductionArtifact.mockReturnValue(new Promise((resolve) => { resolveArtifact = resolve; }));
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /快手商城/ })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    expect(screen.queryByTestId("render-shots")).toBeNull();
+    // 开始下一次运行时，也不应出现上一次延迟返回的截图。
+    apiMocks.subscribeToProductionRun.mockImplementation(() => () => undefined);
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    await act(async () => resolveArtifact({ content: { viewports: [{ name: "desktop", width: 1440, height: 900 }] } }));
+    expect(screen.queryByTestId("render-shots")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "代码渲染视口" })).toBeNull();
+  });
+
+  it("keeps an imported Figma image separate from the reference and releases it on sample change", async () => {
+    const user = userEvent.setup();
+    URL.createObjectURL = vi.fn(() => "blob:figma-export");
+    URL.revokeObjectURL = vi.fn();
+    const view = render(<ProductionWorkbench />);
+    try {
+      await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+      await user.click(screen.getByRole("button", { name: /快手商城/ }));
+      await user.upload(screen.getByLabelText("导入 Figma 渲染图"), new File(["png"], "figma-export.png", { type: "image/png" }));
+      expect(screen.getByRole("img", { name: "Figma 导出渲染图" })).toHaveAttribute("src", "blob:figma-export");
+      expect(screen.getByRole("img", { name: "原始参考图" })).toHaveAttribute("src", "mock-atlas.jpg");
+      await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+      await screen.findByText("COMPLETED");
+      expect(screen.getByRole("img", { name: "Figma 导出渲染图" })).toHaveAttribute("src", "blob:figma-export");
+      await user.click(screen.getByRole("button", { name: /体验官招募/ }));
+      expect(screen.queryByRole("img", { name: "Figma 导出渲染图" })).toBeNull();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:figma-export");
+    } finally {
+      view.unmount();
+      Reflect.deleteProperty(URL, "createObjectURL");
+      Reflect.deleteProperty(URL, "revokeObjectURL");
+    }
+  });
+
+  it("uses the history run's sample as the reference and can return to the previously selected sample", async () => {
+    apiMocks.listProductionRuns.mockResolvedValue({ runs: [{ id: "old-commerce", sampleId: "commerce-feed", status: "completed", finalScore: 93, createdAt: "2026-08-30T10:00:00.000Z" }] });
+    apiMocks.getProductionRun.mockResolvedValue({ ...await apiMocks.getProductionRun(), sampleId: "commerce-feed" });
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(await screen.findByRole("button", { name: "commerce-feed · ✓93" }));
+    expect(screen.getByRole("img", { name: "原始参考图" })).toHaveAttribute("src", "mock-atlas.jpg");
+    expect(screen.queryByRole("button", { name: "展开文案编辑" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /夏日好物节/ }));
+    expect(screen.getByRole("button", { name: "展开文案编辑" })).toBeInTheDocument();
+    expect(screen.queryByTestId("render-shots")).toBeNull();
+  });
+
+  it("shows the reference, Figma and code comparison before the editor, without substituting missing renders", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+
+    expect(screen.getByRole("img", { name: "原始参考图" })).toHaveAttribute("src", "mock-atlas.jpg");
+    expect(screen.getByRole("region", { name: "Figma 渲染图" })).toHaveTextContent("等待 Figma 渲染图");
+    expect(screen.getByRole("region", { name: "代码渲染图" }).querySelector("img")).toBeNull();
+    expect(screen.queryByTestId("prototype-fields")).toBeNull();
+    expect(screen.queryByTestId("prototype-puck")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "展开文案编辑" }));
+    expect(screen.getByTestId("prototype-fields")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "收起文案编辑" }));
+    expect(screen.queryByTestId("prototype-fields")).toBeNull();
+  });
+
+  it("places real code screenshots in the comparison and clears them when switching samples", async () => {
+    const user = userEvent.setup();
+    render(<ProductionWorkbench />);
+    await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "运行生产闭环" }));
+    const shots = await screen.findByTestId("render-shots");
+    expect(screen.getByRole("region", { name: "代码渲染图" })).toContainElement(shots);
+    expect(shots.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/production/runs/run-1/renders/desktop"));
+    await screen.findByText("COMPLETED");
+    await user.click(screen.getByRole("button", { name: /快手商城/ }));
+    expect(screen.queryByTestId("render-shots")).toBeNull();
+    expect(screen.getByRole("img", { name: "原始参考图" })).toHaveAttribute("src", "mock-atlas.jpg");
+  });
   it("runs the out-of-loop VLM semantic review and contrasts it with the in-loop golden baseline", async () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
@@ -212,7 +319,8 @@ describe("ProductionWorkbench", () => {
     expect(await screen.findByText("真实构建通过")).toBeInTheDocument();
     await screen.findByText("COMPLETED");
 
-    // Puck 原型编辑：改标题 → 本地待保存 → 保存为类型化 SpecEditOp
+    // 展开辅助编辑入口：改标题 → 本地待保存 → 保存为类型化 SpecEditOp
+    await user.click(screen.getByRole("button", { name: "展开文案编辑" }));
     const input = screen.getByLabelText("hero-title 文本");
     await user.clear(input);
     await user.type(input, "新活动标题");
@@ -231,6 +339,7 @@ describe("ProductionWorkbench", () => {
     const user = userEvent.setup();
     render(<ProductionWorkbench />);
     await user.click(screen.getByRole("button", { name: "载入黄金样例" }));
+    await user.click(screen.getByRole("button", { name: "展开文案编辑" }));
     const input = screen.getByLabelText("hero-title 文本");
     await user.clear(input);
     await user.type(input, "首轮就使用的新标题");
@@ -409,6 +518,7 @@ describe("ProductionWorkbench", () => {
 
     // 编辑 → 保存：基线列展开为 5 列，spec 文本变更后渲染尚未更新，差异列如实标「⚠ 编辑未生效」——
     // 必须等闭环真正重跑完成才能宣称「编辑已应用」，不能拿旧渲染误导观众
+    await user.click(screen.getByRole("button", { name: "展开文案编辑" }));
     const input = screen.getByLabelText("hero-title 文本");
     await user.clear(input);
     await user.type(input, "夏日好物节 · 全场 6 折");

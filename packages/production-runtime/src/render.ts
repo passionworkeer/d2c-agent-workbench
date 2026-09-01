@@ -25,6 +25,8 @@ export interface NodeGeometry {
   fontFamily: string;
   fontSize: string;
   lineHeight: string;
+  hasText?: boolean;
+  effectiveBackgroundColor?: string | null;
 }
 
 export interface ViewportRender {
@@ -73,10 +75,11 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
     server = await startPreviewServer({ cwd: input.server.cwd, port, executable: input.server.executable, timeoutMs: input.timeoutMs ?? 30_000 });
     baseUrl = composeRenderUrl(input.url, server.url);
   }
-  const browser = await chromium.launch({ headless: true });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
   const runtimeErrors: string[] = [];
   const renders: ViewportRender[] = [];
   try {
+    browser = await chromium.launch({ headless: true });
     for (const viewport of input.viewports) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1, colorScheme: "light" });
       const page = await context.newPage();
@@ -96,12 +99,23 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
         const htmlElement = element as HTMLElement;
         const box = htmlElement.getBoundingClientRect();
         const style = getComputedStyle(htmlElement);
+        let effectiveBackgroundColor: string | null = null;
+        for (let ancestor: HTMLElement | null = htmlElement; ancestor; ancestor = ancestor.parentElement) {
+          const backdrop = getComputedStyle(ancestor);
+          // 图像、渐变和半透明叠层无法仅靠单一 CSS 色值判定对比度。
+          if (backdrop.backgroundImage !== "none" || Number(backdrop.opacity) < 1) break;
+          if (backdrop.backgroundColor === "transparent" || /rgba\([^)]*,\s*0\)$/.test(backdrop.backgroundColor)) continue;
+          if (backdrop.backgroundColor.startsWith("rgb(")) effectiveBackgroundColor = backdrop.backgroundColor;
+          break;
+        }
         return [htmlElement.dataset.d2cNodeId ?? "", {
           x: box.x, y: box.y, width: box.width, height: box.height,
           parentId: htmlElement.parentElement?.closest("[data-d2c-node-id]")?.getAttribute("data-d2c-node-id") ?? null,
           visible: style.display !== "none" && style.visibility !== "hidden" && box.width > 0 && box.height > 0,
           overflowX: style.overflowX, overflowY: style.overflowY, position: style.position, zIndex: style.zIndex,
           color: style.color, backgroundColor: style.backgroundColor, fontFamily: style.fontFamily, fontSize: style.fontSize, lineHeight: style.lineHeight,
+          hasText: !htmlElement.closest('[aria-hidden="true"]') && [...htmlElement.childNodes].some((child) => child.nodeType === Node.TEXT_NODE && Boolean(child.textContent?.trim())),
+          effectiveBackgroundColor,
         }];
       }))) as Record<string, NodeGeometry>;
       // 文本证据：每个 d2c 节点的 textContent.trim()，去掉只含空白节点的干扰
@@ -117,8 +131,7 @@ export async function renderPage(input: RenderPageInput): Promise<RenderResult> 
       await context.close();
     }
   } finally {
-    await browser.close();
-    await server?.dispose();
+    try { await browser?.close(); } finally { await server?.dispose(); }
   }
   return { url: baseUrl, viewports: renders, runtimeErrors };
 }

@@ -84,6 +84,16 @@ describe("design-quality 工具函数", () => {
 });
 
 describe("evaluateDesignQuality 评分", () => {
+  it("使用实际文本与继承背景证据，不把容器或透明背景当作黑底文本", () => {
+    const result = evaluateDesignQuality({ renderedNodes: {
+      container: makeNode({ hasText: false, fontSize: "10px", backgroundColor: "rgba(0, 0, 0, 0)" }),
+      title: makeNode({ hasText: true, backgroundColor: "rgba(0, 0, 0, 0)", effectiveBackgroundColor: "rgb(255, 255, 255)" }),
+    }, sourceMap });
+    expect(result.score).toBe(100);
+    expect(result.violations).toEqual([]);
+    const unknown = evaluateDesignQuality({ renderedNodes: { title: makeNode({ hasText: true, effectiveBackgroundColor: null, backgroundColor: "rgba(0, 0, 0, 0)" }) }, sourceMap });
+    expect(unknown.violations).toEqual([]);
+  });
   it("全合规场景返回 score=100 且无 violation", () => {
     const report = evaluateDesignQuality({
       renderedNodes: { title: makeNode({}) },

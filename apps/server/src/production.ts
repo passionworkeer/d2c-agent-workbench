@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { isAbsolute, extname, join, relative, resolve, sep } from "node:path";
 import {
@@ -25,7 +25,7 @@ import {
   type ProductionWorkflowInput,
 } from "@d2c/orchestrator";
 import type { GeneratedProductionOutput } from "@d2c/codegen";
-import { FileArtifactStore, RunWorkspace } from "@d2c/production-runtime";
+import { FileArtifactStore, RunWorkspace, matchesWriteGlob } from "@d2c/production-runtime";
 import type { FastifyInstance } from "fastify";
 import { resolveTargetBySampleId } from "./profiles";
 import { loadModelConfig } from "./model-config";
@@ -108,7 +108,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
 
   // 启动重载：把历史 run 的元数据读回内存（只读状态；无工作区，repair 会如实 409）
   const reloadedRuns: Array<{ id: string; createdAt: string }> = [];
-  void (async () => {
+  const historyReady = (async () => {
     try {
       const runsDirectory = join(dataRoot, "runs");
       const ids = await readdir(runsDirectory).catch(() => [] as string[]);
@@ -177,6 +177,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       // 重载失败不影响新 run 的创建
     }
   })();
+  app.addHook("onReady", async () => { await historyReady; });
 
   async function persistRun(record: ProductionRunRecord): Promise<void> {
     const directory = join(dataRoot, "runs", record.run.id);
@@ -217,6 +218,32 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
   const isProductionState = (state: string): state is ProductionRun["state"] => productionStates.has(state);
 
   async function publish(record: ProductionRunRecord, event: TraceEvent): Promise<void> {
+    // 终态发出前保存真实文件：后续重跑、回滚或清理工作区都不能改变这次可下载的代码。
+    if (["COMPLETED", "FAILED", "NEEDS_REVIEW"].includes(event.state) && record.workspace && record.artifactStore && record.generated) {
+      const files = [...new Set([
+        ...Object.keys(record.generated.files),
+        ...record.events.filter((item) => item.state === "REPAIR_APPLIED").flatMap((item) => Array.isArray(item.data?.files) ? item.data.files.filter((file): file is string => typeof file === "string") : []),
+      ])];
+      try {
+        const contents: Record<string, string> = {};
+        const unavailableFiles: string[] = [];
+        for (const file of files) {
+          try {
+            const root = await realpath(record.workspace.root);
+            const path = await realpath(resolve(root, file));
+            if (!isInside(root, path)) throw new Error("文件超出工作区边界");
+            contents[file] = await record.workspace.readFile(file);
+          } catch { unavailableFiles.push(file); }
+        }
+        const output = await record.artifactStore.writeJson("output", "run-end-source", {
+          runId: record.run.id, state: event.state, targetRepository: record.profile.repositoryPath,
+          contentsSource: "run-end-snapshot", files, contents, unavailableFiles,
+        });
+        event.data = { ...event.data, artifactId: output.id };
+      } catch (cause) {
+        event.data = { ...event.data, outputError: cause instanceof Error ? cause.message : "无法保存代码快照" };
+      }
+    }
     record.events.push(event);
     if (isProductionState(event.state)) record.run.state = event.state;
     if (event.state === "COMPLETED") record.run.status = "completed";
@@ -324,6 +351,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       // 终态事件发出后用户可能立即提交新编辑；只清除本次实际消费的 spec 标记。
       if (record.spec === workflowSpec) record.specEdited = false;
     } catch (error) {
+      const lastInput = [...record.run.artifacts].reverse().find((artifact) => artifact.kind === "input");
       const failure = traceEventSchema.parse({
         id: `${record.run.id}-failed`,
         runId: record.run.id,
@@ -331,6 +359,7 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
         state: "FAILED",
         title: "生产闭环执行失败",
         detail: error instanceof Error ? error.message : "未知错误",
+        data: { ...(lastInput ? { inputArtifactId: lastInput.id } : {}), lastCompletedState: record.run.state },
       });
       try { await publish(record, failure); } catch { /* SSE 已收到持久化失败事件；避免后台未处理拒绝 */ }
     }
@@ -654,6 +683,25 @@ export function registerProductionRoutes(app: FastifyInstance, options: Producti
       }
       try {
         const content = JSON.parse(await readFile(absolute, "utf8"));
+        // 旧清单没有源码快照时，仅补读它列出的、仍在写入白名单内的工作区文件。
+        // 明确标注当前内容，不能把修复后的工作区冒充生成时快照。
+        if (artifact.kind === "generated" && Array.isArray(content.files) && !content.contents) {
+          const workspaceRoot = resolve(dataRoot, "workspaces", record.run.id);
+          const contents: Record<string, string> = {};
+          const unavailableFiles: string[] = [];
+          for (const file of content.files) {
+            if (typeof file !== "string") continue;
+            try {
+              const path = resolve(workspaceRoot, file);
+              if (!isInside(workspaceRoot, path) || !record.profile.allowedWriteGlobs.some((glob) => matchesWriteGlob(file, glob))) throw new Error("文件超出读取边界");
+              const resolvedRoot = await realpath(workspaceRoot);
+              const resolvedPath = await realpath(path);
+              if (!isInside(resolvedRoot, resolvedPath)) throw new Error("文件链接超出读取边界");
+              contents[file] = await readFile(resolvedPath, "utf8");
+            } catch { unavailableFiles.push(file); }
+          }
+          return { artifact, content: { ...content, contents, contentsSource: "workspace-current", unavailableFiles } };
+        }
         return { artifact, content };
       } catch {
         return reply.code(404).send({ code: "ARTIFACT_NOT_FOUND", message: "Artifact 文件缺失" });

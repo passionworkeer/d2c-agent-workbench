@@ -116,6 +116,22 @@ const baseInput = {
 };
 
 describe("runProductionWorkflow", () => {
+  it("preserves review evidence instead of planning CSS repairs without a source locator", async () => {
+    const { workspace, artifacts } = await setup();
+    const violation = { ...layoutViolation, nodeIds: ["trusted-component-child"], sourceLocators: [] };
+    const events = await collect(runProductionWorkflow({ ...baseInput, workspace, artifacts }, {
+      inspect: async () => ({ version: "1.0", root: "examples/activity-target", commitHash: "abc123", versionHash: "v1", components: [], tokens: [] }),
+      typecheck: async () => commandOk("typecheck"),
+      build: async () => commandOk("build"),
+      render: async () => renderFake(12),
+      evaluate: async () => ({ outcome: "needs_review", metrics: metrics(86), violations: [violation] }),
+      attribute: () => [violation],
+    }));
+    expect(events.at(-1)?.state).toBe("NEEDS_REVIEW");
+    expect(events.some((event) => event.state === "REPAIR_PLANNED")).toBe(false);
+    expect(events.find((event) => event.state === "ATTRIBUTED")?.data?.violations).toEqual([violation]);
+  });
+
   it("uses real artifacts for plan, build, render, eval and repair", async () => {
     const { workspace, artifacts } = await setup();
     const reports: ProductionEvaluationReport[] = [
@@ -139,6 +155,18 @@ describe("runProductionWorkflow", () => {
     const built = events.find((event) => event.state === "BUILT");
     expect(built?.data?.artifactId).toBeTruthy();
     expect(events.at(-1)?.state).toBe("COMPLETED");
+
+    // 每个步骤引用落盘输入；源码快照不能被后续修复覆盖。
+    const records = await artifacts.list();
+    for (const item of events) {
+      expect(records.some((record) => record.id === item.data?.inputArtifactId && record.kind === "input")).toBe(true);
+    }
+    const generated = records.find((record) => record.kind === "generated")!;
+    const manifest = JSON.parse(await readFile(generated.absolutePath, "utf8"));
+    expect(manifest.contentsSource).toBe("generation-snapshot");
+    expect(manifest.contents["src/pages/campaign/CampaignPage.module.css"]).not.toContain("margin-left: -12px");
+    const buildInput = records.find((record) => record.id === built?.data?.inputArtifactId)!;
+    expect(JSON.parse(await readFile(buildInput.absolutePath, "utf8")).command).toEqual(["pnpm", "build"]);
 
     // 真实修复落盘：首轮 hero 偏移 12px，修复后 CSS 应包含 -12px 的 margin-left
     const cssPath = join(workspace.root, "src/pages/campaign/CampaignPage.module.css");

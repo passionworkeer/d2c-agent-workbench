@@ -78,6 +78,28 @@ export async function getProductionRun(runId: string): Promise<ProductionRunDeta
   return readJson(await fetch(`/api/production/runs/${runId}`));
 }
 
+export interface ProductionDemo {
+  sampleId: string;
+  recordedAt: string;
+  run: ProductionRunDetail;
+  artifacts: Record<string, Awaited<ReturnType<typeof getProductionArtifact>>>;
+  screenshots: Record<string, string>;
+  preview?: ProductionPreview;
+}
+
+export interface ProductionPreview {
+  runId: string;
+  url: string;
+  builtAt: string;
+  nodes: Record<string, { name: string; role: string; file?: string; styleFile?: string; styleSelector?: string }>;
+}
+
+export async function getProductionDemo(sampleId: string): Promise<ProductionDemo> {
+  const demo = await readJson<ProductionDemo>(await fetch(`/production-demos/${encodeURIComponent(sampleId)}.json`));
+  if (demo.sampleId !== sampleId || demo.run.sampleId !== sampleId || demo.run.state !== "COMPLETED") throw new Error("该页面没有完整的实跑演示记录，请先生成并保存证据包。");
+  return demo;
+}
+
 /** 历史 Run 清单（含重启后重载的记录）：工作台据此只读回看任意一次闭环的证据链 */
 export async function listProductionRuns(): Promise<{ runs: ProductionRunSummary[] }> {
   return readJson(await fetch("/api/production/runs"));
@@ -202,6 +224,8 @@ export interface GoldenSample {
   fidelity: string;
   /** 真实样例用参考截图做缩略图 */
   thumbnailUrl?: string;
+  /** 完整原图，独立于 Figma 导出图与代码运行截图 */
+  referenceUrl?: string;
   payload: ProductionRunPayload;
 }
 
@@ -212,133 +236,12 @@ export const SAMPLE_ATLAS_URL: Record<string, string> = {
   "pet-red-packet": petRedPacketAtlasUrl,
 };
 
+const referenceNodesOf = (raw: string, ids: string[]): Record<string, Rect> => {
+  const spec = JSON.parse(raw) as ActivitySpec;
+  return Object.fromEntries(ids.map((id) => [id, spec.nodes.find((node) => node.id === id)!.sourceBox]));
+};
+
 export const GOLDEN_SAMPLES: GoldenSample[] = [
-  {
-    id: "campaign",
-    label: "夏日好物节（主视觉页）",
-    targetRepository: "examples/activity-target",
-    fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题",
-    payload: {
-      sampleId: "campaign",
-      spec: {
-        version: "2.0",
-        page: {
-          id: "page", name: "Campaign", route: "/campaign/summer",
-          canonicalViewport: { width: 1440, height: 900 }, background: { type: "solid", value: "#ffffff" },
-        },
-        breakpoints: [{ name: "mobile", minWidth: 0, maxWidth: 767 }],
-        tokens: [{ name: "color/accent", value: "#ff5000", source: "repository" }],
-        assets: [],
-        nodes: [
-          {
-            id: "page", role: "page", name: "页面", sourceBox: { x: 0, y: 0, width: 1440, height: 900 },
-            layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "整页纵向流式布局" },
-            responsive: [], visual: { opacity: 1 }, tokenRefs: [],
-            evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例输入", confidence: 1 }],
-            confidence: 1, reviewState: "accepted", children: ["hero"],
-          },
-          {
-            id: "hero", parentId: "page", role: "section", name: "主视觉", sourceBox: { x: 0, y: 0, width: 1440, height: 500 },
-            layout: { mode: "flex", direction: "column", padding: { top: 40, right: 40, bottom: 40, left: 40 }, width: { mode: "fill" }, height: { mode: "fixed", value: 500 }, rationale: "首屏区块" },
-            // demo 默认 mobile 自适应：hero 缩放到视口宽度，避免 1440 撑爆 390 触发 overflow P1
-            responsive: [{ viewport: "mobile", rule: "resize", value: 390 }],
-            visual: { opacity: 1, background: { type: "solid", value: "#f5f6f8" } }, tokenRefs: ["color/accent"],
-            evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例主视觉", confidence: 1 }],
-            confidence: .9, reviewState: "accepted", children: ["hero-title"],
-          },
-          {
-            id: "hero-title", parentId: "hero", role: "text", name: "标题", sourceBox: { x: 40, y: 40, width: 600, height: 72 },
-            layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "标题按内容尺寸" },
-            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 48, fontWeight: 700 }, tokenRefs: ["color/accent"],
-            content: { text: "夏日好物节 · 全场 5 折" },
-            evidence: [{ type: "prd", sourceId: "golden-prd", observation: "标题文案", confidence: 1 }],
-            confidence: .95, reviewState: "accepted", children: [],
-          },
-        ],
-        interactions: [], unresolved: [],
-      },
-      mappings: [],
-      referenceNodes: { hero: { x: 0, y: 0, width: 1440, height: 500 } },
-    },
-  },
-  {
-    id: "summer-form",
-    label: "体验官招募（表单页）",
-    targetRepository: "examples/activity-target",
-    fidelity: "演示骨架 · 目标仓库含一处可修复的基线间距问题",
-    payload: {
-      sampleId: "summer-form",
-      spec: {
-        version: "2.0",
-        page: {
-          id: "page", name: "SummerForm", route: "/campaign/summer-form",
-          canonicalViewport: { width: 1440, height: 900 }, background: { type: "solid", value: "#ffffff" },
-        },
-        breakpoints: [{ name: "mobile", minWidth: 0, maxWidth: 767 }],
-        tokens: [{ name: "color/accent", value: "#ff5000", source: "repository" }],
-        assets: [],
-        nodes: [
-          {
-            id: "page", role: "page", name: "页面", sourceBox: { x: 0, y: 0, width: 1440, height: 900 },
-            layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "整页纵向流式布局" },
-            responsive: [], visual: { opacity: 1 }, tokenRefs: [],
-            evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例输入", confidence: 1 }],
-            confidence: 1, reviewState: "accepted", children: ["form-section"],
-          },
-          {
-            id: "form-section", parentId: "page", role: "section", name: "表单区", sourceBox: { x: 0, y: 0, width: 1440, height: 640 },
-            layout: { mode: "flex", direction: "column", gap: 44, padding: { top: 80, right: 60, bottom: 60, left: 60 }, width: { mode: "fill" }, height: { mode: "fixed", value: 640 }, rationale: "表单主区块" },
-            responsive: [{ viewport: "mobile", rule: "resize", value: 390 }],
-            visual: { opacity: 1, background: { type: "solid", value: "#f7f8f4" } }, tokenRefs: ["color/accent"],
-            evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例表单区", confidence: 1 }],
-            confidence: .9, reviewState: "accepted", children: ["form-title", "form-body"],
-          },
-          {
-            id: "form-title", parentId: "form-section", role: "text", name: "表单标题", sourceBox: { x: 60, y: 80, width: 520, height: 56 },
-            layout: { mode: "flow", width: { mode: "hug" }, height: { mode: "hug" }, rationale: "标题按内容尺寸" },
-            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 40, fontWeight: 700 }, tokenRefs: ["color/accent"],
-            content: { text: "限时体验官招募 · 填写即领券" },
-            evidence: [{ type: "prd", sourceId: "golden-prd", observation: "表单标题文案", confidence: 1 }],
-            confidence: .95, reviewState: "accepted", children: [],
-          },
-          {
-            id: "form-body", parentId: "form-section", role: "container", name: "表单主体", sourceBox: { x: 60, y: 180, width: 520, height: 400 },
-            layout: { mode: "flex", direction: "column", gap: 24, padding: { top: 24, right: 24, bottom: 24, left: 24 }, width: { mode: "fixed", value: 520 }, height: { mode: "fixed", value: 260 }, rationale: "表单字段纵向排列" },
-            responsive: [{ viewport: "mobile", rule: "resize", value: 390 }], visual: { opacity: 1, background: { type: "solid", value: "#ffffff" }, border: "1px solid #e3e5de" }, tokenRefs: [],
-            evidence: [{ type: "user", sourceId: "golden", observation: "黄金样例表单主体", confidence: 1 }],
-            confidence: .85, reviewState: "accepted", children: ["field-name", "field-phone", "submit-hint"],
-          },
-          {
-            id: "field-name", parentId: "form-body", role: "text", name: "姓名字段", sourceBox: { x: 60, y: 180, width: 520, height: 48 },
-            layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "输入占位" },
-            responsive: [], visual: { opacity: 1, color: "#4a4f46", fontSize: 18 }, tokenRefs: [],
-            content: { text: "您的姓名" },
-            evidence: [{ type: "prd", sourceId: "golden-prd", observation: "字段占位文案", confidence: 1 }],
-            confidence: .9, reviewState: "accepted", children: [],
-          },
-          {
-            id: "field-phone", parentId: "form-body", role: "text", name: "手机号字段", sourceBox: { x: 60, y: 252, width: 520, height: 48 },
-            layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "输入占位" },
-            responsive: [], visual: { opacity: 1, color: "#4a4f46", fontSize: 18 }, tokenRefs: [],
-            content: { text: "手机号（用于发放奖励）" },
-            evidence: [{ type: "prd", sourceId: "golden-prd", observation: "字段占位文案", confidence: 1 }],
-            confidence: .9, reviewState: "accepted", children: [],
-          },
-          {
-            id: "submit-hint", parentId: "form-body", role: "text", name: "提交按钮文案", sourceBox: { x: 60, y: 324, width: 520, height: 56 },
-            layout: { mode: "flow", width: { mode: "fill" }, height: { mode: "hug" }, rationale: "按钮文案" },
-            responsive: [], visual: { opacity: 1, color: "#ff5000", fontSize: 20, fontWeight: 700 }, tokenRefs: ["color/accent"],
-            content: { text: "立即报名 · 100% 中奖" },
-            evidence: [{ type: "prd", sourceId: "golden-prd", observation: "按钮文案", confidence: 1 }],
-            confidence: .9, reviewState: "accepted", children: [],
-          },
-        ],
-        interactions: [], unresolved: [],
-      },
-      mappings: [],
-      referenceNodes: { "form-section": { x: 0, y: 0, width: 1440, height: 640 } },
-    },
-  },
   {
     id: "commerce-feed",
     fidelity: "390px 手机端 · 高保真整页还原",
@@ -357,16 +260,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           evidence: ["真实截图混合重建：导航/卡片/底栏语义化组件 + 参考图裁切素材，real-pages.test 全量文本与几何校验通过"],
         },
       ],
-      referenceNodes: {
-        "top-nav": { x: 0, y: 46, width: 390, height: 44 },
-        "commerce-search": { x: 12, y: 94, width: 366, height: 42 },
-        "quick-actions": { x: 0, y: 142, width: 390, height: 59 },
-        "promo-banner": { x: 0, y: 208, width: 390, height: 67 },
-        "product-grid": { x: 0, y: 276, width: 390, height: 548 },
-        "product-tissue-card": { x: 6, y: 276, width: 190, height: 300 },
-        "product-tea-card": { x: 198, y: 276, width: 186, height: 300 },
-        "bottom-nav": { x: 0, y: 824, width: 390, height: 43 },
-      },
+      referenceNodes: referenceNodesOf(commerceFeedSpecJson, ["top-nav", "commerce-search", "quick-actions", "promo-banner", "product-grid", "product-tissue-card", "product-tea-card", "bottom-nav"]),
     },
   },
   {
@@ -387,15 +281,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           evidence: ["真实截图混合重建：任务/福利/兑换/Tab 语义化组件 + 主视觉裁切，real-pages.test 全量文本与几何校验通过"],
         },
       ],
-      referenceNodes: {
-        "festival-hero": { x: 0, y: 0, width: 390, height: 294 },
-        "collab-header": { x: 0, y: 272, width: 390, height: 38 },
-        "task-list": { x: 8, y: 318, width: 374, height: 116 },
-        "benefit-panel": { x: 8, y: 438, width: 374, height: 72 },
-        "reward-cards": { x: 8, y: 514, width: 374, height: 66 },
-        "daily-tasks": { x: 8, y: 586, width: 374, height: 158 },
-        "activity-tabs": { x: 0, y: 761, width: 390, height: 62 },
-      },
+      referenceNodes: referenceNodesOf(gameFestivalSpecJson, ["festival-hero", "collab-header", "task-list", "benefit-panel", "reward-cards", "daily-tasks", "activity-tabs"]),
     },
   },
   {
@@ -416,14 +302,7 @@ export const GOLDEN_SAMPLES: GoldenSample[] = [
           evidence: ["真实截图混合重建：养成舞台/喂食/任务区语义化组件 + 标题与舞台素材裁切，real-pages.test 全量文本与几何校验通过"],
         },
       ],
-      referenceNodes: {
-        "pet-app-nav": { x: 0, y: 0, width: 390, height: 42 },
-        "level-progress": { x: 21, y: 144, width: 349, height: 90 },
-        "pet-stage": { x: 0, y: 234, width: 390, height: 369 },
-        "feed-action": { x: 8, y: 560, width: 374, height: 36 },
-        "pet-task-section": { x: 0, y: 604, width: 390, height: 156 },
-        "bottom-nav": { x: 0, y: 766, width: 390, height: 53 },
-      },
+      referenceNodes: referenceNodesOf(petRedPacketSpecJson, ["pet-app-nav", "level-progress", "pet-stage", "feed-action", "pet-task-section", "bottom-nav"]),
     },
   },
 ];

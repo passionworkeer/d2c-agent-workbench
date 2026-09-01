@@ -19,7 +19,7 @@
   ],
   "assets": [
     { "id": "pet-hero-title", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 215, "y": 165, "width": 820, "height": 205 }, "observation": "快手 logo 行 + 养萌宠赢88元红包立体字主标题", "confidence": 0.85 }] },
-    { "id": "pet-stage-art", "path": "../../activity-target/public/pet-red-packet/stage-scene.png", "mimeType": "image/png", "evidence": [{ "type": "asset", "sourceId": "assets/build-scene.ps1", "region": { "x": 0, "y": 0, "width": 1260, "height": 1606 }, "observation": "已移除进度、入口文字和喂食控件的红色舞台与香蕉宠物场景", "confidence": 1 }] },
+    { "id": "pet-stage-art", "path": "stage-scene.png", "mimeType": "image/png", "evidence": [{ "type": "asset", "sourceId": "assets/build-scene.ps1", "region": { "x": 0, "y": 0, "width": 1260, "height": 1606 }, "observation": "已移除进度、入口文字和喂食控件的红色舞台与香蕉宠物场景", "confidence": 1 }] },
     { "id": "wardrobe-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 26, "y": 1011, "width": 155, "height": 100 }, "observation": "无文字香蕉衣橱图标", "confidence": 0.95 }] },
     { "id": "claim-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 26, "y": 1218, "width": 139, "height": 103 }, "observation": "无文字礼物盒图标", "confidence": 0.95 }] },
     { "id": "summer-night-art", "path": "reference.jpg", "mimeType": "image/jpeg", "evidence": [{ "type": "asset", "sourceId": "assets/manifest.json", "region": { "x": 1082, "y": 1011, "width": 174, "height": 103 }, "observation": "无文字超级夏晚图标", "confidence": 0.95 }] },

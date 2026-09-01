@@ -70,3 +70,32 @@
 .rewardFloat button { display: block; width: 100%; border: 0; background: none; padding: 0; color: #442300; }
 .rewardFloat button:first-child { height: 35px; font: 700 16px Arial,sans-serif; }
 .rewardFloat button:last-child { height: 25px; font-size: 10px; font-weight: 600; background: #fff000; }
+
+/* 修复实跑检出的可读性问题，保留原有布局与素材。 */
+.page [data-d2c-node-id="top-tab-follow"],
+.page [data-d2c-node-id="top-tab-discover"],
+.page [data-d2c-node-id="top-tab-local"],
+.page [data-d2c-node-id="quick-action-orders"],
+.page [data-d2c-node-id="quick-action-cart"],
+.page [data-d2c-node-id="quick-action-recharge"],
+.page [data-d2c-node-id="quick-action-auction"],
+.page [data-d2c-node-id="quick-action-coins"],
+.page [data-d2c-node-id="quick-action-subsidy"] { color: #6d6d6d; }
+.page [data-d2c-node-id="commerce-search-submit"] { background-color: #e50036; }
+.page [data-d2c-node-id="banner-line-auction"],
+.page [data-d2c-node-id="float-browse-label"] { font-size: 12px; }
+.page [data-d2c-node-id="banner-price"] { color: #db002e; }
+.page [data-d2c-node-id="product-tissue-badge"],
+.page [data-d2c-node-id="product-tea-badge"] { color: #896f41; }
+.page [data-d2c-node-id="product-tissue-price-label"],
+.page [data-d2c-node-id="product-tea-price-label"] { color: #dc0521; }
+.page [data-d2c-node-id="product-tissue-price"],
+.page [data-d2c-node-id="product-tea-price"] { color: #db001f; }
+.page [data-d2c-node-id="product-tissue-action"],
+.page [data-d2c-node-id="product-tea-action"] { background-color: #e02430; }
+.page [data-d2c-node-id="product-detergent-service"],
+.page [data-d2c-node-id="product-comb-service"] { color: #6f737c; }
+.page [data-d2c-node-id="float-close"] { color: #6c6c6c; }
+.page [data-d2c-node-id="bottom-nav-feature"],
+.page [data-d2c-node-id="bottom-nav-message"],
+.page [data-d2c-node-id="bottom-nav-me"] { color: #727272; }

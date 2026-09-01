@@ -210,30 +210,41 @@ export async function* runProductionWorkflow(
   const planRepair = adapters.planRepair ?? ((repairInput: RepairPlanningInput) => planTargetedRepair(repairInput));
   const applyRepair = adapters.applyRepair ?? ((plan: PatchPlan, workspace: RunWorkspace, store: FileArtifactStore, options?: ApplyPatchOptions) => applyPatchPlan(plan, workspace, store, options));
   let seq = 0;
+  let inputArtifactId: string | undefined;
+  const captureInput = async (step: string, value: unknown) => {
+    const artifact = await input.artifacts.writeJson("input", step, value);
+    inputArtifactId = artifact.id;
+  };
   const event = (state: TraceEvent["state"], title: string, detail?: string, data?: Record<string, unknown>): TraceEvent =>
-    traceEventSchema.parse({ id: `${input.runId}-${seq += 1}`, runId: input.runId, timestamp: new Date().toISOString(), state, title, detail, data });
+    traceEventSchema.parse({ id: `${input.runId}-${seq += 1}`, runId: input.runId, timestamp: new Date().toISOString(), state, title, detail, data: { inputArtifactId, ...data } });
 
+  await captureInput("validate-input", { profile: input.profile });
   targetProjectProfileSchema.parse(input.profile);
   yield event("INPUT_VALIDATED", "输入校验通过", `目标仓库 ${input.profile.repositoryPath} · 写入边界 ${input.profile.allowedWriteGlobs.length} 条`);
 
+  await captureInput("inspect-project", { root: input.repositoryRoot, profile: input.profile });
   const projectIndex = await adapters.inspect({ root: input.repositoryRoot, profile: input.profile });
   const inspectArtifact = await input.artifacts.writeJson("project", "index", projectIndex);
   yield event("PROJECT_INSPECTED", "目标仓库索引完成", `${projectIndex.components.length} 个组件 · ${projectIndex.tokens.length} 个 Token · commit ${projectIndex.commitHash}`, { artifactId: inspectArtifact.id });
 
+  await captureInput("validate-spec", input.spec);
   const spec = activitySpecSchema.parse(input.spec);
   const specArtifact = await input.artifacts.writeJson("spec", "activity-spec", spec);
   yield event("SPEC_VALIDATED", "ActivitySpec 校验通过", `${spec.nodes.length} 个节点 · ${spec.assets.length} 个素材`, { artifactId: specArtifact.id });
 
+  await captureInput("resolve-mappings", { mappings: input.mappings, projectArtifactId: inspectArtifact.id });
   const accepted = input.mappings.filter((mapping) => mapping.status === "accepted").length;
   const mappingArtifact = await input.artifacts.writeJson("mappings", "component-mappings", input.mappings);
   yield event("MAPPINGS_RESOLVED", "组件映射就绪", `${accepted}/${input.mappings.length} 个映射已确认`, { artifactId: mappingArtifact.id });
 
+  await captureInput("generate-code", { specArtifactId: specArtifact.id, profile: input.profile, mappingsArtifactId: mappingArtifact.id });
   const generated = await generate(spec, input.profile, input.mappings);
   validateCodePlan(generated.plan, input.profile);
   const planArtifact = await input.artifacts.writeJson("plan", "code-plan", generated.plan);
   yield event("CODE_PLANNED", "代码计划已生成", `${generated.plan.files.length} 个文件 · ${generated.plan.reusedComponents.length} 个复用组件`, { artifactId: planArtifact.id, files: generated.plan.files.map((file) => file.path) });
 
   if (adapters.prepare) {
+    await captureInput("prepare-workspace", { repositoryRoot: input.repositoryRoot, workspaceRoot: input.workspace.root, profile: input.profile });
     // 依赖安装是最慢的一步（冷启动 1–2 分钟）：先发事件让观众知道在装什么，而不是盯着 CODE_PLANNED 静默等待
     yield event("PREPARING", "播种隔离工作区并安装依赖", "复制目标仓库 → pnpm install（首次运行约 1–2 分钟，热缓存秒级）");
     const seeded = await adapters.prepare({ workspace: input.workspace, repositoryRoot: input.repositoryRoot, profile: input.profile });
@@ -241,14 +252,16 @@ export async function* runProductionWorkflow(
     yield event("GENERATED", "工作区已播种目标仓库", `复制 ${seeded.length} 个顶层条目并安装依赖`, { artifactId: prepareArtifact.id, entries: seeded });
   }
 
+  await captureInput("write-code", { planArtifactId: planArtifact.id, contents: generated.files, assetSourceRoot: input.assetSourceRoot, assets: generated.plan.assets });
   await input.workspace.apply({ files: generated.files, assetSourceRoot: input.assetSourceRoot, assets: generated.plan.assets });
-  const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files), assets: generated.plan.assets });
+  const manifestArtifact = await input.artifacts.writeJson("generated", "file-manifest", { files: Object.keys(generated.files), contents: generated.files, contentsSource: "generation-snapshot", assets: generated.plan.assets });
   yield event("GENERATED", "真实代码已写入工作区", `${Object.keys(generated.files).length} 个文件落盘`, { artifactId: manifestArtifact.id, files: Object.keys(generated.files) });
 
   // 素材哈希证据：从真实产物（源素材 vs 工作区拷贝）逐资产 pHash 推导，客户端无法注入路径；
   // 测试可用 input.assetEvidence 覆盖（仅测试钩子，正常链路永远走这里）
   const derivedAssets = await deriveAssetEvidence(generated.plan.assets, input.assetSourceRoot, input.workspace);
 
+  await captureInput("typecheck", { command: input.profile.commands.typecheck, cwd: input.workspace.root, generatedArtifactId: manifestArtifact.id });
   const typecheck = await adapters.typecheck();
   const typecheckArtifact = await input.artifacts.writeJson("command", "typecheck", typecheck);
   if (typecheck.exitCode !== 0) {
@@ -258,6 +271,7 @@ export async function* runProductionWorkflow(
   }
   yield event("TYPECHECKED", "类型检查通过", `耗时 ${typecheck.durationMs}ms`, { artifactId: typecheckArtifact.id });
 
+  await captureInput("build", { command: input.profile.commands.build, cwd: input.workspace.root, generatedArtifactId: manifestArtifact.id });
   const build = await adapters.build();
   const buildArtifact = await input.artifacts.writeJson("command", "build", build);
   if (build.exitCode !== 0) {
@@ -267,8 +281,11 @@ export async function* runProductionWorkflow(
   }
   yield event("BUILT", "真实构建通过", `exitCode 0 · 耗时 ${build.durationMs}ms`, { artifactId: buildArtifact.id, exitCode: 0 });
   let latestBuild = build;
+  let latestBuildArtifactId = buildArtifact.id;
+  let latestEvaluationArtifactId: string | undefined;
 
   const runRound = async function* (round: number): AsyncGenerator<TraceEvent, RoundResult> {
+    await captureInput(`render-${round}`, { ...input.render, buildArtifactId: latestBuildArtifactId });
     const render = await adapters.render(input.render);
     const renderArtifact = await input.artifacts.writeJson("render", `viewports-${round}`, {
       url: render.url,
@@ -325,7 +342,7 @@ export async function* runProductionWorkflow(
         provider: "registered-fallback",
       };
     }
-    const evaluation = await evaluate({
+    const evaluationInput: ProductionEvaluationInput = {
       build: { exitCode: latestBuild.exitCode, runtimeErrors: render.runtimeErrors },
       referenceNodes: input.referenceNodes,
       renderedNodes,
@@ -339,14 +356,18 @@ export async function* runProductionWorkflow(
         ? { semanticReviewScore: semanticEvidence.score }
         : input.semanticReviewScore !== undefined ? { semanticReviewScore: input.semanticReviewScore } : {}),
       ...(input.acceptance ? { acceptance: input.acceptance } : {}),
-    });
+    };
+    await captureInput(`evaluate-${round}`, evaluationInput);
+    const evaluation = await evaluate(evaluationInput);
     const evaluationArtifact = await input.artifacts.writeJson("eval", `report-${round}`, evaluation);
+    latestEvaluationArtifactId = evaluationArtifact.id;
     yield event("EVALUATED", `第 ${round} 轮评测完成`, `总分 ${evaluation.metrics.finalScore} · ${evaluation.violations.length} 个违规`, {
       artifactId: evaluationArtifact.id, outcome: evaluation.outcome, finalScore: evaluation.metrics.finalScore,
       metrics: evaluation.metrics, text: textEvidence,
       ...(semanticEvidence ? { semanticReview: semanticEvidence } : {}),
     });
 
+    await captureInput(`attribute-${round}`, { diffClusters: comparison.diffClusters, geometry: canonical?.nodes ?? {}, sourceMap: generated.sourceMap, evaluationArtifactId: evaluationArtifact.id });
     const attributed = attribute(comparison.diffClusters, (canonical?.nodes ?? {}) as Parameters<typeof attribute>[1], generated.sourceMap);
     const violations = mergeViolations([evaluation.violations, attributed]);
     const attributionArtifact = await input.artifacts.writeJson("attribution", `violations-${round}`, violations);
@@ -370,9 +391,10 @@ export async function* runProductionWorkflow(
 
     if (lastResult.evaluation.outcome === "passed") break;
     if (!shouldContinueRepair(scores, adapters.maxRounds ?? 3)) break;
-    const repairable = lastResult.violations.filter((violation) => violation.type === "layout");
+    const repairable = lastResult.violations.filter((violation) => violation.type === "layout" && generated.sourceMap.locators.some((locator) => violation.nodeIds.includes(locator.nodeId) && locator.styleSelector));
     if (!repairable.length) break;
 
+    await captureInput(`plan-repair-${round}`, { violations: repairable, sourceMap: generated.sourceMap, round, workspaceRoot: input.workspace.root });
     const patchPlan = await planRepair({
       violations: repairable,
       sourceMap: generated.sourceMap,
@@ -383,6 +405,7 @@ export async function* runProductionWorkflow(
     const patchArtifact = await input.artifacts.writeJson("repair", `patch-plan-${round}`, patchPlan);
     yield event("REPAIR_PLANNED", `第 ${round} 轮定向修复已规划`, `${patchPlan.operations.length} 个操作 · 仅触碰 ${patchPlan.allowedFiles.length} 个文件`, { artifactId: patchArtifact.id, allowedFiles: patchPlan.allowedFiles });
 
+    await captureInput(`apply-repair-${round}`, { patchPlan, workspaceRoot: input.workspace.root, specPath: input.specWorkspacePath, assetSourceRoot: input.assetSourceRoot });
     const repairApplyResult = await applyRepair(patchPlan, input.workspace, input.artifacts, {
       ...(input.specWorkspacePath ? { specPath: input.specWorkspacePath } : {}),
       ...(input.assetSourceRoot ? { assetSourceRoot: input.assetSourceRoot } : {}),
@@ -391,6 +414,7 @@ export async function* runProductionWorkflow(
     const appliedArtifact = await input.artifacts.writeJson("repair", `applied-${round}`, { files: patchPlan.allowedFiles });
     yield event("REPAIR_APPLIED", `第 ${round} 轮修复已应用`, "回滚快照与补丁均已存档", { artifactId: appliedArtifact.id, files: patchPlan.allowedFiles });
 
+    await captureInput(`typecheck-${round}`, { command: input.profile.commands.typecheck, cwd: input.workspace.root, appliedArtifactId: appliedArtifact.id });
     const typecheckAgain = await adapters.typecheck();
     const typecheckArtifactAgain = await input.artifacts.writeJson("command", `typecheck-${round}`, typecheckAgain);
     if (typecheckAgain.exitCode !== 0) {
@@ -405,6 +429,7 @@ export async function* runProductionWorkflow(
     }
     yield event("TYPECHECKED", "修复后类型检查通过", `耗时 ${typecheckAgain.durationMs}ms`, { artifactId: typecheckArtifactAgain.id });
 
+    await captureInput(`build-${round}`, { command: input.profile.commands.build, cwd: input.workspace.root, appliedArtifactId: appliedArtifact.id });
     const buildAgain = await adapters.build();
     const buildArtifactAgain = await input.artifacts.writeJson("command", `build-${round}`, buildAgain);
     if (buildAgain.exitCode !== 0) {
@@ -419,10 +444,12 @@ export async function* runProductionWorkflow(
     }
     yield event("BUILT", "修复后构建通过", `exitCode 0 · 耗时 ${buildAgain.durationMs}ms`, { artifactId: buildArtifactAgain.id, exitCode: 0 });
     latestBuild = buildAgain;
+    latestBuildArtifactId = buildArtifactAgain.id;
     round += 1;
   }
 
   const evaluation = lastResult?.evaluation;
+  await captureInput("finish", { evaluationArtifactId: latestEvaluationArtifactId, scores, violations: lastResult?.violations ?? [] });
   if (evaluation?.outcome === "passed") {
     yield event("COMPLETED", "生产闭环完成", `最终总分 ${evaluation.metrics.finalScore} · ${scores.length} 轮评测`, { finalScore: evaluation.metrics.finalScore, rounds: scores.length, scores });
   } else if (evaluation?.outcome === "needs_review") {

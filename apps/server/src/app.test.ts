@@ -214,7 +214,7 @@ describe("canvas/interpret route", () => {
   });
 
   it("缺少 X-LLM-Key 返回 400", async () => {
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/canvas/interpret",
@@ -246,7 +246,7 @@ describe("canvas/interpret route", () => {
         ),
       ),
     );
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/canvas/interpret",
@@ -268,7 +268,7 @@ describe("canvas/interpret route", () => {
       "fetch",
       vi.fn(async () => new Response("upstream down", { status: 503 })),
     );
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/canvas/interpret",
@@ -311,7 +311,7 @@ describe("POST /api/figma/patch", () => {
   ];
 
   it("缺少 X-Figma-Token / fileKey → 400", async () => {
-    const app = buildApp();
+    const app = buildTestApp();
     const r1 = await app.inject({
       method: "POST",
       url: "/api/figma/patch",
@@ -330,7 +330,7 @@ describe("POST /api/figma/patch", () => {
   });
 
   it("uiSpec / editOps 不符合 schema → 400", async () => {
-    const app = buildApp();
+    const app = buildTestApp();
     const r1 = await app.inject({
       method: "POST",
       url: "/api/figma/patch",
@@ -351,7 +351,7 @@ describe("POST /api/figma/patch", () => {
   it("dryRun：只返回 patch 预览，不发网络请求", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/figma/patch",
@@ -373,7 +373,7 @@ describe("POST /api/figma/patch", () => {
       return new Response("{}", { status: 200 });
     });
     vi.stubGlobal("fetch", fetchSpy);
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/figma/patch",
@@ -398,7 +398,7 @@ describe("POST /api/figma/patch", () => {
           : new Response("Forbidden", { status: 403 }),
       ),
     );
-    const app = buildApp();
+    const app = buildTestApp();
     const response = await app.inject({
       method: "POST",
       url: "/api/figma/patch",

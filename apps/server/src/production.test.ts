@@ -204,6 +204,94 @@ describe("production routes", () => {
     expect(badViewport.statusCode).toBe(400);
   });
 
+  it("retains generated sources and the attempted render input when browser launch fails", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "d2c-prod-render-fail-"));
+    roots.push(dataRoot);
+    const app = buildApp({ production: { dataRoot, adapters: { ...adapters, render: async () => { throw new Error("browserType.launch: browser closed"); } } } });
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    const failure = detail.events.at(-1);
+    expect(failure.state).toBe("FAILED");
+    expect(failure.detail).toContain("browserType.launch");
+    expect(failure.data.lastCompletedState).toBe("BUILT");
+    const input = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/${failure.data.inputArtifactId}` });
+    expect(input.json().content.viewports.length).toBe(2);
+    const generated = detail.artifacts.find((item: { kind: string }) => item.kind === "generated");
+    const output = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/${generated.id}` });
+    expect(Object.keys(output.json().content.contents).length).toBeGreaterThan(0);
+    const finalOutput = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/${failure.data.artifactId}` });
+    expect(finalOutput.statusCode).toBe(200);
+    expect(finalOutput.json().content.contentsSource).toBe("run-end-snapshot");
+    expect(finalOutput.json().content.contents).toEqual(output.json().content.contents);
+  });
+
+  it("downloads the run-end workspace snapshot rather than the initial generation, even after restart", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const first = await waitTerminal(app, runId);
+    const generated = first.artifacts.find((item: { kind: string }) => item.kind === "generated");
+    const original = (await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/${generated.id}` })).json().content;
+    const file = Object.keys(original.contents).find((path) => path.endsWith(".tsx"))!;
+    const changedSource = `${original.contents[file]}\n// 已应用的代码修改\n`;
+    await writeFile(join(dataRoot, "workspaces", runId, file), changedSource, "utf8");
+    // repair 会复用生成计划且不覆盖当前代码；终态下载必须包含本轮真实文件。
+    expect((await app.inject({ method: "POST", url: `/api/production/runs/${runId}/repair` })).statusCode).toBe(202);
+    const detail = await waitTerminal(app, runId);
+    const terminal = detail.events.at(-1);
+    expect(terminal.data.artifactId).toBeTruthy();
+    const url = `/api/production/runs/${runId}/artifacts/${terminal.data.artifactId}`;
+    const finalOutput = (await app.inject({ method: "GET", url })).json().content;
+    expect(finalOutput.contentsSource).toBe("run-end-snapshot");
+    expect(finalOutput.contents[file]).toBe(changedSource);
+    expect(finalOutput.unavailableFiles).toEqual([]);
+    await app.close();
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    try {
+      expect((await restarted.inject({ method: "GET", url })).json().content).toEqual(finalOutput);
+      expect(existsSync(join(dataRoot, "workspaces", runId))).toBe(false);
+    } finally { await restarted.close(); }
+  });
+
+  it("preserves generated source snapshots after a restart removes the workspace", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    const artifact = detail.artifacts.find((item: { kind: string }) => item.kind === "generated");
+    const url = `/api/production/runs/${runId}/artifacts/${artifact.id}`;
+    const before = (await app.inject({ method: "GET", url })).json().content;
+    expect(Object.keys(before.contents).length).toBeGreaterThan(0);
+    expect(before.contentsSource).toBe("generation-snapshot");
+    await app.close();
+    const restarted = buildApp({ production: { dataRoot, adapters } });
+    try {
+      const response = await restarted.inject({ method: "GET", url });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().content).toEqual(before);
+      expect(existsSync(join(dataRoot, "workspaces", runId))).toBe(false);
+    } finally { await restarted.close(); }
+  });
+
+  it("labels legacy workspace content and refuses paths outside the generated file boundary", async () => {
+    const { app, dataRoot } = await createApp();
+    const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });
+    const runId = created.json().runId;
+    const detail = await waitTerminal(app, runId);
+    const artifact = detail.artifacts.find((item: { kind: string }) => item.kind === "generated");
+    const path = join(dataRoot, "artifacts", artifact.path);
+    const manifest = JSON.parse(await readFile(path, "utf8"));
+    delete manifest.contents;
+    manifest.files.push("../../secret.txt", ".env");
+    await writeFile(path, JSON.stringify(manifest));
+    const response = await app.inject({ method: "GET", url: `/api/production/runs/${runId}/artifacts/${artifact.id}` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().content.contentsSource).toBe("workspace-current");
+    expect(Object.keys(response.json().content.contents).length).toBeGreaterThan(0);
+    expect(response.json().content.unavailableFiles).toEqual(["../../secret.txt", ".env"]);
+  });
+
   it("exposes the latest evaluation metrics on the run detail so the workbench can show evidence breakdown", async () => {
     const { app } = await createApp();
     const created = await app.inject({ method: "POST", url: "/api/production/runs", payload });

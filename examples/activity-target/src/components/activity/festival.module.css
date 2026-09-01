@@ -50,3 +50,22 @@
 .tabs button[aria-selected="true"] { z-index: 1; color: #fff; background: radial-gradient(circle at 16% 30%,#ffb3fc 0 1px,transparent 3px),radial-gradient(circle at 76% 17%,#b4ffff 0 1px,transparent 3px),linear-gradient(160deg,#739cff 0 5%,transparent 6% 67%,#ef8fff69 68% 86%,#62c8ffb5 98%),linear-gradient(20deg,#7057ff,#342dff 35%,#9939ff 66%,#1d37b8); text-shadow: 0 1px 0 #9c70ff,0 0 6px #d3b8ff; box-shadow: inset 0 2px 3px #dbbcff; }
 .tabs button[aria-selected="true"]::after { content: ""; position: absolute; width: 72%; height: 1px; background: linear-gradient(90deg,transparent,#70ffff,#eeceff,transparent); left: 14%; bottom: 21px; }
 .homeIndicator { position: absolute; z-index: 10; bottom: 2px; left: 117px; width: 156px; height: 3px; border-radius: 5px; background: #8e718b; }
+
+/* 修复实跑检出的可读性问题，保留原有布局与素材。 */
+.page [data-d2c-node-id="hero-rule-label"],
+.page [data-d2c-node-id="hero-backpack-label"],
+.page [data-d2c-node-id="collab-countdown"],
+.page [data-d2c-node-id="collab-calendar"],
+.page [data-d2c-node-id="task-install-reward"],
+.page [data-d2c-node-id="task-follow-title"],
+.page [data-d2c-node-id="task-follow-reward"],
+.page [data-d2c-node-id="benefit-title"],
+.page [data-d2c-node-id="benefit-exchange"],
+.page [data-d2c-node-id="benefit-tile-dance-label"],
+.page [data-d2c-node-id="benefit-tile-coin-label"],
+.page [data-d2c-node-id="benefit-tile-lingqi-label"],
+.page [data-d2c-node-id="benefit-tile-hat-label"],
+.page [data-d2c-node-id="reward-cash-sub"],
+.page [data-d2c-node-id="reward-draw-sub"],
+.page [data-d2c-node-id="daily-tasks-note"],
+.page [data-d2c-node-id="task-publish-reward"] { font-size: 12px; }

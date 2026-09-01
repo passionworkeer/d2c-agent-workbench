@@ -258,7 +258,7 @@ export const productionMetricsSchema = z.object({
     /** 设计质量分（0–100）：来自 evaluator 的确定性规则（最小字号 / 对比度 / 点击区域 / 间距节奏）。
      * 仅检查 role=text / role=icon / role=component 节点，跳过装饰像素。Playwright 渲染产物
      * 始终存在该证据，故不带 available 字段；但 violations 缺数据时返回 null 表示缺证据。 */
-    designQuality: z.number().min(0).max(100).nullable(),
+    designQuality: z.number().min(0).max(100).nullable().default(null),
   }).strict(),
   engineering: z.object({ buildSuccess: z.number().min(0).max(100), componentReuse: z.number().min(0).max(100), tokenUsage: z.number().min(0).max(100), structuralAbsoluteRatio: z.number().min(0).max(100), hardcodeRatio: z.number().min(0).max(100), responsiveBehavior: z.number().min(0).max(100), semanticHtml: z.number().min(0).max(100), accessibility: z.number().min(0).max(100), codeComplexity: z.number().min(0).max(100) }).strict(),
   visualScore: z.number().min(0).max(100),

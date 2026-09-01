@@ -6,16 +6,21 @@ import {
   createProductionRun,
   editProductionRun,
   getProductionArtifact,
+  getProductionDemo,
   getProductionRun,
   listProductionRuns,
   loadEmbeddedAssets,  repairProductionRun,
   requestSemanticReview,
   subscribeToProductionRun,
   type ProductionRunSummary,
+  type ProductionDemo,
   type SemanticReviewOutcome,
 } from "../lib/production-api";
 import { loadProviderSettings } from "../lib/provider";
 import { PrototypeEditor } from "./PrototypeEditor";
+import { ProductionComparison } from "./ProductionComparison";
+import { ProductionTraceStep } from "./ProductionTrace";
+import { ProductionOutputs } from "./ProductionOutputs";
 
 // 生产工作台：真实构建/渲染/评测/修复闭环的可视化。
 // 每条状态都来自服务端事件与 Artifact；违规点击后展示 Region → Node → Source 定位与补丁范围。
@@ -45,7 +50,9 @@ function diffTextOps(spec: ActivitySpec, baseline: ActivitySpec): SpecEditOp[] {
   return ops;
 }
 
-export function ProductionWorkbench() {
+export type ProductionStatus = { running: boolean; runId: string | null; events: TraceEvent[]; error: string | null; replay?: boolean; canReplay?: boolean };
+
+export function ProductionWorkbench({ onStatusChange }: { onStatusChange?: (status: ProductionStatus) => void } = {}) {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [violations, setViolations] = useState<ProductionViolation[]>([]);
   const [selectedViolation, setSelectedViolation] = useState<ProductionViolation | null>(null);
@@ -63,6 +70,8 @@ export function ProductionWorkbench() {
   const [latestSemanticReview, setLatestSemanticReview] = useState<SemanticReviewEvidence | null>(null);
   // 原型编辑：本地即时应用（受控反馈），显式保存到 Run，之后可按编辑重跑闭环
   const [editableSpec, setEditableSpec] = useState<ActivitySpec | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [codeInspection, setCodeInspection] = useState<{ eventId: string; timestamp: string; request: number } | null>(null);
   const [editSaved, setEditSaved] = useState(false);
   const [savingEdits, setSavingEdits] = useState(false);
   // 闭环外 VLM 语义复核（key 仅存 localStorage，经 X-LLM-Key 头转发，不进报告）
@@ -72,6 +81,13 @@ export function ProductionWorkbench() {
   // 历史 Run（含服务端重启后重载的记录）：只读回看任意一次闭环的证据链
   const [runHistory, setRunHistory] = useState<ProductionRunSummary[]>([]);
   const [historyView, setHistoryView] = useState(false);
+  const [demo, setDemo] = useState<ProductionDemo | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const replayArtifactLoader = useCallback(async (id: string, artifactId: string) => {
+    if (!demo || id !== demo.run.id || !demo.artifacts[artifactId]) throw new Error("演示记录缺少该步骤的产物，请重新保存完整证据包。");
+    return demo.artifacts[artifactId];
+  }, [demo]);
+  const artifactLoader = demo ? replayArtifactLoader : getProductionArtifact;
   // 当前展示 run 的样例 id：报告如实标注（回看历史 run 时不是当前选中的样例）
   const [reportSampleId, setReportSampleId] = useState<string | null>(null);
   // Figma 导入包（v2 自包含）：素材需在浏览器里 fetch 成 base64；加载失败时禁用下载并显式提示
@@ -79,14 +95,18 @@ export function ProductionWorkbench() {
   const [figmaExportError, setFigmaExportError] = useState<string | null>(null);
   const sampleLoaded = selectedSampleId !== null;
   const selectedSample = GOLDEN_SAMPLES.find((sample) => sample.id === selectedSampleId);
+  useEffect(() => {
+    onStatusChange?.({ running, runId, events, error, replay: Boolean(demo), canReplay: sampleLoaded && !running && !demoLoading });
+  }, [onStatusChange, running, runId, events, error, demo, sampleLoaded, demoLoading]);
   // 保存当前 SSE 订阅的取消函数：新 run 开始前与组件卸载时关闭，避免 EventSource 泄漏
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => unsubscribeRef.current?.(), []);
+  const renderRequestRef = useRef(0);
+  useEffect(() => () => { unsubscribeRef.current?.(); renderRequestRef.current += 1; }, []);
 
   // 挂载即拉历史 Run（服务端不可达时静默隐藏面板，不阻塞新 run）
   const refreshHistory = useCallback(() => {
     void listProductionRuns()
-      .then(({ runs }) => setRunHistory(runs))
+      .then(({ runs }) => setRunHistory(runs.filter((run) => GOLDEN_SAMPLES.some((sample) => sample.id === run.sampleId))))
       .catch(() => undefined);
   }, []);
   useEffect(() => { refreshHistory(); }, [refreshHistory]);
@@ -101,6 +121,7 @@ export function ProductionWorkbench() {
     savedSpecRef.current = null;
     setEditSaved(false);
     setFigmaExportError(null);
+    setEditorOpen(false);
   }, [selectedSampleId]);
 
   const pushEvent = useCallback((event: TraceEvent) => {
@@ -113,6 +134,7 @@ export function ProductionWorkbench() {
     if (["COMPLETED", "NEEDS_REVIEW", "FAILED"].includes(event.state) && typeof event.data?.finalScore === "number") {
       setFinalScore(event.data.finalScore as number);
     }
+    if (event.state === "FAILED") setError(event.detail?.split("\n")[0] || event.title);
     // 评测完成时同步覆盖证据指标；服务端 schema 已校验，这里直接落
     if (event.state === "EVALUATED" && event.data && typeof event.data === "object" && "metrics" in event.data) {
       setLatestMetrics((event.data as { metrics?: ProductionMetrics }).metrics ?? null);
@@ -130,8 +152,10 @@ export function ProductionWorkbench() {
     // 渲染完成后拉取视口清单（含逐节点几何 + 横向溢出检测），用于违规选中时在截图上叠加定位框
     if (event.state === "RENDERED" && typeof event.data?.artifactId === "string") {
       const artifactId = event.data.artifactId;
+      const request = ++renderRequestRef.current;
       void getProductionArtifact(event.runId, artifactId)
         .then(({ content }) => {
+          if (request !== renderRequestRef.current) return;
           const rendered = (content as { viewports?: Array<{ name: string; width: number; height: number; horizontalOverflow?: boolean; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
           if (rendered.length) setViewports(rendered.map((v) => ({ name: v.name, width: v.width, height: v.height, horizontalOverflow: Boolean(v.horizontalOverflow), nodes: v.nodes ?? {} })));
         })
@@ -163,22 +187,26 @@ export function ProductionWorkbench() {
 
   // 只读回看历史 Run：事件流/评测指标/文本证据/违规从落盘记录整批恢复，
   // 截图几何走 artifacts；无工作区引用，编辑与修复按钮保持不可用（服务端 repair 会如实 409）
-  async function viewHistoryRun(id: string) {
-    if (running || id === runId) return;
+  async function viewHistoryRun(id: string, replay?: ProductionDemo) {
+    if (running || (!replay && (demoLoading || id === runId))) return;
     unsubscribeRef.current?.();
+    const request = ++renderRequestRef.current;
     try {
-      const detail = await getProductionRun(id);
+      const detail = replay?.run ?? await getProductionRun(id);
+      if (request !== renderRequestRef.current) return;
+      setDemo(replay ?? null);
       setEvents(detail.events);
       setViolations(detail.violations);
       setSelectedViolation(null);
       setLatestMetrics(detail.latestEvaluation ?? null);
       setLatestTextEvidence(detail.latestTextEvidence ?? null);
+      setLatestSemanticReview(detail.latestSemanticReview ?? null);
       setReportSampleId(detail.sampleId ?? null);
       const terminal = [...detail.events].reverse().find((event) => TERMINAL_STATES.has(event.state));
       setFinalScore(typeof terminal?.data?.finalScore === "number" ? terminal.data.finalScore : null);
       setSemanticReview(null);
       setSemanticReviewError(null);
-      setError(null);
+      setError(terminal?.state === "FAILED" ? terminal.detail?.split("\n")[0] || terminal.title : null);
       setEditableSpec(null);
       setEditSaved(false);
       savedSpecRef.current = null;
@@ -187,18 +215,39 @@ export function ProductionWorkbench() {
       setViewports([]);
       const rendered = [...detail.events].reverse().find((event) => event.state === "RENDERED" && typeof event.data?.artifactId === "string");
       if (rendered && typeof rendered.data?.artifactId === "string") {
-        const { content } = await getProductionArtifact(id, rendered.data.artifactId);
+        const { content } = replay ? replay.artifacts[rendered.data.artifactId]! : await getProductionArtifact(id, rendered.data.artifactId);
+        if (request !== renderRequestRef.current) return;
         const found = (content as { viewports?: Array<{ name: string; width: number; height: number; horizontalOverflow?: boolean; nodes?: Record<string, RenderNodeEvidence> }> }).viewports ?? [];
         if (found.length) setViewports(found.map((v) => ({ name: v.name, width: v.width, height: v.height, horizontalOverflow: Boolean(v.horizontalOverflow), nodes: v.nodes ?? {} })));
       }
     } catch (cause) {
+      if (request !== renderRequestRef.current) return;
       setError(cause instanceof Error ? cause.message : "历史 Run 加载失败");
+    }
+  }
+
+  async function replaySelected() {
+    if (!selectedSample || running || demoLoading) return;
+    setDemoLoading(true);
+    setError(null);
+    const request = ++renderRequestRef.current;
+    try {
+      const saved = await getProductionDemo(selectedSample.id);
+      if (request !== renderRequestRef.current) return;
+      await viewHistoryRun(saved.run.id, saved);
+    } catch (cause) {
+      if (request === renderRequestRef.current) setError(cause instanceof Error ? cause.message : "本地演示记录加载失败");
+    } finally {
+      setDemoLoading(false);
     }
   }
 
   // 切换样例：清空上一轮展示状态（事件/违规/截图/分数/证据指标），编辑面板由 useEffect 重置
   function switchSample(sampleId: string) {
-    if (sampleId === selectedSampleId || running) return;
+    if ((sampleId === selectedSampleId && !historyView) || running || demoLoading) return;
+    unsubscribeRef.current?.();
+    renderRequestRef.current += 1;
+    if (sampleId === selectedSampleId) setEditableSpec(selectedSample?.payload.spec ?? null);
     setSelectedSampleId(sampleId);
     setEvents([]);
     setViolations([]);
@@ -210,22 +259,37 @@ export function ProductionWorkbench() {
     setLatestMetrics(null);
     setLatestTextEvidence(null);
     setHistoryView(false);
+    setDemo(null);
     setReportSampleId(null);
+    setLatestSemanticReview(null);
+    setSemanticReview(null);
+    setSemanticReviewError(null);
+    setEditorOpen(false);
     refreshHistory();
+    savedSpecRef.current = null;
+    setEditSaved(false);
+    setFigmaExportError(null);
   }
 
   async function runLoop() {
+    if (running || demoLoading || !sampleLoaded) return;
+    unsubscribeRef.current?.();
+    renderRequestRef.current += 1;
     setRunning(true);
     setError(null);
     setEvents([]);
     setViolations([]);
     setSelectedViolation(null);
     setFinalScore(null);
+    setRunId(null);
+    setViewports([]);
     setLatestMetrics(null);
     setLatestTextEvidence(null);
     setSemanticReview(null);
     setSemanticReviewError(null);
     setHistoryView(false);
+    setDemo(null);
+    setLatestSemanticReview(null);
     try {
       const sample = selectedSample ?? GOLDEN_SAMPLES[0]!;
       const submittedSpec = editableSpec ?? sample.payload.spec;
@@ -311,6 +375,7 @@ export function ProductionWorkbench() {
   // 按编辑重跑：服务端会因 specEdited 强制重新生成，保证新 spec 与代码一致
   async function rerunAfterEdit() {
     if (!runId || running) return;
+    renderRequestRef.current += 1;
     setRunning(true);
     setError(null);
     setEvents([]);
@@ -351,6 +416,12 @@ export function ProductionWorkbench() {
   const repairPlan = [...events].reverse().find((event) => event.state === "REPAIR_PLANNED");
   const repairFiles = Array.isArray(repairPlan?.data?.allowedFiles) ? repairPlan.data.allowedFiles as string[] : [];
   const completed = events.some((event) => event.state === "COMPLETED");
+  const comparisonSample = historyView ? GOLDEN_SAMPLES.find((sample) => sample.id === reportSampleId) : selectedSample;
+  const renderRevision = [...events].reverse().find((event) => event.state === "RENDERED")?.data?.artifactId;
+  const generatedEvent = [...events].reverse().find((event) => event.state === "GENERATED" && Array.isArray(event.data?.files) && event.data.files.length > 0);
+  const terminalEvent = [...events].reverse().find((event) => TERMINAL_STATES.has(event.state));
+  const report = { runId, sampleId: reportSampleId, recordedAt: demo?.recordedAt, finalScore, metrics: latestMetrics, textEvidence: latestTextEvidence, semanticReview: latestSemanticReview, violations, viewports, events };
+  function downloadReport() { downloadJson(report, `production-run-${runId}-report.json`); }
 
   // 违规节点 → 桌面视口几何 → 截图叠加框；displayWidth=280 与下方 figure 对齐
   const overlayRects = (() => {
@@ -370,6 +441,7 @@ export function ProductionWorkbench() {
 
   return (
     <div className="production-workbench">
+      <form id="production-demo-form" onSubmit={(event) => { event.preventDefault(); void replaySelected(); }} />
       <header className="production-header">
         <div>
           <h2>活动页生产闭环</h2>
@@ -380,51 +452,58 @@ export function ProductionWorkbench() {
             <span className="production-score" data-testid="production-final-score">{finalScore}</span>
           )}
           <button className="button secondary" disabled={sampleLoaded || running} onClick={() => setSelectedSampleId(GOLDEN_SAMPLES[0]!.id)}>载入黄金样例</button>
-          <button className="button primary" disabled={!sampleLoaded || running} onClick={() => void runLoop()}>
+          <button className="button primary" disabled={!sampleLoaded || running || demoLoading} onClick={() => void runLoop()}>
             {running ? "生产闭环执行中…" : "运行生产闭环"}
           </button>
           {runId && !running && (
             <button
               className="button secondary"
               data-testid="download-run-report"
-              onClick={() => {
-                // 完整证据链报告：事件流 + 分数 + 证据 + 违规 + 视口几何，全部来自真实执行；
-                // 放在 header（不依赖原型编辑面板）——只读回看历史 run 时同样可下载带走
-                downloadJson({
-                  runId,
-                  sampleId: reportSampleId,
-                  finalScore,
-                  metrics: latestMetrics,
-                  textEvidence: latestTextEvidence,
-                  violations,
-                  viewports,
-                  events: events.map(({ state, title, data, timestamp }) => ({ state, title, data, timestamp })),
-                }, `production-run-${runId}-report.json`);
-              }}
+              onClick={downloadReport}
             >下载 Run 报告</button>
           )}
         </div>
       </header>
 
-      {sampleLoaded && (
         <div className="production-sample" data-testid="production-sample">
           <span>
-            黄金样例已载入「{selectedSample?.label}」：{selectedSample?.payload.spec.page.route} · {selectedSample?.payload.spec.nodes.length} 个节点 ·
-            {selectedSample?.fidelity}
+            {selectedSample ? <>黄金样例已载入「{selectedSample.label}」：{selectedSample.payload.spec.page.route} · {selectedSample.payload.spec.nodes.length} 个节点 · {selectedSample.fidelity}</> : "请选择活动页，然后点击「运行 Mock 演示」展示本地已跑通的完整流程。"}
           </span>
           <span className="sample-switcher">
             换个页面：
             {GOLDEN_SAMPLES.map((sample) => (
-              <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running} onClick={() => switchSample(sample.id)}>
+              <button key={sample.id} className={`sample-chip ${sample.id === selectedSampleId ? "active" : ""}`} disabled={running || demoLoading} onClick={() => switchSample(sample.id)}>
                 {sample.thumbnailUrl && <img className="sample-thumb" src={sample.thumbnailUrl} alt="" data-testid={`sample-thumb-${sample.id}`} />}
                 {sample.label}
               </button>
             ))}
           </span>
         </div>
-      )}
 
       {error && <div className="production-error" role="alert">{error}</div>}
+      {demoLoading && <p role="status">正在加载「{selectedSample?.label}」的本地实跑记录…</p>}
+
+      {runId && (
+        <ProductionOutputs key={runId} runId={runId} running={running} events={events} terminalEvent={terminalEvent}
+          generatedEvent={generatedEvent} viewports={viewports} report={report} onDownloadReport={downloadReport}
+          loadArtifact={artifactLoader} screenshots={demo?.screenshots} recordedAt={demo?.recordedAt} />
+      )}
+
+      <ProductionComparison
+        key={historyView ? `history-${runId}` : selectedSampleId ?? "empty"}
+        sample={comparisonSample}
+        runId={runId}
+        renderRevision={typeof renderRevision === "string" ? renderRevision : undefined}
+        running={running}
+        failed={events.some((event) => event.state === "FAILED")}
+        generated={Boolean(generatedEvent)}
+        onInspectGenerated={() => {
+          if (generatedEvent) setCodeInspection((current) => ({ eventId: generatedEvent.id, timestamp: generatedEvent.timestamp, request: (current?.request ?? 0) + 1 }));
+        }}
+        viewports={viewports}
+        screenshots={demo?.screenshots}
+        preview={demo?.preview}
+      />
 
       {runHistory.length > 0 && !running && (
         <div className="run-history" data-testid="run-history">
@@ -433,7 +512,7 @@ export function ProductionWorkbench() {
             <button
               key={item.id}
               className={`sample-chip ${item.id === runId ? "active" : ""}`}
-              disabled={running}
+              disabled={running || demoLoading}
               title={`${item.id} · ${new Date(item.createdAt).toLocaleString()}`}
               onClick={() => void viewHistoryRun(item.id)}
             >
@@ -610,8 +689,9 @@ export function ProductionWorkbench() {
       {editableSpec && (
         <section className="prototype-panel" aria-label="原型编辑">
           <div className="prototype-panel-head">
-            <h3>Puck 原型编辑 <small>编辑经类型化 SpecEditOp 回写 ActivitySpec，不直接改代码</small></h3>
+            <h3>文案编辑 <small>修改文本后重新运行，查看代码渲染结果</small></h3>
             <div className="prototype-panel-actions">
+              <button className="button secondary" aria-expanded={editorOpen} aria-controls="production-text-editor" onClick={() => setEditorOpen((open) => !open)}>{editorOpen ? "收起文案编辑" : "展开文案编辑"}</button>
               {pendingCount > 0 && <span className="edit-pending">{pendingCount} 处未保存编辑</span>}
               {runId && pendingCount > 0 && (
                 <button className="button secondary" disabled={savingEdits || running} onClick={() => void saveEdits()}>
@@ -631,29 +711,23 @@ export function ProductionWorkbench() {
               )}
             </div>
           </div>
-          <p className="prototype-editor-honest-note" data-testid="prototype-editor-honest-note">
-            真实样例（commerce-feed / game-festival / pet-red-packet）注册为单个可信组件，
-            Puck 在此仅作<strong>文本节点文案编辑</strong>入口——区块位置、视觉样式、组件结构以目标仓库代码为准，
-            Puck 画布只渲染节点 id 与文本，不能作为最终视觉布局的所见即所得编辑。
-          </p>
-          <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />
+          {editorOpen && <div id="production-text-editor">
+            <p className="prototype-editor-honest-note" data-testid="prototype-editor-honest-note">
+              真实样例（commerce-feed / game-festival / pet-red-packet）注册为单个可信组件，
+              Puck 在此仅作<strong>文本节点文案编辑</strong>入口——区块位置、视觉样式、组件结构以目标仓库代码为准，
+              Puck 画布只渲染节点 id 与文本，不能作为最终视觉布局的所见即所得编辑。
+            </p>
+            <PrototypeEditor key={selectedSampleId ?? editableSpec.page.id} spec={editableSpec} onEdit={handleEdit} />
+          </div>}
         </section>
       )}
 
       <div className="production-columns">
         <section className="production-events" aria-label="生产事件流">
-          <h3>真实执行轨迹</h3>
-          {events.length === 0 && <p className="production-empty">点击「运行生产闭环」开始；每个状态都对应服务端 Artifact。</p>}
+          <h3 id="production-trace">真实执行轨迹 <small>点击步骤查看输入、输出与已保存产物</small></h3>
+          {events.length === 0 && <p className="production-empty">选择活动页后，点击「运行 Mock 演示」展示已保存的实跑流程，或「运行生产闭环」重新执行。</p>}
           <ol>
-            {events.map((event) => (
-              <li key={event.id} className={`production-event state-${event.state.toLowerCase()}`}>
-                <span className="production-event-state">{event.state}</span>
-                <span className="production-event-title">{event.title}</span>
-                {typeof event.data?.artifactId === "string" && (
-                  <code className="production-artifact-id">{event.data.artifactId.slice(0, 18)}</code>
-                )}
-              </li>
-            ))}
+            {events.map((event, index) => <ProductionTraceStep key={`${event.runId}-${event.id}-${event.timestamp}-${index}`} event={event} index={index} loadArtifact={artifactLoader} openRequest={codeInspection?.eventId === event.id && codeInspection.timestamp === event.timestamp ? codeInspection.request : 0} />)}
           </ol>
         </section>
 
@@ -692,7 +766,7 @@ export function ProductionWorkbench() {
                   <div className="violation-overlay-title">定位叠加 · 桌面视口</div>
                   <div className="violation-overlay-stage">
                     <img
-                      src={`/api/production/runs/${runId}/renders/${(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])?.name ?? "desktop"}`}
+                      src={demo?.screenshots[(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])?.name ?? "desktop"] ?? `/api/production/runs/${runId}/renders/${(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])?.name ?? "desktop"}`}
                       alt="违规节点叠加截图"
                       width={(viewports.find((viewport) => viewport.width >= 1024) ?? viewports[0])!.width >= 1024 ? 280 : 130}
                     />
@@ -717,27 +791,6 @@ export function ProductionWorkbench() {
               <ul>
                 {repairFiles.map((file) => <li key={file}><code>{file}</code></li>)}
               </ul>
-            </div>
-          )}
-
-          {runId && viewports.length > 0 && (
-            <div className="render-shots" data-testid="render-shots">
-              <h4>渲染结果 · Playwright 实拍</h4>
-              <div className="render-shot-row">
-                {viewports.map((viewport) => (
-                  <figure key={viewport.name} className={viewport.horizontalOverflow ? "overflow" : undefined} data-testid={`render-shot-${viewport.name}`}>
-                    <img
-                      src={`/api/production/runs/${runId}/renders/${viewport.name}`}
-                      alt={`${viewport.name} ${viewport.width}×${viewport.height} 截图`}
-                      width={viewport.width >= 1024 ? 280 : 130}
-                    />
-                    <figcaption>
-                      {viewport.name} · {viewport.width}×{viewport.height}
-                      {viewport.horizontalOverflow && <span className="render-shot-overflow" data-testid={`render-shot-overflow-${viewport.name}`}> ⚠ 横向溢出 → P1</span>}
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
             </div>
           )}
         </section>

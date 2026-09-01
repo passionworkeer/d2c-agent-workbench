@@ -60,7 +60,7 @@ describe("GOLDEN_SAMPLES", () => {
       for (const [nodeId, rect] of Object.entries(sample.payload.referenceNodes ?? {})) {
         const node = sample.payload.spec.nodes.find((item) => item.id === nodeId);
         expect(node, `${sample.id}: referenceNodes 指向的节点必须存在`).toBeTruthy();
-        expect(rect.width).toBeGreaterThan(0);
+        expect(rect).toEqual(node!.sourceBox);
       }
     }
   });
@@ -87,10 +87,8 @@ describe("GOLDEN_SAMPLES", () => {
 });
 
 describe("真实移动活动页黄金样例（三张截图混合重建）", () => {
-  it("GOLDEN_SAMPLES 按固定顺序注册全部五个样例", () => {
+  it("GOLDEN_SAMPLES 仅注册三个真实页面", () => {
     expect(GOLDEN_SAMPLES.map((sample) => sample.id)).toEqual([
-      "campaign",
-      "summer-form",
       "commerce-feed",
       "summer-game-festival",
       "pet-red-packet",

@@ -17,6 +17,8 @@ export type RenderedNodeLike = Rect & {
   fontFamily: string;
   fontSize: string;
   lineHeight: string;
+  hasText?: boolean;
+  effectiveBackgroundColor?: string | null;
 };
 
 /**
@@ -29,7 +31,8 @@ export type RenderedNodeLike = Rect & {
  * 保真优先：识别阶段已忠实记录参考稿事实（10px 也会记 10px 并产生 violation）；
  * evaluator 不静默「修正」，只产出 violation 作为信号，让用户/编辑器/下一轮识别知道问题。
  *
- * 角色启发式：renderedNodes 不直接携带 role（Playwright 只采样式与几何）。
+ * 文本采样优先：hasText=false 的容器与装饰不参与字号/对比度检查。
+ * 旧记录缺少该字段时仍用字体与尺寸启发式，保持历史证据兼容。
  *  - fontSize 字段存在且 ≥ 8px → 视为文本类（text/icon 节点可能含小字号图标，但 < 8px 几乎都是装饰像素）。
  *  - 否则视为容器/装饰，跳过字号/对比度。
  *  - width / height 同时 < 100px 且 ≥ 1px → 视为小组件候选，做点击区域检查。
@@ -94,13 +97,13 @@ function contrastRatio(foreground: string | undefined, background: string | unde
 }
 
 function isTextLikeNode(node: RenderedNodeLike): boolean {
-  if (!node.visible) return false;
+  if (!node.visible || node.hasText === false) return false;
   const fontSize = parseFontSizePx(node.fontSize);
   return fontSize !== null && fontSize >= FONT_SIZE_HEURISTIC_MIN_PX;
 }
 
 function isTinyComponentCandidate(node: RenderedNodeLike): boolean {
-  if (!node.visible) return false;
+  if (!node.visible || node.hasText === false) return false;
   if (isTextLikeNode(node)) return false;
   return node.width >= 1 && node.height >= 1
     && node.width < TINY_COMPONENT_MAX_PX && node.height < TINY_COMPONENT_MAX_PX;
@@ -163,7 +166,7 @@ export function evaluateDesignQuality(input: DesignQualityInput): DesignQualityR
           confidence: 0.95,
         }));
       }
-      const ratio = contrastRatio(node.color, node.backgroundColor);
+      const ratio = contrastRatio(node.color, node.effectiveBackgroundColor === null ? undefined : node.effectiveBackgroundColor ?? node.backgroundColor);
       if (ratio !== null && ratio < MIN_CONTRAST_RATIO) {
         violations.push(makeViolation({
           id: `design:contrast:${nodeId}`,

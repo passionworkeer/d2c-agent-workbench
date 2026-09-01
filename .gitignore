@@ -18,3 +18,12 @@ runs/
 .data/
 examples/activity-target/node_modules/
 examples/activity-target/dist/
+
+# >>> local sync 2026-09-01: runtime/audit/build artifacts & scratch
+.gstack-audit/
+.playwright-cli/
+output/
+apps/web/public/production-previews/
+test.jpg
+test-figma-export.json
+下载.svg
